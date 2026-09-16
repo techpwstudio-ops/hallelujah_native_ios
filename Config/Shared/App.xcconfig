@@ -1,0 +1,21 @@
+// App.xcconfig — settings that apply only to the GHallelujah app target.
+// Inherits everything else from the project-level configuration xcconfig.
+
+PRODUCT_NAME = $(APP_PRODUCT_NAME)
+PRODUCT_BUNDLE_IDENTIFIER = $(APP_BUNDLE_ID_BASE)$(APP_BUNDLE_ID_SUFFIX)
+
+// An explicit Info.plist, not a generated one: the app publishes its
+// configuration through it, and generated plists cannot carry custom keys.
+GENERATE_INFOPLIST_FILE = NO
+INFOPLIST_FILE = App/Resources/Info.plist
+CODE_SIGN_ENTITLEMENTS = App/Resources/GHallelujah.entitlements
+
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
+ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = YES
+
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks
+
+// The App folder is a synchronized group: every file inside it joins the
+// target automatically. Documentation and placeholders must not be bundled.
+EXCLUDED_SOURCE_FILE_NAMES = $(inherited) *.md .gitkeep

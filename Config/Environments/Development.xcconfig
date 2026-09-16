@@ -1,0 +1,38 @@
+// Development.xcconfig — local backend, installed side-by-side with QA/Prod.
+// Mirrors AppConfig._testDomain / _testProxyDomain from the Flutter app.
+
+APP_ENVIRONMENT = development
+APP_BUNDLE_ID_SUFFIX = .dev
+APP_DISPLAY_NAME = $(APP_NAME_BASE) Dev
+
+// Hosts are scheme-less; AppConfiguration composes the URL. Empty port = default.
+API_SCHEME = http
+API_HOST = localhost
+API_PORT = 3000
+API_BASE_PATH = /api
+
+PROXY_SCHEME = http
+PROXY_HOST = localhost
+PROXY_PORT = 3001
+PROXY_BASE_PATH = /api
+
+SOCKET_SCHEME = http
+SOCKET_HOST = localhost
+SOCKET_PORT = 4000
+
+WEBSITE_HOST = hallelujah.today
+CDN_HOST = d124ttxt2as03p.cloudfront.net
+
+// Plaintext HTTP to localhost needs an ATS exception; only this environment
+// is allowed one, and the Info.plist keys it off this flag.
+ALLOWS_ARBITRARY_LOADS = YES
+
+LOG_LEVEL = debug
+ANALYTICS_ENABLED = NO
+CRASH_REPORTING_ENABLED = NO
+
+FEATURE_AI_ASSISTANT_ENABLED = YES
+FEATURE_CARPLAY_ENABLED = YES
+FEATURE_ADS_ENABLED = YES
+FEATURE_ADS_PREVIEW_MODE = YES
+FEATURE_DOWNLOADS_ENABLED = YES

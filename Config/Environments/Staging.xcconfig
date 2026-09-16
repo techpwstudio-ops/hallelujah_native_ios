@@ -1,0 +1,35 @@
+// Staging.xcconfig — the QA stack the team tests release builds against.
+// Mirrors AppConfig.isDev == true from the Flutter app.
+
+APP_ENVIRONMENT = staging
+APP_BUNDLE_ID_SUFFIX = .staging
+APP_DISPLAY_NAME = $(APP_NAME_BASE) QA
+
+API_SCHEME = https
+API_HOST = qa.api.hallelujah.today
+API_PORT =
+API_BASE_PATH = /api
+
+PROXY_SCHEME = https
+PROXY_HOST = qa.proxy.hallelujah.today
+PROXY_PORT =
+PROXY_BASE_PATH = /api
+
+SOCKET_SCHEME = wss
+SOCKET_HOST = qa.ws.hallelujah.today
+SOCKET_PORT =
+
+WEBSITE_HOST = hallelujah.today
+CDN_HOST = d124ttxt2as03p.cloudfront.net
+
+ALLOWS_ARBITRARY_LOADS = NO
+
+LOG_LEVEL = debug
+ANALYTICS_ENABLED = YES
+CRASH_REPORTING_ENABLED = YES
+
+FEATURE_AI_ASSISTANT_ENABLED = YES
+FEATURE_CARPLAY_ENABLED = YES
+FEATURE_ADS_ENABLED = YES
+FEATURE_ADS_PREVIEW_MODE = YES
+FEATURE_DOWNLOADS_ENABLED = YES

@@ -1,0 +1,9 @@
+// UITests.xcconfig — XCUITest target. Drives the app as a black box.
+
+PRODUCT_NAME = $(TARGET_NAME)
+PRODUCT_BUNDLE_IDENTIFIER = $(APP_BUNDLE_ID_BASE)$(APP_BUNDLE_ID_SUFFIX).uitests
+GENERATE_INFOPLIST_FILE = YES
+TEST_TARGET_NAME = $(APP_PRODUCT_NAME)
+
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @loader_path/Frameworks
+EXCLUDED_SOURCE_FILE_NAMES = $(inherited) *.md .gitkeep

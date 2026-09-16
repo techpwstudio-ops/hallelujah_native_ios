@@ -1,0 +1,4 @@
+// Debug — unoptimized build against the local backend.
+#include "../Shared/Base.xcconfig"
+#include "../Shared/Debug.xcconfig"
+#include "../Environments/Development.xcconfig"
