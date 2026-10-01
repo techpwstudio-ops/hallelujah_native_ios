@@ -1,0 +1,4 @@
+module GoogleUtilities_Logger {
+umbrella "/Users/teja/Library/Developer/Xcode/DerivedData/GHallelujah-gbibqdcnhicikoamsawfghmzatjf/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/Logger/Public"
+export *
+}

@@ -19,9 +19,39 @@ SOCKET_HOST = ws.hallelujah.today
 SOCKET_PORT =
 
 WEBSITE_HOST = hallelujah.today
-CDN_HOST = d124ttxt2as03p.cloudfront.net
+// Distinct from Development/Staging's CDN host: `SettingsService.cdnUrl`
+// (`lib/services/settings_service.dart`) falls back to
+// 'https://do5fy9mnhjqvi.cloudfront.net' when `EndPoints.isDev` is false —
+// this xcconfig hierarchy previously copied the dev/staging host into
+// Production by mistake (T15 finding).
+CDN_HOST = do5fy9mnhjqvi.cloudfront.net
 
-ALLOWS_ARBITRARY_LOADS = NO
+// Matches Flutter's `secret3` (lib/utils/security.dart): the real secret,
+// injected via Config/Secrets.xcconfig or CI — never committed.
+API_SECURE_HEADER = $(HALLELUJAH_API_SECRET)
+
+// Matches Flutter's `secret1`/`secret2` (lib/utils/security.dart) — same
+// injection story as API_SECURE_HEADER above.
+API_OTP_SECRET_1 = $(HALLELUJAH_OTP_SECRET_1)
+API_OTP_SECRET_2 = $(HALLELUJAH_OTP_SECRET_2)
+
+// T23 — Firebase project + Google Sign-In client IDs, copied verbatim from
+// the Flutter app's `ios/Firebase/Prod/GoogleService-Info.plist` and
+// `lib/firebase_options.dart`'s `googleServerClientId` (non-dev branch).
+// Not secrets — see Development.xcconfig's note on why these are plain
+// values here rather than CI-injected like API_SECURE_HEADER above.
+FIREBASE_API_KEY = AIzaSyCs2MpQw3OLTHsr4MhvgRR4djPJES9A20s
+FIREBASE_APP_ID = 1:1052349300270:ios:5481caf2f2c4af1df329bf
+FIREBASE_PROJECT_ID = hallelujah-49b89
+FIREBASE_STORAGE_BUCKET = hallelujah-49b89.appspot.com
+FIREBASE_GCM_SENDER_ID = 1052349300270
+GOOGLE_IOS_CLIENT_ID = 1052349300270-dtchj51p80odgdrgsj750g8dght017tr.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.1052349300270-dtchj51p80odgdrgsj750g8dght017tr
+GOOGLE_SERVER_CLIENT_ID = 1052349300270-9qa1mu60em885k78un8s8tm5adkh2u30.apps.googleusercontent.com
+
+// C-preprocessor flag (1/0) — see Development.xcconfig for how it flows
+// into Info.plist's NSAllowsArbitraryLoads.
+ALLOWS_ARBITRARY_LOADS = 0
 
 LOG_LEVEL = warning
 ANALYTICS_ENABLED = YES

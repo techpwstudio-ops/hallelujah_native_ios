@@ -1,0 +1,4 @@
+module GoogleUtilities_Environment {
+umbrella "/Users/teja/Library/Developer/Xcode/DerivedData/GHallelujah-gbibqdcnhicikoamsawfghmzatjf/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/Environment/Public"
+export *
+}

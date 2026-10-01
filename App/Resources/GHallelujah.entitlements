@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- T48 — CarPlay scene setup. Key/value copied verbatim from
+	     ios/Runner/Runner.entitlements. Provisioning-profile approval for
+	     this entitlement is an infra concern outside this task's scope. -->
+	<key>com.apple.developer.carplay-audio</key>
+	<true/>
+</dict>
+</plist>

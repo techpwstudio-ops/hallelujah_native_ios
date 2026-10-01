@@ -23,9 +23,44 @@ SOCKET_PORT = 4000
 WEBSITE_HOST = hallelujah.today
 CDN_HOST = d124ttxt2as03p.cloudfront.net
 
+// Matches Flutter's `secret3` (lib/utils/security.dart): a fixed, non-secret
+// value for every environment where AppConfig.isDev == true.
+API_SECURE_HEADER = s3
+
+// Matches Flutter's `secret1`/`secret2` (lib/utils/security.dart), body
+// fields on the unified OTP endpoints (T20) — same isDev fixed-value
+// pattern as API_SECURE_HEADER above, just two separate fields instead of
+// a header.
+API_OTP_SECRET_1 = s1
+API_OTP_SECRET_2 = s2
+
+// T23 — Firebase project + Google Sign-In client IDs. None of these are
+// secrets (OAuth client IDs and Firebase's API key are meant to ship inside
+// the app bundle; the backend is what actually verifies tokens), so they sit
+// here rather than in Config/Secrets.xcconfig. Values copied verbatim from
+// the Flutter app's `ios/Firebase/Dev/GoogleService-Info.plist` and
+// `lib/firebase_options.dart`'s `googleServerClientId` (dev branch) — this
+// is the `hallelujah-dev` Firebase project, matching `APP_BUNDLE_ID_SUFFIX`
+// = `.dev` above (Flutter's own Xcode project selects this same plist for
+// any `*-dev`-suffixed build configuration).
+FIREBASE_API_KEY = AIzaSyBFgMcl5GpBidwaLrMTfBWM28wtTiuLmwM
+FIREBASE_APP_ID = 1:501702985497:ios:abd97b39e3d2635b1d6788
+FIREBASE_PROJECT_ID = hallelujah-dev
+FIREBASE_STORAGE_BUCKET = hallelujah-dev.firebasestorage.app
+FIREBASE_GCM_SENDER_ID = 501702985497
+GOOGLE_IOS_CLIENT_ID = 501702985497-ivchqjmnbf0b4p57dvn3sgt98tiis9l7.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.501702985497-ivchqjmnbf0b4p57dvn3sgt98tiis9l7
+// `AppConfig.serverClientId` (`lib/utils/app_config.dart` ->
+// `DefaultFirebaseOptions.googleServerClientId`), the dev-flavor value — a
+// separate Web OAuth client from GOOGLE_IOS_CLIENT_ID above, used to scope
+// the ID token Google Sign-In returns so the backend can verify it.
+GOOGLE_SERVER_CLIENT_ID = 501702985497-698poc9pelrvo4as5ai8kp42tm5ohg4a.apps.googleusercontent.com
+
 // Plaintext HTTP to localhost needs an ATS exception; only this environment
-// is allowed one, and the Info.plist keys it off this flag.
-ALLOWS_ARBITRARY_LOADS = YES
+// is allowed one. This is a C-preprocessor flag (1/0, not YES/NO): App.xcconfig
+// passes it to Info.plist via INFOPLIST_PREPROCESSOR_DEFINITIONS, and
+// Info.plist wraps the NSAllowsArbitraryLoads key in `#if ALLOWS_ARBITRARY_LOADS`.
+ALLOWS_ARBITRARY_LOADS = 1
 
 LOG_LEVEL = debug
 ANALYTICS_ENABLED = NO

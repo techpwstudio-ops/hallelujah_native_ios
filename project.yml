@@ -1,0 +1,189 @@
+name: GHallelujah
+
+options:
+  projectFormat: xcode16_0
+  developmentLanguage: en
+  # Nothing here shadows Config/*.xcconfig — every build setting comes from
+  # the xcconfig hierarchy (see Non-negotiables in progress.md), not from
+  # XcodeGen's own new-project presets.
+  settingPresets: none
+  createIntermediateGroups: false
+  deploymentTarget:
+    iOS: "17.0"
+  usesTabs: false
+  indentWidth: 4
+  tabWidth: 4
+
+configs:
+  Debug: debug
+  Staging: release
+  Release: release
+
+configFiles:
+  Debug: Config/Configurations/Debug.xcconfig
+  Staging: Config/Configurations/Staging.xcconfig
+  Release: Config/Configurations/Release.xcconfig
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 7.0.0
+  # Q5 (progress.md Open questions), answered 2026-09-16: all five Firebase
+  # products the Flutter app uses carry over. `from: 12.0.0` pins to the
+  # major version current as of T15 (12.19.2 latest at the time).
+  FirebaseiOS:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 12.0.0
+  # T23 — native counterpart of the `google_sign_in` Dart plugin, which
+  # itself wraps this same SDK on iOS. `from: 8.0.0` pins to the major
+  # version current as of T23.
+  GoogleSignIniOS:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: 8.0.0
+  # T67 — native counterpart of `socket_io_client` (`lib/services/
+  # websocket.dart`). `from: 16.1.1` pins to the major version current as
+  # of T67.
+  SocketIO:
+    url: https://github.com/socketio/socket.io-client-swift
+    from: 16.1.1
+
+targets:
+  GHallelujah:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        type: syncedFolder
+    # T18 — without this, App/Resources/GHallelujah.entitlements sits on disk
+    # unused: XcodeGen doesn't attach an entitlements file to the target on
+    # its own, so CODE_SIGN_ENTITLEMENTS was never set and the associated
+    # domains in it did nothing. No `properties:` sub-key here — the file's
+    # contents are hand-authored, not XcodeGen-generated.
+    entitlements:
+      path: App/Resources/GHallelujah.entitlements
+    configFiles:
+      Debug: Config/Shared/App.xcconfig
+      Staging: Config/Shared/App.xcconfig
+      Release: Config/Shared/App.xcconfig
+    dependencies:
+      - package: GRDB
+        product: GRDB
+      # FirebaseCore + FirebaseAppCheck: bootstrapped in T15
+      # (`App/Core/Firebase/FirebaseBootstrap.swift`). FirebaseCrashlytics:
+      # T15 also gives `CrashReporting` a real implementation (see
+      # `App/Core/Logging/CrashReporting.swift`). FirebaseAuth/
+      # FirebaseMessaging/FirebaseAnalytics are declared now (Q5 already
+      # decided all five products carry over) but wired up by the
+      # milestones that actually use them — T20-24 (phone OTP), T66 (APNs/
+      # FCM push notifications, including push-driven deep-linked taps —
+      # NOT T18, which only covers `deep_link_service.dart`'s URL-scheme/
+      # universal-link path; corrected 2026-09-16, this comment previously
+      # named T18), and T38 (analytics) respectively.
+      - package: FirebaseiOS
+        product: FirebaseCore
+      - package: FirebaseiOS
+        product: FirebaseAppCheck
+      - package: FirebaseiOS
+        product: FirebaseCrashlytics
+      - package: FirebaseiOS
+        product: FirebaseAuth
+      - package: FirebaseiOS
+        product: FirebaseMessaging
+      - package: FirebaseiOS
+        product: FirebaseAnalytics
+      - package: GoogleSignIniOS
+        product: GoogleSignIn
+      - package: SocketIO
+        product: SocketIO
+
+  GHallelujahTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+        type: syncedFolder
+    configFiles:
+      Debug: Config/Shared/Tests.xcconfig
+      Staging: Config/Shared/Tests.xcconfig
+      Release: Config/Shared/Tests.xcconfig
+    dependencies:
+      - target: GHallelujah
+
+  GHallelujahUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+        type: syncedFolder
+    configFiles:
+      Debug: Config/Shared/UITests.xcconfig
+      Staging: Config/Shared/UITests.xcconfig
+      Release: Config/Shared/UITests.xcconfig
+    dependencies:
+      - target: GHallelujah
+
+schemes:
+  GHallelujah Development:
+    build:
+      targets:
+        GHallelujah: all
+        GHallelujahTests: [test]
+        GHallelujahUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets: [GHallelujahTests, GHallelujahUITests]
+    profile:
+      config: Debug
+    analyze:
+      config: Debug
+    archive:
+      config: Debug
+    management:
+      shared: true
+
+  GHallelujah Staging:
+    # GHallelujahTests is built out on purpose: Config/Shared/Release.xcconfig sets
+    # ENABLE_TESTABILITY = NO (Staging composes it — "QA tests a release build"), so
+    # a target doing `@testable import GHallelujah` cannot compile under this config.
+    # UI tests are black-box (XCUIApplication) and need no testability, so they still
+    # verify the actual release-configured binary launches and behaves correctly.
+    build:
+      targets:
+        GHallelujah: all
+        GHallelujahUITests: [test]
+    run:
+      config: Staging
+    test:
+      config: Staging
+      targets: [GHallelujahUITests]
+    profile:
+      config: Staging
+    analyze:
+      config: Staging
+    archive:
+      config: Staging
+    management:
+      shared: true
+
+  GHallelujah Production:
+    # Same reasoning as GHallelujah Staging: Release.xcconfig disables testability,
+    # so only the black-box UI test target runs here.
+    build:
+      targets:
+        GHallelujah: all
+        GHallelujahUITests: [test]
+    run:
+      config: Release
+    test:
+      config: Release
+      targets: [GHallelujahUITests]
+    profile:
+      config: Release
+    analyze:
+      config: Release
+    archive:
+      config: Release
+    management:
+      shared: true

@@ -1,0 +1,4 @@
+module AppAuth {
+umbrella "/Users/teja/Library/Developer/Xcode/DerivedData/GHallelujah-gbibqdcnhicikoamsawfghmzatjf/SourcePackages/checkouts/AppAuth-iOS/Sources/AppAuth"
+export *
+}

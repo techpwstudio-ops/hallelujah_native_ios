@@ -1,0 +1,4 @@
+module AppCheckCore {
+umbrella header "/Users/teja/Library/Developer/Xcode/DerivedData/GHallelujah-gbibqdcnhicikoamsawfghmzatjf/SourcePackages/checkouts/app-check/AppCheckCore/Sources/Public/AppCheckCore/AppCheckCore.h"
+export *
+}

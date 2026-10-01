@@ -1,0 +1,17 @@
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+
+# GHallelujah.xcodeproj is generated from project.yml by XcodeGen (D8 in
+# progress.md) — run `make generate` after cloning, and again after editing
+# project.yml.
+GHallelujah.xcodeproj/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Secrets — copy Config/Secrets.xcconfig.template to Config/Secrets.xcconfig and fill in.
+Config/Secrets.xcconfig

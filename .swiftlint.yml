@@ -1,0 +1,29 @@
+# Run: swiftlint (see Makefile's `lint` target for install notes).
+
+excluded:
+  - GHallelujah.xcodeproj
+  - .build
+  - DerivedData
+
+opt_in_rules:
+  - empty_count
+  - explicit_init
+  - fatal_error_message
+  - redundant_type_annotation
+  - unneeded_parentheses_in_closure_argument
+
+disabled_rules:
+  # TODOs are allowed when tagged with a task number — see Non-negotiables in progress.md.
+  - todo
+
+line_length:
+  warning: 120
+  error: 160
+
+identifier_name:
+  min_length: 2
+  excluded:
+    - id
+
+analyzer_rules:
+  - unused_import

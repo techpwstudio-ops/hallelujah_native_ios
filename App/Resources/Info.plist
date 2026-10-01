@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>$(APP_DISPLAY_NAME)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<!-- T32 — background audio playback (lock-screen/Control-Center
+	     controls, and playback surviving app backgrounding at all). Matches
+	     `ios/Runner/Info.plist`'s `UIBackgroundModes`; its sibling
+	     `remote-notification` entry is unrelated to audio (push) and has no
+	     native consumer yet, so it's left out rather than added speculatively. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+
+	<!-- T48 — CarPlay scene setup. Registers only the CarPlay scene role
+	     (`CPTemplateApplicationSceneSessionRoleApplication`); the phone
+	     `UIWindowSceneSessionRoleApplication` role is deliberately left out
+	     of this manifest — this app uses the plain SwiftUI `App`/`Scene`
+	     lifecycle (`GHallelujahApp`, `WindowGroup`, no `UIApplicationDelegate`
+	     `configurationForConnecting` override and no phone-facing
+	     `UISceneDelegateClassName` anywhere), and when a role has no entry
+	     here UIKit supplies its own default configuration for it, which is
+	     exactly what already runs the phone scene today. Confirmed via an
+	     Apple Frameworks engineer's answer on the "CarPlay + SwiftUI App
+	     Lifecycle" Apple Developer Forums thread (only the CarPlay role is
+	     needed; once any scene manifest exists here,
+	     `application(_:configurationForConnecting:options:)` is never
+	     called, so `AppDelegate.swift` needs no change either) and by the
+	     working createwithswift.com/nitricware.com SwiftUI+CarPlay
+	     walkthroughs. Key names/values match
+	     `ios/Runner/Info.plist`'s own `CPTemplateApplicationSceneSessionRoleApplication`
+	     block exactly (that file's sibling `UIWindowSceneSessionRoleApplication`
+	     entry is Flutter's UIKit storyboard-based phone scene — not
+	     applicable here). `CarPlaySceneDelegate` (`App/Platform/CarPlay/`)
+	     sets a placeholder root template only — T49 owns the real tab bar.
+	     Sibling `com.apple.developer.carplay-audio` entitlement is in
+	     `GHallelujah.entitlements`. -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<true/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>CPTemplateApplicationSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>CPTemplateApplicationScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>CarPlay</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).CarPlaySceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+
+	<key>NSAppTransportSecurity</key>
+	<dict>
+#if ALLOWS_ARBITRARY_LOADS
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+#endif
+	</dict>
+
+	<!-- Native-only addition (T15) — the Flutter app never requests App
+	     Tracking Transparency, so there's no Dart copy to port; this string
+	     is self-authored. Requested from SplashViewModel.start(). -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This lets us personalize your experience and measure how our marketing performs. Your data is never sold.</string>
+
+	<!-- T68 — Sharing. String matches ios/Runner/Info.plist's own
+	     NSPhotoLibraryAddUsageDescription verbatim (same Save Image feature). -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Hallelujah needs permission to save images to your photo library. For example, when you tap "Save Image" on a song, verse or AI answer share card, the picture is saved to your Photos so you can post or send it later.</string>
+
+	<!-- T68 — the three live chat-share targets (`ShareSheetView`'s
+	     WhatsApp/Telegram/Twitter row). `ios/Runner/Info.plist` also lists
+	     fbapi/fb-messenger-api/fbauth2/fbshareextension/instagram/fb for its
+	     "status share" feature — confirmed dead code there
+	     (`_buildStatusSection()` is commented out), so not ported here. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>whatsapp</string>
+		<string>tg</string>
+		<string>twitter</string>
+	</array>
+
+	<!-- App configuration: xcconfig -> here -> AppConfiguration (App/Core/Configuration). -->
+	<key>AppEnvironment</key>
+	<string>$(APP_ENVIRONMENT)</string>
+	<key>APIScheme</key>
+	<string>$(API_SCHEME)</string>
+	<key>APIHost</key>
+	<string>$(API_HOST)</string>
+	<key>APIPort</key>
+	<string>$(API_PORT)</string>
+	<key>APIBasePath</key>
+	<string>$(API_BASE_PATH)</string>
+	<key>ProxyScheme</key>
+	<string>$(PROXY_SCHEME)</string>
+	<key>ProxyHost</key>
+	<string>$(PROXY_HOST)</string>
+	<key>ProxyPort</key>
+	<string>$(PROXY_PORT)</string>
+	<key>ProxyBasePath</key>
+	<string>$(PROXY_BASE_PATH)</string>
+	<key>SocketScheme</key>
+	<string>$(SOCKET_SCHEME)</string>
+	<key>SocketHost</key>
+	<string>$(SOCKET_HOST)</string>
+	<key>SocketPort</key>
+	<string>$(SOCKET_PORT)</string>
+	<key>WebsiteHost</key>
+	<string>$(WEBSITE_HOST)</string>
+	<key>CDNHost</key>
+	<string>$(CDN_HOST)</string>
+	<key>APISecureHeader</key>
+	<string>$(API_SECURE_HEADER)</string>
+	<key>APIOTPSecret1</key>
+	<string>$(API_OTP_SECRET_1)</string>
+	<key>APIOTPSecret2</key>
+	<string>$(API_OTP_SECRET_2)</string>
+	<key>LogLevel</key>
+	<string>$(LOG_LEVEL)</string>
+	<key>AnalyticsEnabled</key>
+	<string>$(ANALYTICS_ENABLED)</string>
+	<key>CrashReportingEnabled</key>
+	<string>$(CRASH_REPORTING_ENABLED)</string>
+	<key>FeatureAIAssistantEnabled</key>
+	<string>$(FEATURE_AI_ASSISTANT_ENABLED)</string>
+	<key>FeatureCarPlayEnabled</key>
+	<string>$(FEATURE_CARPLAY_ENABLED)</string>
+	<key>FeatureAdsEnabled</key>
+	<string>$(FEATURE_ADS_ENABLED)</string>
+	<key>FeatureAdsPreviewMode</key>
+	<string>$(FEATURE_ADS_PREVIEW_MODE)</string>
+	<key>FeatureDownloadsEnabled</key>
+	<string>$(FEATURE_DOWNLOADS_ENABLED)</string>
+
+	<!-- T23 — Firebase project + Google Sign-In config; see AppConfiguration
+	     and FirebaseBootstrap. Google/Facebook reversed-client-id schemes
+	     that `ios/Runner/Info.plist` also carries: Facebook has no native
+	     consumer here (the Dart social-sign-in row never wires a Facebook
+	     button either — `AuthProvideTypes.facebook` is declared but unused),
+	     so only Google's is ported below. -->
+	<key>FirebaseAPIKey</key>
+	<string>$(FIREBASE_API_KEY)</string>
+	<key>FirebaseAppID</key>
+	<string>$(FIREBASE_APP_ID)</string>
+	<key>FirebaseProjectID</key>
+	<string>$(FIREBASE_PROJECT_ID)</string>
+	<key>FirebaseStorageBucket</key>
+	<string>$(FIREBASE_STORAGE_BUCKET)</string>
+	<key>FirebaseGCMSenderID</key>
+	<string>$(FIREBASE_GCM_SENDER_ID)</string>
+	<key>GoogleIOSClientID</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
+	<key>GoogleServerClientID</key>
+	<string>$(GOOGLE_SERVER_CLIENT_ID)</string>
+
+	<!-- T18 — custom URL scheme fallback for deep links, alongside the
+	     universal-link domains declared in GHallelujah.entitlements. Matches
+	     `ios/Runner/Info.plist`'s `gshallelujah` entry. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.hallelujah.user</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>gshallelujah</string>
+			</array>
+		</dict>
+		<!-- T23 — Google Sign-In's browser-redirect callback scheme, handled
+		     by `GIDSignIn.sharedInstance.handle(url)` in `GHallelujahApp`'s
+		     `.onOpenURL` before falling through to `DeepLinkService`. Value
+		     varies per environment/Firebase project, unlike `gshallelujah`
+		     above. -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>google-signin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

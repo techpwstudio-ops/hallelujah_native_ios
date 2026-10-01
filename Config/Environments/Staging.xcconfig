@@ -22,7 +22,40 @@ SOCKET_PORT =
 WEBSITE_HOST = hallelujah.today
 CDN_HOST = d124ttxt2as03p.cloudfront.net
 
-ALLOWS_ARBITRARY_LOADS = NO
+// Matches Flutter's `secret3` (lib/utils/security.dart): a fixed, non-secret
+// value for every environment where AppConfig.isDev == true.
+API_SECURE_HEADER = s3
+
+// Matches Flutter's `secret1`/`secret2` (lib/utils/security.dart) — see
+// Development.xcconfig.
+API_OTP_SECRET_1 = s1
+API_OTP_SECRET_2 = s2
+
+// T23 — Firebase project + Google Sign-In client IDs. Unlike API_OTP_SECRET_1/2
+// above, these use the PRODUCTION Firebase project's values (`hallelujah-49b89`,
+// same as Production.xcconfig), not Dev's — matching ANALYTICS_ENABLED/
+// CRASH_REPORTING_ENABLED above, which are also already prod-like here. Flutter's
+// own Xcode project has only two build flavors (`-dev`/`-prod`; confirmed via
+// `ios/Runner.xcodeproj`), no separate QA one — its "QA testers run release
+// builds against a different API host" setup reuses the `-prod` flavor's Firebase
+// project throughout, just pointed at a different backend host. Documented
+// assumption, not a value the app can self-verify: this native project's
+// `APP_BUNDLE_ID_SUFFIX` (`.staging`) has no Firebase-console registration of its
+// own on either project (only `.dev` and the bare production id are registered) —
+// flagged as a new Open Question in progress.md, same class of external/infra gap
+// as T18's apple-app-site-association hosting requirement.
+FIREBASE_API_KEY = AIzaSyCs2MpQw3OLTHsr4MhvgRR4djPJES9A20s
+FIREBASE_APP_ID = 1:1052349300270:ios:5481caf2f2c4af1df329bf
+FIREBASE_PROJECT_ID = hallelujah-49b89
+FIREBASE_STORAGE_BUCKET = hallelujah-49b89.appspot.com
+FIREBASE_GCM_SENDER_ID = 1052349300270
+GOOGLE_IOS_CLIENT_ID = 1052349300270-dtchj51p80odgdrgsj750g8dght017tr.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.1052349300270-dtchj51p80odgdrgsj750g8dght017tr
+GOOGLE_SERVER_CLIENT_ID = 1052349300270-9qa1mu60em885k78un8s8tm5adkh2u30.apps.googleusercontent.com
+
+// C-preprocessor flag (1/0) — see Development.xcconfig for how it flows
+// into Info.plist's NSAllowsArbitraryLoads.
+ALLOWS_ARBITRARY_LOADS = 0
 
 LOG_LEVEL = debug
 ANALYTICS_ENABLED = YES

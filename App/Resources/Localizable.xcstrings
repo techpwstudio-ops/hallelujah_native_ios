@@ -1,0 +1,156 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "app.placeholder.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GHallelujah"
+          }
+        }
+      }
+    },
+    "app.tab.aiAssistant": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emet"
+          }
+        }
+      }
+    },
+    "app.tab.home": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home"
+          }
+        }
+      }
+    },
+    "app.tab.library": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Library"
+          }
+        }
+      }
+    },
+    "app.tab.read": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bible"
+          }
+        }
+      }
+    },
+    "app.tab.search": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search"
+          }
+        }
+      }
+    },
+    "app.update.available.action": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update"
+          }
+        }
+      }
+    },
+    "app.update.available.message": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A new version of GHallelujah is available. Update now for the latest features and improvements."
+          }
+        }
+      }
+    },
+    "app.update.available.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Available"
+          }
+        }
+      }
+    },
+    "app.update.dismiss.action": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Now"
+          }
+        }
+      }
+    },
+    "carplay.placeholder.detailText": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full CarPlay support is on the way."
+          }
+        }
+      }
+    },
+    "carplay.placeholder.itemText": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coming soon"
+          }
+        }
+      }
+    },
+    "carplay.placeholder.rootTitle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hallelujah"
+          }
+        }
+      }
+    },
+    "offline.banner.subtitle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap to browse your downloads"
+          }
+        }
+      }
+    },
+    "offline.banner.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No internet connection"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
