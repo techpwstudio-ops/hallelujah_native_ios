@@ -36,4 +36,12 @@ jobs:
         run: brew install xcodegen
 
       - name: Build
-        run: make build XCODEBUILD_FLAGS="CODE_SIGNING_ALLOWED=NO"
+        run: |
+          set -o pipefail
+          make build XCODEBUILD_FLAGS="CODE_SIGNING_ALLOWED=NO" 2>&1 | tee build.log
+
+      # Last in the log on purpose: the compile errors, de-duplicated, so a
+      # failed run is diagnosable from the tail of the job output alone.
+      - name: Compile errors
+        if: failure()
+        run: grep -E "error:" build.log | sed 's|.*/hallelujah_native_ios/||' | sort -u | head -150
