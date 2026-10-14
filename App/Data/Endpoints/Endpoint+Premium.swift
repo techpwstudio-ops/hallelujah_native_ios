@@ -24,4 +24,10 @@ extension Endpoint {
     /// `verifyPayment` — `POST /premium/payment/success`, body
     /// `{provider, orderId, payload}`.
     static let paymentSuccess = Endpoint.post("/premium/payment/success")
+
+    /// `cancelSubscriptionApi` (`end_points.dart:313`) — `GET
+    /// /premium/subscription/cancel`; replies `{data: <membership>}`. Only
+    /// reached for a web-checkout (Razorpay) subscription — Apple's is
+    /// cancelled in the App Store.
+    static let cancelSubscription = Endpoint.get("/premium/subscription/cancel")
 }

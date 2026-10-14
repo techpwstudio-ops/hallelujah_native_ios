@@ -6,13 +6,12 @@
 /// family-member management (`getSubscriptionMembers`/invite/remove) is
 /// T63, tips (`TipService`) are T64 — none of those have a method here.
 ///
-/// `cancelSubscription` (`GET /premium/subscription/cancel`) also has no
-/// method here: the Plans screen's cancel button only reaches that
-/// endpoint for a Razorpay-provider subscription (`plans_screen.dart`'s
-/// `buildCancelButton` — APPLE/GOOGLE branches to `openCustomTab` on the
-/// store's own manage-subscription URL instead); since this build only
-/// ever creates APPLE subscriptions, that backend call is unreachable dead
-/// code here and is deliberately not ported.
+/// `cancelSubscription` (`GET /premium/subscription/cancel`) is reached
+/// only for a web-checkout (Razorpay) subscription — `plans_screen.dart`'s
+/// `buildCancelButton` sends APPLE/GOOGLE to the store's own manage page.
+/// An account subscribed on another platform can still sign in here, so the
+/// Cancel Plan sheets (`showCancelPlanSheet` → `showConfirmCancelSheet`) are
+/// ported and end in this call.
 protocol SubscriptionRepository: Sendable {
     /// `getPremiumPlans` — the catalogue for this device's platform/country,
     /// already resolved server-side from the `os` header.
@@ -34,4 +33,8 @@ protocol SubscriptionRepository: Sendable {
     /// on the "already verified" short-circuit (itself still success — the
     /// caller should treat both as "the transaction may be finished").
     func verifyPurchase(orderId: String, receiptData: String) async throws -> Membership?
+
+    /// `PaymentService.cancel` — cancels auto-renew; returns the refreshed
+    /// `Membership` (its `subscription` now flagged cancelled).
+    func cancelSubscription() async throws -> Membership?
 }

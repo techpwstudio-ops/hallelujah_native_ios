@@ -156,7 +156,7 @@ final class SubscriptionPlansViewModel {
 
     /// `_getButtonText` (`plans_screen.dart:634-650`), ported verbatim.
     var primaryButtonTitle: String {
-        guard isPremiumUser else { return "Subscribe" }
+        guard isPremiumUser else { return selectedPlan?.freeTrial != nil ? "Activate Free Trial" : "Subscribe" }
         if isCancelled {
             if isCurrentSelectedPlan { return "Reactivate" }
             return isUpgrade ? "Upgrade to Family" : "Switch Plan"
@@ -188,16 +188,34 @@ final class SubscriptionPlansViewModel {
 
     enum CancelAction: Equatable {
         case openManageSubscriptions(URL)
-        /// The GOOGLE branch (no Play Store link on this build) and the
-        /// RAZORPAY/`showCancelPlanSheet` branch (T62's web-checkout cancel
-        /// flow) both collapse here — neither has a native destination yet.
+        /// RAZORPAY/`showCancelPlanSheet`: confirm in-app, then
+        /// `cancelSubscription()`.
+        case showCancelSheet
+        /// The GOOGLE branch — no Play Store link on this build.
         case unsupported
     }
 
     var cancelAction: CancelAction {
-        subscription?.providerName?.uppercased() == "APPLE"
-            ? .openManageSubscriptions(Self.appleManageSubscriptionURL)
-            : .unsupported
+        switch subscription?.providerName?.uppercased() {
+        case "APPLE": .openManageSubscriptions(Self.appleManageSubscriptionURL)
+        case "GOOGLE": .unsupported
+        default: .showCancelSheet
+        }
+    }
+
+    /// `PaymentService.cancel` — `true` once the server accepted it.
+    func cancelSubscription() async -> Bool {
+        errorMessage = nil
+        do {
+            if let membership = try await subscriptionRepository.cancelSubscription() {
+                await membershipStore.setMembership(membership)
+                self.membership = membership
+            }
+            return true
+        } catch {
+            errorMessage = Self.message(for: error)
+            return false
+        }
     }
 
     // MARK: - Purchase / restore

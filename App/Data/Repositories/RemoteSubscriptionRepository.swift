@@ -43,6 +43,14 @@ final class RemoteSubscriptionRepository: SubscriptionRepository {
         let decoded = try JSONDecoder().decode(PaymentVerifyResponse.self, from: response.data)
         return decoded.data
     }
+
+    func cancelSubscription() async throws -> Membership? {
+        let response = try await client.send(.cancelSubscription)
+        guard response.statusCode == 200 else {
+            throw SubscriptionError(statusCode: response.statusCode, data: response.data)
+        }
+        return try JSONDecoder().decode(PaymentVerifyResponse.self, from: response.data).data
+    }
 }
 
 /// `_verifyCore`'s request body (`payment_service.dart`):

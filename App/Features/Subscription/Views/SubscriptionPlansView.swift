@@ -7,12 +7,19 @@ import SwiftUI
 /// white CTA pill) and `Terms | Privacy | Restore` footer links.
 ///
 /// Free-trial copy (pill, "Then ₹x / Month", summary rows) is wired through
-/// `PlanCopy.trial(for:)`, which returns nil until `SubscriptionPlan` carries
-/// a `freeTrial` field. See `SubscriptionPlansViewModel` for Apple-rail scope.
+/// `PlanCopy.trial(for:)` from `SubscriptionPlan.freeTrial`. See
+/// `SubscriptionPlansViewModel` for Apple-rail scope.
 struct SubscriptionPlansView: View {
     @State private var viewModel = SubscriptionPlansViewModel()
     @Environment(\.openURL) private var openURL
     @State private var showSuccessSheet = false
+    @State private var cancelStep: CancelStep?
+
+    /// `showCancelPlanSheet` → `showConfirmCancelSheet` → `showCancelledSheet`.
+    fileprivate enum CancelStep: Identifiable {
+        case ask, confirm, done
+        var id: Self { self }
+    }
 
     var body: some View {
         content
@@ -21,6 +28,9 @@ struct SubscriptionPlansView: View {
             .task { await viewModel.load() }
             .parityFitSheet(isPresented: $showSuccessSheet, dismissible: false) {
                 SubscribedSuccessSheet { showSuccessSheet = false }
+            }
+            .parityFitSheet(item: $cancelStep) { step in
+                cancelSheet(step)
             }
     }
 
@@ -165,6 +175,8 @@ struct SubscriptionPlansView: View {
             switch viewModel.cancelAction {
             case let .openManageSubscriptions(url):
                 openURL(url)
+            case .showCancelSheet:
+                cancelStep = .ask
             case .unsupported:
                 break
             }
@@ -179,5 +191,39 @@ struct SubscriptionPlansView: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Cancel sheets
+
+extension SubscriptionPlansView {
+    private var endDate: Date { viewModel.subscription?.endDate ?? Date() }
+
+    @ViewBuilder
+    fileprivate func cancelSheet(_ step: CancelStep) -> some View {
+        switch step {
+        case .ask:
+            CancelPlanSheet(
+                endDate: endDate,
+                onKeep: { cancelStep = nil },
+                onCancelSubscription: { cancelStep = .confirm }
+            )
+        case .confirm:
+            ConfirmCancelSheet(
+                endDate: endDate,
+                onKeep: { cancelStep = nil },
+                onCancelSubscription: {
+                    Task {
+                        cancelStep = await viewModel.cancelSubscription() ? .done : nil
+                    }
+                }
+            )
+        case .done:
+            SubscriptionCancelledSheet(
+                endDate: endDate,
+                onContinueListening: { cancelStep = nil },
+                onReactivate: { cancelStep = nil }
+            )
+        }
     }
 }
