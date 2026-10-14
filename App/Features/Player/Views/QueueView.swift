@@ -1,73 +1,102 @@
 import SwiftUI
 
-/// T37 — ports `QueuePage` (`lib/views/player/queue_page.dart`), replacing
-/// `FullScreenDestinationView`'s `PlayerRoute.queue` placeholder. Reached
-/// from `FullPlayerView`'s (T35) queue button, already pushing this route.
+/// Ports `QueuePage` (`lib/views/player/queue_page.dart`), which Flutter
+/// presents through `showQueueSheet` -> `showAppSheet` as a
+/// `DraggableScrollableSheet` (initial 0.8, min 0.5, max 0.95). The player
+/// presents this as a sheet (`isSheet: true`) with those detents; the legacy
+/// `PlayerRoute.queue` push (the song menu's "Queue" row) still constructs it
+/// with the default and gets a navigation bar instead of the sheet header.
 ///
-/// Dart presents this as a `DraggableScrollableSheet` (a bottom sheet with
-/// its own drag handle); T35 already decided the native queue entry point
-/// is an ordinary push onto `PlayerRoute`'s stack instead — "one
-/// presentation mechanism for that destination rather than two competing
-/// ones" (`FullPlayerView`'s own doc comment) — so this screen is a plain
-/// pushed view with system nav-bar chrome, no `DragHandler`/sheet sizing to
-/// port.
-///
-/// Shows the FULL queue (past and future), not just what's upcoming,
-/// matching Dart's own `audioHandler.fullLogicalQueueSongIds` — highlighting
-/// rather than hiding whatever's already played, exactly as `queue_page
-/// .dart:100-114`'s `isCurrentSong` styling does.
+/// Header: 8pt padding (12 below), "Queue" in `titleMedium` w600 white. Rows
+/// show the whole queue; the current row has a white @ 8% 8pt-radius
+/// background, the rest are 70% opaque; tapping jumps to it; each row carries
+/// a trailing drag handle (`MenuIcon`, always visible) that reorders. Empty:
+/// centred "Queue is empty" in `bodyMedium` w300 white @ 70%. Flutter has no
+/// remove affordance, so none is offered.
 struct QueueView: View {
-    @Environment(\.appTheme) private var theme
+    var isSheet: Bool = false
+
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
+
+    static let sheetDetents: Set<PresentationDetent> = [.fraction(0.8), .fraction(0.95)]
 
     private var songs: [Song] { queueController.queue?.songs ?? [] }
     private var currentIndex: Int? { queueController.queue?.currentIndex }
 
     var body: some View {
-        Group {
-            if songs.isEmpty {
-                EmptyStateView(title: "Queue is empty")
-            } else {
-                List {
-                    ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
-                        QueueSongRow(song: song, isCurrent: index == currentIndex)
-                            .listRowBackground(
-                                index == currentIndex
-                                    ? theme.color(.textPrimary).opacity(0.08)
-                                    : Color.clear
-                            )
-                            .listRowSeparator(.hidden)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                Task { await queueController.jump(to: index) }
-                            }
-                    }
-                    .onMove(perform: move)
-                }
-                .listStyle(.plain)
-                // Always-visible trailing drag handles, matching Dart's own
-                // per-row `ReorderableDragStartListener`/`MenuIcon` (always
-                // shown, not gated behind an Edit toggle Dart has no
-                // equivalent of).
-                .environment(\.editMode, .constant(.active))
+        VStack(alignment: .leading, spacing: 0) {
+            if isSheet {
+                Text("Queue")
+                    .typography(PlayerStyle.titleMediumSemibold)
+                    .foregroundStyle(PlayerStyle.white)
+                    .padding(.top, 16)
+                    .padding(.horizontal, Dimens.screenPaddingAll)
+                    .padding(.bottom, 12)
             }
+            content
         }
-        .background(theme.color(.backgroundPrimary).ignoresSafeArea())
-        .navigationTitle("Queue")
-        .navigationBarTitleDisplayMode(.inline)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(isSheet ? Color.clear : PlayerStyle.black)
+        .modifier(QueueNavigationChrome(isSheet: isSheet))
     }
 
-    /// `ReorderQueueItemPlayerEvent(oldIndex, newIndex)`
-    /// (`queue_page.dart:90-96`) takes a single already-resolved index
-    /// pair; SwiftUI's `.onMove` instead hands back an `IndexSet` (a drag
-    /// only ever populates one) plus a `destination` expressed as an
-    /// insertion point in the PRE-removal array — converted to the single
-    /// post-removal target index `QueueController.reorder(from:to:)`
-    /// expects via the standard `move(fromOffsets:toOffset:)` arithmetic.
+    @ViewBuilder
+    private var content: some View {
+        if songs.isEmpty {
+            Text("Queue is empty")
+                .typography(TypographyToken(size: 14, weight: .light, lineHeightMultiple: 1.5))
+                .foregroundStyle(PlayerStyle.whiteAlpha(0.7))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            List {
+                ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
+                    QueueSongRow(song: song, isCurrent: index == currentIndex)
+                        .opacity(index == currentIndex ? 1 : 0.7)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(
+                            RoundedRectangle(cornerRadius: Dimens.cornerRadius, style: .continuous)
+                                .fill(index == currentIndex ? PlayerStyle.whiteAlpha(0.08) : Color.clear)
+                        )
+                        .listRowSeparator(.hidden)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            Task { await queueController.jump(to: index) }
+                        }
+                }
+                .onMove(perform: move)
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .contentMargins(.bottom, 24, for: .scrollContent)
+            // Always-visible trailing drag handles, like Flutter's per-row
+            // `ReorderableDragStartListener`.
+            .environment(\.editMode, .constant(.active))
+        }
+    }
+
+    /// `ReorderQueueItemPlayerEvent(oldIndex, newIndex)` takes the
+    /// post-removal target index; `.onMove` hands an insertion point in the
+    /// pre-removal array.
     private func move(from source: IndexSet, to destination: Int) {
         guard source.count == 1, let oldIndex = source.first else { return }
         let newIndex = oldIndex < destination ? destination - 1 : destination
         guard newIndex != oldIndex else { return }
         Task { await queueController.reorder(from: oldIndex, to: newIndex) }
+    }
+}
+
+/// Navigation-bar title for the pushed (non-sheet) presentation only.
+private struct QueueNavigationChrome: ViewModifier {
+    let isSheet: Bool
+
+    func body(content: Content) -> some View {
+        if isSheet {
+            content
+        } else {
+            content
+                .navigationTitle("Queue")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarColorScheme(.dark, for: .navigationBar)
+        }
     }
 }

@@ -261,3 +261,30 @@ struct ParityTypeButton: View {
         .buttonStyle(.plain)
     }
 }
+
+extension ParityColor {
+    /// velocity_x `Vx.yellow500` — now-playing title in `BaseMediaListTile`.
+    static let yellow500 = Color(red: 1.0, green: 235 / 255, blue: 59 / 255)
+    /// `Colors.white54` / `Colors.white70` / `Colors.white60` (Material alphas).
+    static let white54 = Color.white.opacity(0.54)
+}
+
+/// `Formater.formatDurationText` (`lib/utils/formater.dart`).
+func parityDurationText(_ duration: Int?) -> String {
+    guard let duration, duration > 0 else { return "0 min" }
+    let hours = duration / 3600
+    let minutes = (duration % 3600) / 60
+    let seconds = duration % 60
+    if hours > 0 { return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h" }
+    if minutes > 0 { return "\(minutes) min" }
+    return "\(seconds) sec"
+}
+
+/// `Formater.formatToDate` -> `dd/MM/yyyy`.
+func parityDateText(_ date: Date?) -> String {
+    guard let date else { return "" }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "dd/MM/yyyy"
+    return formatter.string(from: date)
+}

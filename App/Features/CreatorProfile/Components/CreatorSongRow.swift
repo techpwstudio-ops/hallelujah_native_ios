@@ -1,23 +1,29 @@
 import SwiftUI
 
-/// Ports `MusicListItem`/`EpisodeListItem`'s shared shape
-/// (`lib/widgets/song/base_media_list_tile.dart`): a 56×56 thumbnail, title,
-/// and a one-line subtitle (`song.primaryGenreName`). No trailing
-/// play/menu controls (`MediaTrailingSection`) — those need a song action
-/// sheet, which doesn't exist yet. `onTap` defaults to a no-op; T42's
-/// `GenreSongsView` is the first to wire a real tap-to-play handler through.
-/// Deliberately `.onTapGesture`, not `Button` — a `Button` wrapper would add
-/// the system "Button" accessibility trait and press-down animation to the 3
-/// existing, non-interactive callers (`CreatorProfileView`/`SectionDetailView`/
-/// `PlaylistDetailView`) too, which is a real regression for a no-op tap.
+/// Ports `SongListItem` -> `MusicListItem` / `EpisodeListItem` ->
+/// `BaseMediaListTile` (`lib/widgets/song/*`): 12/8 tile padding; artwork
+/// 56pt tall, radius 4, 56 wide for music and 56*16/9 for an episode; 14pt
+/// gap; title `titleMedium` capitalised (w600, bold yellow while it is the
+/// playing song); 4pt gap; subtitle `bodySmall` white70 — the genre name for
+/// music, the formatted duration for an episode. Episodes add a 12pt-gapped
+/// block under the row: description (2 lines, white60), 6pt gap, release date
+/// `dd/MM/yyyy` (white54). Trailing is the `more_vert` song menu
+/// (`MediaTrailingSection`). Tapping the tile plays the song.
 struct CreatorSongRow: View {
     let song: Song
     var userPlaylistID: String?
+    var showsMenu: Bool = true
     var onTap: () -> Void = {}
 
-    @Environment(\.appTheme) private var theme
+    @State private var queueController: QueueController = DependencyContainer.current.resolve()
+    @State private var menuSong: Song?
 
     private static let thumbnailSize: CGFloat = 56
+    private static let titleStyle = TypographyToken(size: 16, weight: .semibold, lineHeightMultiple: 1.4)
+    private static let titleActiveStyle = TypographyToken(size: 16, weight: .bold, lineHeightMultiple: 1.4)
+
+    private var isActive: Bool { queueController.queue?.currentSong?.id == song.id }
+    private var isMusic: Bool { song.type == "music" }
 
     private var resolvedArtwork: URL? {
         ArtworkURLResolver().resolve(
@@ -27,27 +33,68 @@ struct CreatorSongRow: View {
         )
     }
 
-    var body: some View {
-        HStack(spacing: Spacing.md) {
-            ArtworkView(url: resolvedArtwork, width: Self.thumbnailSize, height: Self.thumbnailSize)
+    private var subtitle: String {
+        isMusic ? (song.primaryGenre?.name ?? "") : parityDurationText(song.duration)
+    }
 
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(song.title ?? "Untitled")
-                    .typography(Typography.titleSmall)
-                    .foregroundStyle(theme.color(.textPrimary))
-                    .lineLimit(1)
-                if let genre = song.primaryGenre?.name {
-                    Text(genre)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.textSecondary))
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) {
+                ArtworkView(
+                    url: resolvedArtwork,
+                    width: isMusic ? Self.thumbnailSize : Self.thumbnailSize * 16 / 9,
+                    height: Self.thumbnailSize,
+                    cornerRadius: Dimens.cornerRadiusSmall
+                )
+                Spacer().frame(width: 14)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text((song.title ?? "").parityCapitalized)
+                        .typography(isActive ? Self.titleActiveStyle : Self.titleStyle)
+                        .foregroundStyle(isActive ? ParityColor.yellow500 : Color.white)
                         .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer().frame(height: 4)
+                    Text(subtitle)
+                        .typography(Typography.bodySmall)
+                        .foregroundStyle(ParityColor.white70)
+                }
+                Spacer(minLength: 0)
+
+                if showsMenu {
+                    Button { menuSong = song } label: {
+                        Image(systemName: "ellipsis")
+                            .rotationEffect(.degrees(90))
+                            .font(.system(size: 24))
+                            .foregroundStyle(Color.white)
+                            .frame(width: 48, height: 48)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("More")
                 }
             }
-            Spacer(minLength: 0)
-            SongMenuButton(song: song, userPlaylistID: userPlaylistID)
+
+            if !isMusic {
+                Spacer().frame(height: 12)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(song.description ?? "")
+                        .typography(Typography.bodySmall)
+                        .foregroundStyle(ParityColor.white60)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                    Spacer().frame(height: 6)
+                    Text(parityDateText(song.releaseDate))
+                        .typography(Typography.bodySmall)
+                        .foregroundStyle(ParityColor.white54)
+                }
+            }
         }
-        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, Dimens.paddingMedium)
+        .padding(.vertical, Dimens.spacing8)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
+        .songMenu(song: $menuSong, userPlaylistID: userPlaylistID)
     }
 }

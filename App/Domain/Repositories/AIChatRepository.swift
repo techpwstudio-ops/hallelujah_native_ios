@@ -15,7 +15,9 @@ protocol AIChatRepository: Sendable {
     func getConversations(cursor: String?) async throws -> Paginated<AIConversation>
 
     /// `POST /ai/conversations` — creates and returns a fresh conversation.
-    func createConversation() async throws -> AIConversation
+    /// `createConversation({title})` — Flutter titles a chat with the first 60
+    /// characters of its first message; `nil` sends an empty body.
+    func createConversation(title: String?) async throws -> AIConversation
 
     /// `DELETE /ai/conversations/:id`.
     func deleteConversation(id: String) async throws
@@ -32,4 +34,10 @@ protocol AIChatRepository: Sendable {
 
     /// `GET /ai/suggestions` — a plain, unpaginated array.
     func getSuggestions() async throws -> [AISuggestion]
+}
+
+extension AIChatRepository {
+    func createConversation() async throws -> AIConversation {
+        try await createConversation(title: nil)
+    }
 }

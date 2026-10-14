@@ -1,72 +1,78 @@
 import SwiftUI
 
-/// T58 — the AI Assistant tab root. Ports the Flutter app's `AiPage`
-/// (`lib/views/ai/ai_page.dart`). Owns a local, optional `conversationID`:
-/// `nil` shows a branded empty state plus suggestion chips; non-`nil` mounts
-/// `AIChatConversationView` (below) inline for that conversation.
-///
-/// `AIChatDetailView.swift` is a *different* screen instance — the pushed
-/// `AppRoute.aiChat` destination reached from elsewhere in the app — so
-/// rather than duplicate the scrolling-transcript-plus-input-bar UI the way
-/// the Dart `AiPage`/`AiChatPage` pair does, both files mount the same
-/// `AIChatConversationView` defined at the bottom of this file (this task
-/// could only create the 6 files it was given, none of them a dedicated
-/// third file for this shared piece).
-///
-/// `AISuggestionChip(suggestion:action:)` is built in parallel by another
-/// agent — not part of this task — and referenced here by name/signature
-/// only.
+/// The AI Assistant tab root. Ports Flutter's `AiPage`
+/// (`lib/views/ai/ai_page.dart`): a custom black app bar (logo + gradient
+/// "Emet", history button, "New Chat" pill when a chat is open), then either
+/// the branded empty state with a row of suggestion chips, or the active
+/// conversation, with the input bar pinned below.
 struct AIChatHomeView: View {
     @State private var conversationID: String?
     @State private var pendingInitialMessage: String?
     @State private var suggestionsViewModel = AISuggestionsViewModel()
-    @State private var isStartingConversation = false
-    @State private var startError: String?
+    @State private var suggestionsLoaded = false
+    @State private var isCreating = false
+    @State private var inputText = ""
+    @State private var fallbackSuggestions: [String] = AIChatHomeView.pickFallbackSuggestions()
 
-    /// Resolved from the container (not constructed locally) so this
-    /// screen and `AIChatHistoryView` (a separate screen this task doesn't
-    /// build) share the exact same instance — `AIChatNavigationStore`'s own
-    /// doc comment describes it as the bridge between the two.
     @State private var navigationStore: AIChatNavigationStore = DependencyContainer.current.resolve()
 
     private let repository: any AIChatRepository = DependencyContainer.current.resolve()
     private let logger = AppLogger(category: .content)
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
-    @Environment(\.appTheme) private var theme
+    @Environment(\.toastCenter) private var toastCenter
+
+    /// Flutter `_allSuggestions`; three are picked at random each time the page opens.
+    private static let allSuggestions: [String] = [
+        "Why do I feel anxious all the time?",
+        "How do I know God\u{2019}s plan for my life?",
+        "How do I stop overthinking?",
+        "Why does God feel silent?",
+        "How do I make the right decision?",
+        "How do I find purpose in life?",
+        "How do I forgive someone who hurt me?",
+        "How do I grow closer to God?",
+        "What should I do when I feel lonely?",
+        "How do I deal with failure?",
+        "How do I trust God during difficult times?",
+        "How can I build stronger relationships?",
+        "How do I break bad habits?",
+        "How do I find peace in a busy life?",
+        "What does the Bible say about the situation I\u{2019}m facing?",
+    ]
+
+    private static func pickFallbackSuggestions() -> [String] {
+        Array(allSuggestions.shuffled().prefix(3))
+    }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            appBar
+
             if let conversationID {
-                // `.id(conversationID)` gives every distinct conversation a
-                // fresh `AIChatConversationView` identity — a fresh
-                // `AIChatViewModel` and a fresh `hasSentInitialMessage`
-                // guard — rather than one instance being silently reused
-                // across "New Chat" taps.
+                // A fresh identity per conversation gives each its own view
+                // model and its own one-shot initial-message guard.
                 AIChatConversationView(conversationID: conversationID, initialMessage: pendingInitialMessage)
                     .id(conversationID)
             } else {
+                AITtsBar()
                 emptyState
+                suggestionsRow
+                AIChatInputBar(
+                    text: $inputText,
+                    isBusy: isCreating,
+                    isStreaming: false,
+                    onVoice: { startVoice() },
+                    onSend: { sendFromEmptyState() },
+                    onStop: {}
+                )
             }
         }
-        .background(theme.color(.backgroundPrimary))
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("History") {
-                    coordinator.push(.aiHistory)
-                }
-            }
-            if conversationID != nil {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("New Chat") {
-                        conversationID = nil
-                        pendingInitialMessage = nil
-                    }
-                }
-            }
-        }
+        .background(AIColors.background.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
         .task {
             await suggestionsViewModel.load()
+            suggestionsLoaded = true
         }
         .onChange(of: navigationStore.pendingConversationID) { _, newValue in
             guard let newValue else { return }
@@ -76,100 +82,176 @@ struct AIChatHomeView: View {
         }
     }
 
+    // MARK: - App bar
+
+    private var appBar: some View {
+        HStack(spacing: 0) {
+            Image("AppLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 28, height: 28)
+            Spacer().frame(width: 6)
+            AIGradientText(text: "Emet", font: AIColors.font(22, .bold))
+
+            Spacer(minLength: 0)
+
+            Button {
+                coordinator.push(.aiHistory)
+            } label: {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 48, height: 48)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("History")
+
+            Spacer().frame(width: 4)
+
+            if conversationID != nil {
+                Button {
+                    resetToEmptyState()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(Color.white)
+                        Text("New Chat")
+                            .font(AIColors.font(13))
+                            .foregroundStyle(Color.white)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous).fill(AIColors.fill)
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.white, lineWidth: 0.5)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 12)
+            }
+        }
+        .padding(.leading, 16)
+        .frame(height: 56)
+        .background(AIColors.background)
+    }
+
     // MARK: - Empty state
 
     private var emptyState: some View {
-        ScrollView {
-            VStack(spacing: Spacing.xl) {
-                Spacer(minLength: Spacing.xl)
-
-                VStack(spacing: Spacing.md) {
-                    theme.icon(.tabAI)
-                        .font(.system(size: 40))
-                        .foregroundStyle(theme.color(.brandPrimary))
-                    Text("AI Assistant")
-                        .typography(Typography.headlineMedium)
-                        .foregroundStyle(theme.color(.textPrimary))
-                    Text("Ask about songs, sermons, or anything else in the app.")
-                        .typography(Typography.bodyMedium)
-                        .foregroundStyle(theme.color(.textSecondary))
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Image("AppLogo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 96, height: 96)
+                    Spacer().frame(height: 20)
+                    AIGradientText(text: "Ask. Seek. Discover.", font: AIColors.font(26, .bold), vertical: true)
                         .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal, Spacing.xl)
-
-                if let startError {
-                    Text(startError)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.statusError))
+                    Spacer().frame(height: 12)
+                    Text("Seek guidance, find verses, and understand scripture in a deeper way.")
+                        .font(AIColors.font(17))
+                        .lineSpacing(17 * (1.4 - 1.15))
+                        .foregroundStyle(Color.white)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, Spacing.xl)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                if !suggestionsViewModel.suggestions.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: Spacing.sm) {
-                            ForEach(suggestionsViewModel.suggestions) { suggestion in
-                                AISuggestionChip(suggestion: suggestion) {
-                                    startConversation(with: suggestion)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, Spacing.md)
-                    }
-                    .disabled(isStartingConversation)
-                } else if suggestionsViewModel.isLoading {
-                    LoadingStateView()
-                }
-
-                Spacer(minLength: Spacing.xxl)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, minHeight: proxy.size.height)
             }
-            .frame(maxWidth: .infinity)
         }
     }
 
-    /// Creates a new conversation, then sets `conversationID` with the
-    /// suggestion's text queued as `pendingInitialMessage` — the fresh
-    /// `AIChatConversationView` this produces (via `.id(conversationID)`)
-    /// sends it automatically on mount, the same pending-initial-message
-    /// path `AIChatDetailView` uses for its own `initialMessage` parameter.
-    private func startConversation(with suggestion: AISuggestion) {
-        guard !isStartingConversation else { return }
-        isStartingConversation = true
-        startError = nil
+    // MARK: - Suggestions
+
+    private var suggestionTexts: [String] {
+        suggestionsViewModel.suggestions.isEmpty
+            ? fallbackSuggestions
+            : suggestionsViewModel.suggestions.map { $0.text }
+    }
+
+    private var suggestionsRow: some View {
+        Group {
+            if !suggestionsLoaded {
+                HStack {
+                    Spacer()
+                    AISpinner(tint: AIColors.white38, size: 20)
+                    Spacer()
+                }
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(Array(suggestionTexts.enumerated()), id: \.offset) { _, text in
+                            AISuggestionChip(text: text, action: {
+                                startConversation(with: text)
+                            }, height: 88)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                }
+            }
+        }
+        .frame(height: 104)
+    }
+
+    // MARK: - Actions
+
+    private func resetToEmptyState() {
+        conversationID = nil
+        pendingInitialMessage = nil
+        inputText = ""
+    }
+
+    private func sendFromEmptyState() {
+        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        inputText = ""
+        startConversation(with: text)
+    }
+
+    private func startVoice() {
+        coordinator.presentAIAudioConversation(conversationID: conversationID)
+    }
+
+    /// Creates a conversation, then mounts it with `message` queued as the
+    /// first send (Flutter `_startOrContinueChat`).
+    private func startConversation(with message: String) {
+        guard !isCreating else { return }
+        isCreating = true
         Task {
-            defer { isStartingConversation = false }
+            defer { isCreating = false }
             do {
                 let conversation = try await repository.createConversation()
-                pendingInitialMessage = suggestion.text
+                pendingInitialMessage = message
                 conversationID = conversation.id
             } catch let createError {
-                logger.warning("create conversation from suggestion failed: \(createError)")
-                startError = "Couldn't start a new conversation. Please try again."
+                logger.warning("create conversation failed: \(createError)")
+                toastCenter.show("Couldn't start a new conversation. Please try again.")
             }
         }
     }
 }
 
-/// T58 — the scrolling transcript plus input bar shared by `AIChatHomeView`
-/// (above) and `AIChatDetailView.swift`, so the two mount identical UI
-/// instead of copy-pasting it (this task's own instruction: "prioritize
-/// correctness over abstraction" only if factoring isn't easy — it is,
-/// since both call sites just need a conversation id and an optional
-/// initial message). Owns its own `AIChatViewModel`.
-///
-/// `initialMessage`, if non-empty, is sent automatically exactly once on
-/// first appearance; `hasSentInitialMessage` guards a resend if this exact
-/// view instance re-appears (e.g. this screen is popped-to and shown again
-/// without being torn down) — the same guard `AIChatDetailView` relies on
-/// for its own double-send protection, since it mounts this same view.
+/// The scrolling transcript plus input bar shared by `AIChatHomeView` and
+/// `AIChatDetailView`. Ports `_ChatView` + the chat input of `AiPage` /
+/// `AiChatPage`. Owns its `AIChatViewModel`.
 struct AIChatConversationView: View {
     let conversationID: String
     var initialMessage: String? = nil
 
     @State private var viewModel: AIChatViewModel
     @State private var hasSentInitialMessage = false
+    @State private var inputText = ""
+    @State private var fadedIn = false
 
-    @Environment(\.appTheme) private var theme
+    @Environment(AppNavigationCoordinator.self) private var coordinator
+    @Environment(\.toastCenter) private var toastCenter
 
     init(conversationID: String, initialMessage: String? = nil) {
         self.conversationID = conversationID
@@ -179,89 +261,97 @@ struct AIChatConversationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            AITtsBar()
             messageList
+                .opacity(fadedIn ? 1 : 0)
             AIChatInputBar(
-                isSending: viewModel.isSending,
+                text: $inputText,
+                isBusy: viewModel.isSending,
                 isStreaming: viewModel.isStreaming,
-                onSend: { text in
-                    Task { await viewModel.sendMessage(payload: AISendPayload(message: text, attachments: [])) }
-                },
-                onStop: {
-                    viewModel.cancelStream()
-                }
+                onVoice: { coordinator.presentAIAudioConversation(conversationID: conversationID) },
+                onSend: { send() },
+                onStop: { viewModel.cancelStream() }
             )
         }
-        .background(theme.color(.backgroundPrimary))
+        .background(AIColors.background)
         .task {
             await viewModel.loadMessages()
             await sendInitialMessageIfNeeded()
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.28)) { fadedIn = true }
+        }
+        .onChange(of: viewModel.error) { _, newValue in
+            if let newValue, !newValue.isEmpty {
+                toastCenter.show(newValue)
+            }
         }
     }
 
     // MARK: - Transcript
 
-    /// `viewModel.messages` is newest-first (index 0 = latest — see
-    /// `AIChatViewModel`'s own doc comment); reversed here, for display
-    /// only, into the conventional oldest-at-top/newest-at-bottom order a
-    /// chat transcript reads in.
+    /// `viewModel.messages` is newest-first; reversed for display.
     private var orderedMessages: [AIMessage] {
         Array(viewModel.messages.reversed())
     }
 
+    @ViewBuilder
     private var messageList: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: Spacing.md) {
-                    if viewModel.isInitialLoading {
-                        LoadingStateView()
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                    } else if let error = viewModel.error, orderedMessages.isEmpty {
-                        ErrorStateView(
-                            title: "Couldn't load this chat",
-                            message: error,
-                            onRetry: { Task { await viewModel.loadMessages() } }
-                        )
-                        .frame(maxWidth: .infinity, minHeight: 200)
-                    } else if orderedMessages.isEmpty {
-                        EmptyStateView(
-                            icon: .tabAI,
-                            title: "No messages yet",
-                            message: "Say something to get started."
-                        )
-                        .frame(maxWidth: .infinity, minHeight: 200)
-                    } else {
+        if viewModel.isInitialLoading {
+            VStack {
+                Spacer()
+                AISpinner(tint: AIColors.white38, size: 20)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+        } else if viewModel.messages.isEmpty {
+            Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         if viewModel.isLoadingMore {
-                            LoadingStateView()
-                                .frame(maxWidth: .infinity, minHeight: 40)
+                            AISpinner(tint: AIColors.white38, size: 20)
+                                .frame(maxWidth: .infinity)
+                                .padding(16)
                         }
                         ForEach(Array(orderedMessages.enumerated()), id: \.element.id) { index, message in
                             AIChatMessageBubble(
                                 message: message,
-                                onRetry: { messageID in Task { await viewModel.retry(messageID: messageID) } }
+                                onRetry: viewModel.canRetry(messageID: message.id)
+                                    ? { messageID in Task { await viewModel.retry(messageID: messageID) } }
+                                    : nil
                             )
                             .id(message.id)
-                            // Mirrors `UserPlaylistDetailView.songList`'s own
-                            // "trigger a couple of rows before the true end"
-                            // cushion — here the list end that matters is
-                            // the *oldest* end, i.e. the top of this
-                            // (reversed-for-display) array, indices 0/1.
                             .onAppear {
                                 guard index <= 1, viewModel.hasMore, !viewModel.isLoadingMore else { return }
                                 Task { await viewModel.loadMore() }
                             }
                         }
                     }
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
                 }
-                .padding(Spacing.md)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .onChange(of: viewModel.messages.first?.id) { _, _ in
-                guard let newestID = viewModel.messages.first?.id else { return }
-                withAnimation(MotionCurve.fast) {
-                    proxy.scrollTo(newestID, anchor: .bottom)
+                .defaultScrollAnchor(.bottom)
+                .scrollDismissesKeyboard(.interactively)
+                .onChange(of: viewModel.messages.count) { oldCount, newCount in
+                    guard newCount > oldCount, !viewModel.isLoadingMore,
+                          let newestID = viewModel.messages.first?.id else { return }
+                    withAnimation(.easeOut(duration: 0.28)) {
+                        proxy.scrollTo(newestID, anchor: .bottom)
+                    }
                 }
             }
         }
+    }
+
+    // MARK: - Sending
+
+    private func send() {
+        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        inputText = ""
+        Task { await viewModel.sendMessage(payload: AISendPayload(message: text, attachments: [])) }
     }
 
     private func sendInitialMessageIfNeeded() async {

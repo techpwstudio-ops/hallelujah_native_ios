@@ -24,7 +24,7 @@ struct AIChatDetailView: View {
     private let repository: any AIChatRepository = DependencyContainer.current.resolve()
     private let logger = AppLogger(category: .content)
 
-    @Environment(\.appTheme) private var theme
+    @Environment(AppNavigationCoordinator.self) private var coordinator
 
     var body: some View {
         Group {
@@ -42,10 +42,44 @@ struct AIChatDetailView: View {
                     onRetry: { Task { await resolve() } }
                 )
             } else {
-                LoadingStateView()
+                VStack {
+                    Spacer()
+                    AISpinner(tint: AIColors.white38, size: 20)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
             }
         }
-        .background(theme.color(.backgroundPrimary))
+        .background(AIColors.background)
+        // Ports `_ChatAppBar` (`ai_chat_page.dart`): back, logo + gradient
+        // "Emet", history. Back keeps the system chevron so swipe-back works.
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AIColors.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: 6) {
+                    Image("AppLogo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 24, height: 24)
+                    AIGradientText(text: "Emet", font: AIColors.font(18, .bold))
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    // Flutter `onHistoryTap` pops back to the history page.
+                    coordinator.pop()
+                } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Color.white)
+                }
+                .accessibilityLabel("History")
+            }
+        }
         .task {
             await resolveIfNeeded()
         }

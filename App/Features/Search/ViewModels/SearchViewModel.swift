@@ -67,9 +67,15 @@ final class SearchViewModel {
     /// distinct error UI. Matching that actual behavior rather than
     /// inventing a nicer one Dart doesn't have: failures are logged only.
 
-    init(container: DependencyContainer = .current) {
+    /// A locked entry point (`GenreSearchPage` always searches `music`) keeps
+    /// this filter through a clear instead of resetting to the "All" overview.
+    private let lockedFilter: SearchFilter?
+
+    init(lockedFilter: SearchFilter? = nil, container: DependencyContainer = .current) {
+        self.lockedFilter = lockedFilter
         repository = container.resolve()
         recentSearchStore = container.resolve()
+        activeFilter = lockedFilter
     }
 
     /// True the instant a keystroke makes `searchFieldText` diverge from the
@@ -206,7 +212,7 @@ final class SearchViewModel {
         debounceTask?.cancel()
         generation += 1
         query = ""
-        activeFilter = nil
+        activeFilter = lockedFilter
         topResult = nil
         musicPage = .empty
         episodePage = .empty

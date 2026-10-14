@@ -12,6 +12,9 @@ final class ReaderNavigationStore: Sendable {
     struct Target: Equatable {
         let bookNumber: Int
         let chapterNumber: Int
+        /// Verse to scroll to and focus once the chapter loads (Flutter's
+        /// `ReadOnContentChangedEvent.verseNo`).
+        var verseNumber: Int? = nil
     }
 
     var pendingTarget: Target?

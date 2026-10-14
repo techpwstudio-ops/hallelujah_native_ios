@@ -43,27 +43,38 @@ enum AccountParity {
     static let bodySmall = font(12)
 }
 
-/// Left-aligned AppBar title (`centerTitle: false`, `titleLarge` 20/w600).
-private struct ParityNavTitle: ViewModifier {
-    let title: String
+/// AppBar title on a black scaffold. Material centres it on iOS unless
+/// `centerTitle: false` is passed (Settings only), so `leading` defaults to
+/// false. `titleLarge` 20/w600 (`appBarTextStyle`).
+private struct ParityNavTitle<TitleContent: View>: ViewModifier {
+    let leading: Bool
+    let titleContent: TitleContent
     func body(content: Content) -> some View {
         content
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Text(title)
-                        .font(AccountParity.titleLarge)
-                        .foregroundStyle(AccountParity.white)
+                ToolbarItem(placement: leading ? .topBarLeading : .principal) {
+                    titleContent
                 }
             }
     }
 }
 
 extension View {
-    /// Flutter `AppBar(title:, centerTitle: false)` on a black scaffold.
-    func parityNavTitle(_ title: String) -> some View {
-        modifier(ParityNavTitle(title: title))
+    /// Flutter `AppBar(title: Text(title, style: appBarTextStyle))`.
+    func parityNavTitle(_ title: String, leading: Bool = false) -> some View {
+        modifier(ParityNavTitle(
+            leading: leading,
+            titleContent: Text(title)
+                .font(AccountParity.titleLarge)
+                .foregroundStyle(AccountParity.white)
+        ))
+    }
+
+    /// AppBar with a custom title widget.
+    func parityNavTitle<TitleContent: View>(leading: Bool = false, @ViewBuilder content: () -> TitleContent) -> some View {
+        modifier(ParityNavTitle(leading: leading, titleContent: content()))
     }
 
     /// Black scaffold background filling the safe area.

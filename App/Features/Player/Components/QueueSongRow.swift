@@ -1,27 +1,14 @@
 import SwiftUI
 
-/// T37 — one row of `QueueView`, porting the row shape `queue_page.dart`
-/// itself builds from (`SongListItem` -> `MusicListItem` ->
-/// `BaseMediaListTile`, `base_media_list_tile.dart:66-98`): 56×56 artwork,
-/// title, genre subtitle (`song.primaryGenreName`) — the same shape
-/// `CreatorSongRow` (T30) already established for this exact Dart tile
-/// family, not duplicated as a new layout from scratch. The currently
-/// playing row gets `BaseMediaListTile`'s own active styling (yellow/bold
-/// title) mapped to `.brandPrimary` rather than a literal yellow, matching
-/// `AudioRoutePickerView`'s (T35) identical "app accent, not a literal
-/// package color" adaptation for `Vx.yellow500`; `queue_page.dart:107-114`'s
-/// own extra 8%-white row background for the current song is applied by
-/// the parent list (`QueueView`), not this row, since it's a row
-/// *container* decoration (`.listRowBackground`), not part of the tile
-/// itself. No trailing play/menu controls — `queue_page.dart` explicitly
-/// passes `showMenuButton: false, showPlayButton: false` at this call site.
+/// One row of the queue: `SongListItem` -> `MusicListItem` ->
+/// `BaseMediaListTile` as `queue_page.dart` builds it. 12 x 8 padding,
+/// 56pt-high artwork (`Dimens.listItemThumbnailSizeMd`, width scaled by the
+/// song's aspect ratio) with a 4pt radius, 14pt gap, `titleMedium` title
+/// (w600, bold + yellow while it is the playing song), 4pt gap, genre in
+/// `bodySmall` white @ 70%. Non-current rows are dimmed to 70% by the list.
 struct QueueSongRow: View {
     let song: Song
     let isCurrent: Bool
-
-    @Environment(\.appTheme) private var theme
-
-    private static let thumbnailSize: CGFloat = 56
 
     private var resolvedArtwork: URL? {
         ArtworkURLResolver().resolve(
@@ -32,26 +19,28 @@ struct QueueSongRow: View {
     }
 
     var body: some View {
-        HStack(spacing: Spacing.md) {
-            ArtworkView(url: resolvedArtwork, width: Self.thumbnailSize, height: Self.thumbnailSize)
+        HStack(spacing: 14) {
+            ArtworkView(
+                url: resolvedArtwork,
+                width: Dimens.listItemThumbnailSizeMd * CGFloat(song.displayAspectRatio),
+                height: Dimens.listItemThumbnailSizeMd,
+                cornerRadius: Dimens.cornerRadiusSmall
+            )
 
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(song.title ?? "Untitled")
-                    .typography(Typography.titleSmall)
-                    .fontWeight(isCurrent ? .bold : .semibold)
-                    .foregroundStyle(isCurrent ? theme.color(.brandPrimary) : theme.color(.textPrimary))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(song.title ?? "")
+                    .typography(isCurrent ? PlayerStyle.titleMediumBold : PlayerStyle.titleMediumSemibold)
+                    .foregroundStyle(isCurrent ? PlayerStyle.activeYellow : PlayerStyle.white)
                     .lineLimit(1)
-                if let genre = song.primaryGenre?.name {
-                    Text(genre)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.textSecondary))
-                        .lineLimit(1)
-                }
+                Text(song.primaryGenre?.name ?? "")
+                    .typography(Typography.bodySmall)
+                    .foregroundStyle(PlayerStyle.whiteAlpha(0.7))
+                    .lineLimit(1)
             }
             Spacer(minLength: 0)
         }
-        .opacity(isCurrent ? 1 : 0.7)
-        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .contentShape(Rectangle())
     }
 }

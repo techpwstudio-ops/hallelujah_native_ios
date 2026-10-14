@@ -1,42 +1,67 @@
 import SwiftUI
 
-/// `SleepTimerBadge` (`lib/widgets/player/sleep_timer_badge.dart`): a pill
-/// under the player controls showing time left with a progress ring and a
-/// cancel button, present only while a timer is running. Re-reads the clock
-/// once a second through `TimelineView` rather than owning a timer of its own.
+/// `SleepTimerBadge` (`lib/widgets/player/sleep_timer_badge.dart`): a centred
+/// pill under the transport row, present only while a timer runs, with 20pt
+/// below it. Pill: padding L10 T6 B6 R6, white @ 8% fill, 32pt radius, white
+/// @ 12% border. Inside: a 28pt progress ring (2pt, track white @ 12%, arc
+/// `#9B8FFF`, round caps) around a 14pt moon that pulses 0.6 -> 1.0 over 2 s
+/// easeInOut; an 8pt gap; "Sleep timer" (10pt, white @ 54%, 0.3 tracking)
+/// over the time left (13pt w600); a 10pt gap; a 28pt white @ 10% cancel
+/// circle with a 14pt white @ 54% close glyph. Refreshes every 60 s and
+/// expands in/out over 300 ms easeInOut (`AnimatedSize`).
 struct SleepTimerBadge: View {
     let controller: SleepTimerController
 
-    @Environment(\.appTheme) private var theme
+    @State private var isPulsedDown = false
+
+    private static let refreshInterval: TimeInterval = 60
+    private static let ringSize: CGFloat = 28
+    private static let smallLabel = TypographyToken(size: 10, weight: .regular, lineHeightMultiple: 1.2, tracking: 0.3)
+    private static let timeLabel = TypographyToken(size: 13, weight: .semibold, lineHeightMultiple: 1.2)
 
     var body: some View {
-        if controller.isActive {
-            TimelineView(.periodic(from: .now, by: Self.refreshInterval)) { _ in
-                pill(remaining: controller.remaining() ?? 0)
+        VStack(spacing: 0) {
+            if controller.isActive {
+                TimelineView(.periodic(from: .now, by: Self.refreshInterval)) { _ in
+                    pill(remaining: controller.remaining() ?? 0)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 20)
+                .transition(.opacity)
             }
-            .transition(.opacity)
         }
+        .animation(.easeInOut(duration: 0.3), value: controller.isActive)
     }
 
-    private static let refreshInterval: TimeInterval = 1
-    private static let ringSize: CGFloat = 28
-
     private func pill(remaining: TimeInterval) -> some View {
-        GlassSurface {
-            HStack(spacing: Spacing.sm) {
-                ring(remaining: remaining)
+        HStack(spacing: 0) {
+            ring(remaining: remaining)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Sleep timer")
+                    .typography(Self.smallLabel)
+                    .foregroundStyle(PlayerStyle.whiteAlpha(0.54))
                 Text(SleepTimerController.label(forRemaining: remaining))
-                    .typography(Typography.labelLarge)
-                    .foregroundStyle(theme.color(.textPrimary))
-                Button { controller.cancel() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(theme.color(.textSecondary))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Turn off sleep timer")
+                    .typography(Self.timeLabel)
+                    .foregroundStyle(PlayerStyle.white)
             }
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.sm)
+            .padding(.leading, 8)
+            Button { controller.cancel() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(PlayerStyle.whiteAlpha(0.54))
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(PlayerStyle.whiteAlpha(0.1)))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 10)
+            .accessibilityLabel("Turn off sleep timer")
+        }
+        .padding(EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 6))
+        .background(PlayerStyle.whiteAlpha(0.08), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .strokeBorder(PlayerStyle.whiteAlpha(0.12), lineWidth: 1)
         }
     }
 
@@ -45,15 +70,19 @@ struct SleepTimerBadge: View {
             remaining: remaining, totalMinutes: controller.selectedMinutes ?? 0
         )
         return ZStack {
-            Circle().stroke(theme.color(.border), lineWidth: 2)
+            Circle().stroke(PlayerStyle.whiteAlpha(0.12), lineWidth: 2)
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(theme.color(.brandPrimary), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .stroke(PlayerStyle.sleepAccent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Image(systemName: "moon.zzz.fill")
+            Image(systemName: "moon.fill")
                 .font(.system(size: 12))
-                .foregroundStyle(theme.color(.brandPrimary))
+                .foregroundStyle(PlayerStyle.white)
+                .opacity(isPulsedDown ? 0.6 : 1.0)
+                .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isPulsedDown)
         }
+        .padding(2)
         .frame(width: Self.ringSize, height: Self.ringSize)
+        .onAppear { isPulsedDown = true }
     }
 }

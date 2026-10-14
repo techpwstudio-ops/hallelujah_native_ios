@@ -1,40 +1,36 @@
 import SwiftUI
 
-/// One card in a `companyPlaylists`/`aiPlaylist`/`similarPlaylist`/
-/// `singleCompanyPlaylist`/`playlists`-viewType rail — square cover, title,
-/// and a song-count subtitle. Same "no pixel-parity requirement" scope note
-/// as `HomeSongCardView`. `similarPlaylist`'s seed row (`playlist.isSeed`)
-/// draws no differently here — the "More Like X" custom header treatment
-/// Dart gives it is a deferred scope cut, noted in T28's Status log.
+/// One playlist card. Three shapes, each a different Dart widget:
+/// - `.album` — `CreatorPlaylistUi` (viewType `playlists`): 98 cover, radius 4,
+///   `sm` variant.
+/// - `.company` — `_CompanyPlaylistCard` in `HomeCompanyPlaylistRow`
+///   (`aiPlaylist`): 98 cover, radius 8, `md`.
+/// - `.similar` — `_SimilarCard` in `HomeSimilarPlaylistRow`: 120 cover,
+///   radius 8, `md`.
+/// All three show the shared two-line card title only and open the
+/// playlist's song page.
 struct HomePlaylistCardView: View {
-    let playlist: Playlist
-
-    @Environment(\.appTheme) private var theme
-
-    static let coverSize: CGFloat = 140
-
-    private var resolvedArtwork: URL? {
-        ArtworkURLResolver().resolve(
-            path: playlist.image,
-            variant: .md,
-            allowedVariants: playlist.imageVariants
-        )
+    enum Style {
+        case album
+        case company
+        case similar
     }
 
+    let playlist: Playlist
+    var style: Style = .company
+
+    @Environment(AppNavigationCoordinator.self) private var coordinator
+
+    static let coverSize: CGFloat = HomeMetrics.coverSize
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            ArtworkView(url: resolvedArtwork, width: Self.coverSize, height: Self.coverSize)
-            Text(playlist.title)
-                .typography(Typography.titleSmall)
-                .foregroundStyle(theme.color(.textPrimary))
-                .lineLimit(1)
-            if let songsCount = playlist.songsCount {
-                Text("\(songsCount) songs")
-                    .typography(Typography.bodySmall)
-                    .foregroundStyle(theme.color(.textSecondary))
-                    .lineLimit(1)
-            }
-        }
-        .frame(width: Self.coverSize, alignment: .leading)
+        HomeSquareCard(
+            url: HomeArt.url(playlist.image, playlist.imageVariants, style == .album ? .sm : .md),
+            size: style == .similar ? HomeMetrics.similarCoverSize : HomeMetrics.coverSize,
+            cornerRadius: style == .album ? Dimens.cornerRadiusSmall : Dimens.cornerRadius,
+            title: playlist.title
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { coordinator.push(playlist.detailRoute) }
     }
 }

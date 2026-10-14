@@ -35,10 +35,15 @@ final class ReaderViewModel {
     private(set) var isChapterLoading = false
     private(set) var preferences: ReaderPreferences
     /// A short user-facing string set on a no-op boundary navigation (e.g.
-    /// "This is the first chapter"), matching Dart's own boundary toasts in
+    /// "This is first chapter"), matching Dart's own boundary toasts in
     /// wording. The view shows it transiently, then calls
     /// `clearBoundaryMessage()`.
     private(set) var boundaryMessage: String?
+    /// Verse the reader should scroll to (set 300ms after a jump lands) and
+    /// the verse drawn with the gold focus background (cleared after 3s) —
+    /// `ReadService.scrollToIndex` + `VerseOfDayHighlightBloc`.
+    private(set) var scrollTargetVerse: Int?
+    private(set) var focusedVerse: Int?
 
     private let repository: any BibleRepository
     private let preferencesStore: ReaderPreferencesStore
@@ -56,6 +61,8 @@ final class ReaderViewModel {
     /// `loadIfNeeded()`'s `fetchInit()` call resolves it against the real
     /// `books` array (there's no `currentBook` to hold it in before then).
     private let initialBookNumber: Int
+    private var pendingFocusVerse: Int?
+    private var focusTask: Task<Void, Never>?
 
     init(container: DependencyContainer = .current) {
         repository = container.resolve()
@@ -126,7 +133,7 @@ final class ReaderViewModel {
     func goToNextChapter() {
         guard let currentBook else { return }
         guard currentChapterNumber < maxChapters else {
-            boundaryMessage = "This is the last chapter"
+            boundaryMessage = "This is last chapter"
             return
         }
         dispatchChapterLoad(
@@ -141,7 +148,7 @@ final class ReaderViewModel {
     func goToPreviousChapter() {
         guard let currentBook else { return }
         guard currentChapterNumber > 1 else {
-            boundaryMessage = "This is the first chapter"
+            boundaryMessage = "This is first chapter"
             return
         }
         dispatchChapterLoad(
@@ -217,9 +224,18 @@ final class ReaderViewModel {
     /// `select(book:)` resets to chapter 1 — chaining them would need an
     /// awaited round trip between the two and would fire two separate
     /// network loads instead of one.
-    func select(bookNumber: Int, chapterNumber: Int) {
+    func select(bookNumber: Int, chapterNumber: Int, verseNumber: Int? = nil) {
         guard let book = books.first(where: { $0.bookNumber == bookNumber }) else { return }
         let clamped = min(max(chapterNumber, 1), book.chapters)
+        // Same chapter already on screen (e.g. a note or search hit in the
+        // open chapter): just scroll to the verse, like Flutter's
+        // `ReadService.scrollToIndex`, instead of reloading.
+        if let verseNumber, state == .loaded, !isChapterLoading,
+           currentBook?.bookNumber == book.bookNumber, currentChapterNumber == clamped {
+            startVerseFocus(verseNumber)
+            return
+        }
+        pendingFocusVerse = verseNumber
         dispatchChapterLoad(
             bookNumber: book.bookNumber,
             chapterNumber: clamped,
@@ -229,10 +245,6 @@ final class ReaderViewModel {
         )
     }
 
-    /// A language switch is a content change, matching Dart's own
-    /// `ReadOnContentChangedEvent(language:)` dispatch — so this sends
-    /// `isChapterNumberChanged: true`, not a no-op flag pair, even though
-    /// neither the book nor the chapter number actually moved.
     func select(language: String) {
         guard let currentBook else { return }
         dispatchChapterLoad(
@@ -296,6 +308,21 @@ final class ReaderViewModel {
 
     func shareURL(for verse: BibleVerse) async -> URL? {
         try? await repository.shareVerse(id: verse.id)
+    }
+
+    private func startVerseFocus(_ verseNumber: Int) {
+        focusTask?.cancel()
+        scrollTargetVerse = nil
+        focusedVerse = nil
+        focusTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled, let self else { return }
+            self.scrollTargetVerse = verseNumber
+            self.focusedVerse = verseNumber
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            self.focusedVerse = nil
+        }
     }
 
     // MARK: - Preferences
@@ -376,6 +403,10 @@ final class ReaderViewModel {
             guard generation == chapterLoadGeneration else { return }
             apply(chapter: chapter)
             state = .loaded
+            if let verse = pendingFocusVerse {
+                pendingFocusVerse = nil
+                startVerseFocus(verse)
+            }
         } catch {
             guard generation == chapterLoadGeneration else { return }
             logger.warning("load chapter \(bookNumber)/\(chapterNumber) lang \(languageName) failed: \(error)")

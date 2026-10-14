@@ -22,6 +22,7 @@ final class BibleSearchViewModel {
     private let logger = AppLogger(category: .content)
 
     private var generation = 0
+    private var lastSearchedQuery = ""
     private var debounceTask: Task<Void, Never>?
 
     private(set) var queryText = ""
@@ -53,12 +54,25 @@ final class BibleSearchViewModel {
             return
         }
 
+        // Collapse whitespace runs so "John  3:16 " and "John 3:16" are one
+        // query; a whitespace-only change keeps the current results.
+        let normalized = trimmed.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        if normalized == lastSearchedQuery {
+            generation += 1
+            isLoading = false
+            return
+        }
+
+        // Flutter shows the shimmer the moment the query changes, not after
+        // the debounce.
+        isLoading = true
+        hasError = false
         generation += 1
         let thisGeneration = generation
         debounceTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(Self.debounceMilliseconds))
             guard !Task.isCancelled else { return }
-            await self?.performSearch(query: trimmed, languageName: languageName, generation: thisGeneration)
+            await self?.performSearch(query: normalized, languageName: languageName, generation: thisGeneration)
         }
     }
 
@@ -75,7 +89,14 @@ final class BibleSearchViewModel {
         recentSearchStore.remove(reference: result.reference)
     }
 
+    /// Closing search (Flutter `_closeSearch`): drop the text and every result.
+    func reset() {
+        queryText = ""
+        performClear()
+    }
+
     private func performClear() {
+        lastSearchedQuery = ""
         debounceTask?.cancel()
         generation += 1
         isLoading = false
@@ -85,6 +106,7 @@ final class BibleSearchViewModel {
 
     private func performSearch(query: String, languageName: String, generation thisGeneration: Int) async {
         guard thisGeneration == generation else { return }
+        lastSearchedQuery = query
         isLoading = true
         hasError = false
 
@@ -102,6 +124,7 @@ final class BibleSearchViewModel {
             guard thisGeneration == generation else { return }
             logger.warning("Bible search failed: \(error)")
             hasError = true
+            lastSearchedQuery = ""
             response = nil
         }
     }

@@ -25,8 +25,10 @@ final class RemoteAIChatRepository: AIChatRepository {
         return decoded.toDomain()
     }
 
-    func createConversation() async throws -> AIConversation {
-        let response = try await client.send(.createAIConversation)
+    func createConversation(title: String?) async throws -> AIConversation {
+        let payload: [String: String] = title.map { ["title": $0] } ?? [:]
+        let body = try JSONEncoder().encode(payload)
+        let response = try await client.send(.createAIConversation, body: body)
         guard response.statusCode == 200 else {
             throw AIChatRepositoryError.unexpectedStatus(response.statusCode)
         }

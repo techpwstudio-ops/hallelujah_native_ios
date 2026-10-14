@@ -178,7 +178,7 @@ struct SettingsView: View {
             .padding(.horizontal, Dimens.screenPaddingAll * 1.5)
         }
         .parityScaffold()
-        .parityNavTitle("Settings")
+        .parityNavTitle("Settings", leading: true)
         .task {
             user = await currentUserStore.user
             membership = await membershipStore.membership

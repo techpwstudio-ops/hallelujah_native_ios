@@ -91,8 +91,8 @@ struct VoiceOverlayView: View {
             if let notice, !notice.isEmpty {
                 Text(notice)
                     .multilineTextAlignment(.center)
-                    .font(.system(size: 12))
-                    .lineSpacing(4.8) // height: 1.4 at 12pt
+                    .font(AIColors.font(12))
+                    .lineSpacing(3) // height: 1.4 at 12pt
                     .foregroundStyle(voiceGoldColor)
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
@@ -107,7 +107,7 @@ struct VoiceOverlayView: View {
             Spacer(minLength: 0).frame(height: 32)
 
             Text(display.label)
-                .font(.system(size: 20, weight: .semibold))
+                .font(AIColors.font(20, .semibold))
                 .tracking(0.3)
                 .foregroundStyle(.white)
                 .contentTransition(.opacity)
@@ -118,11 +118,11 @@ struct VoiceOverlayView: View {
             Group {
                 if isListening {
                     Text(timerLabel(seconds))
-                        .font(.system(size: 15))
+                        .font(AIColors.font(15))
                         .foregroundStyle(.white.opacity(0.54))
                 } else if display == .speaking {
                     Text("Just start talking, or tap to interrupt")
-                        .font(.system(size: 13))
+                        .font(AIColors.font(13))
                         .foregroundStyle(.white.opacity(0.54))
                 }
             }
@@ -207,7 +207,7 @@ private struct EmetWordmarkView: View {
                 .frame(width: 24, height: 24)
 
             Text("Emet")
-                .font(.system(size: 18, weight: .bold))
+                .font(AIColors.font(18, .bold))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [.white, Color(white: 153.0 / 255.0)],
@@ -364,7 +364,7 @@ private struct StopButtonView: View {
                     )
 
                 Text("Stop")
-                    .font(.system(size: 13))
+                    .font(AIColors.font(13))
                     .foregroundStyle(.white.opacity(0.54))
             }
         }

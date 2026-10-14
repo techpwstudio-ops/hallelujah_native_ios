@@ -1,65 +1,21 @@
+import Observation
 import SwiftUI
 
-/// T35 — the expanded player, replacing `FullScreenDestinationView`'s
-/// `.player` placeholder. Ports `AudioPlayerScreen`
-/// (`lib/views/home/audio_player_screen.dart`), deliberately scoped to
-/// exactly what T35's own roadmap text names ("artwork, seek bar,
-/// transport, like, download, share, queue, lyrics entry, output picker")
-/// rather than that screen's full surface. Real Dart sections NOT ported
-/// here, each for a specific reason rather than an oversight:
-/// - **Ads**: now real (T69). `body` below branches to `AdBreakView`
-///   whenever `adPacing.isAdBreak` is true, replacing this screen's content
-///   outright rather than overlaying it — the same way Dart's own
-///   `AudioPlayerScreen` swaps its body for `AdBreakScreen`. No dismiss
-///   affordance is shown in that branch, mirroring `_AdBreakAppBar`'s own
-///   doc comment ("a break is meant to be sat through, not backed out of on
-///   a whim"); Dart's own escape hatch for it — two system-back presses
-///   within ~2s, deliberately advertised nowhere on screen — isn't ported,
-///   since `.fullScreenCover` has no equivalent gesture to hang it off and
-///   T69's own done criterion names cadence and premium gating, not this
-///   edge case. `SleepTimerBadge` is still out of scope: grepped against
-///   every one of progress.md's 76 tasks, zero hits, same status as the
-///   legacy non-glass mini player (T34).
-/// - Creator meta / credits / description / related-content rail: not
-///   named in T35's own roadmap text; `RelatedContentRail` also needs a
-///   recommendation-fetch backend call this codebase doesn't have yet
-///   (same gap T33 already flagged for automatic queue hand-off).
-/// - **Share**: now real (T68 — Sharing). `shareButton` below presents
-///   `ShareSheetView`, which mints the link via `DeepLinkService.songShareLink`
-///   — the native `DeepLinkService.songShare(id:)` counterpart to Dart's
-///   `DeepLinkService.instance.create(songId)` this comment used to say
-///   didn't exist yet.
+/// Ports `AudioPlayerScreen` (`lib/views/home/audio_player_screen.dart`) with
+/// D12 parity: black `Scaffold`, an app bar with a back arrow, the
+/// "playing from" title and a vertical-dots menu, then a scrolling body —
+/// full-width artwork pager, 20pt-padded column (headline row with favourite
+/// and add-to-playlist, 6pt scrubber, transport row, sleep-timer badge, a
+/// queue / share row, lyrics card and description). Whatever Flutter keeps in
+/// the song menu (download, sleep timer, tip) is reached through the menu
+/// here too; the standalone download / sleep / output-picker / tip buttons the
+/// first native pass invented are gone. `body` still branches to
+/// `AdBreakView` while an ad break is active, as `AudioPlayerScreen` swaps in
+/// `AdBreakScreen`.
 ///
-/// **Download** is real now (T46 — Download engine): this used to be listed
-/// above as deliberately NOT ported, since no native download/task-tracking
-/// infrastructure existed yet. Unlike Dart, which puts it behind the "..."
-/// menu (still out of scope here — see Share above, and the "..." menu
-/// itself still doesn't exist anywhere in this app), this ports it as a
-/// direct action-row icon instead, following T44's `favouriteButton`
-/// precedent below for a single-song action: a plain button wired straight
-/// to an engine call, no menu.
-///
-/// Queue and lyrics ARE real entry points, just not full screens of their
-/// own yet. Queue reuses the already-existing `PlayerRoute.queue` push
-/// (built by a prior pass anticipating this) rather than the bottom sheet
-/// Dart itself uses (`showQueueSheet`) — one presentation mechanism for
-/// that destination, not two competing ones; T37 (Queue screen) replaces
-/// its placeholder later. Lyrics gets a real inline preview card
-/// (`PlayerLyricsPreviewCard`, matching Dart's on-screen
-/// `SongLyricsDetails` exactly) plus a button pushing the existing
-/// `PlayerRoute.lyrics` placeholder (T36's screen to fill in).
-///
-/// **Tip (T64)**: `tipButton` is the native port of
-/// `audio_player_screen.dart`'s own tip `InkWell` + `showTipToArtistSheet`
-/// call site — except Dart wraps that entire call site in `if (false)`,
-/// permanently unreachable in the shipping app (confirmed by reading the
-/// full `if`/child block there; no other call site of
-/// `showTipToArtistSheet` exists anywhere in the Dart source). This port
-/// wires it live/reachable instead of also dark-launching it: T64's own done
-/// criterion ("tip purchase completes") requires a reachable UI to exercise
-/// the mechanism, and Dart's own disabled state serves no purpose here that
-/// isn't better served by a working feature — flagged as a deliberate
-/// judgment call, not a silent deviation.
+/// Not ported (data or services this codebase lacks): the creator card,
+/// credits, the related-content rail, the ad companion banner and the
+/// artwork pager's overscroll-to-skip gesture.
 struct FullPlayerView: View {
     @Environment(\.appTheme) private var theme
     @Environment(AppNavigationCoordinator.self) private var coordinator
@@ -67,15 +23,11 @@ struct FullPlayerView: View {
     @State private var engine: AudioEngine = DependencyContainer.current.resolve()
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var favouriteRepository: any FavouriteRepository = DependencyContainer.current.resolve()
-    @State private var premiumGate: PremiumGate = DependencyContainer.current.resolve()
-    @State private var downloadEngine: DownloadEngine = DependencyContainer.current.resolve()
-    @State private var keyValueStore: any KeyValueStoring = DependencyContainer.current.resolve()
-    @State private var tipPurchaseManager: TipPurchaseManager = DependencyContainer.current.resolve()
     @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
     @State private var sleepTimer: SleepTimerController = DependencyContainer.current.resolve()
-    @State private var isRemoveDownloadConfirmationPresented = false
     @State private var isSharePresented = false
-    @State private var isTipSheetPresented = false
+    @State private var isQueuePresented = false
+    @State private var isAddToPlaylistPresented = false
     @State private var isSleepTimerSheetPresented = false
     @State private var menuSong: Song?
 
@@ -97,22 +49,7 @@ struct FullPlayerView: View {
                 playerContent
             }
         }
-        // T46 — same destructive-confirmation shape as
-        // `UserPlaylistDetailView`'s delete dialog: a two-button sheet, no
-        // separate presented-item state, since the dialog is modal and
-        // `song` can't change out from under it while it's up.
-        .confirmationDialog(
-            "Remove this download?",
-            isPresented: $isRemoveDownloadConfirmationPresented,
-            titleVisibility: .visible
-        ) {
-            Button("Remove", role: .destructive) {
-                if let song {
-                    downloadEngine.deleteDownload(songID: song.id)
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        }
+        .background(PlayerStyle.black.ignoresSafeArea())
         .appSheet(isPresented: $isSharePresented) {
             if let song {
                 ShareSheetView(
@@ -127,108 +64,145 @@ struct FullPlayerView: View {
                 )
             }
         }
+        // `showQueueSheet` -> `showAppSheet(QueuePage)`.
+        .appSheet(isPresented: $isQueuePresented, detents: QueueView.sheetDetents) {
+            QueueView(isSheet: true)
+        }
+        .appSheet(isPresented: $isAddToPlaylistPresented) {
+            if let song {
+                PlayerAddToPlaylistSheet(song: song) { outcome in
+                    switch outcome {
+                    case .message(let text):
+                        toastCenter.show(text)
+                        isAddToPlaylistPresented = false
+                    case .notice(let text):
+                        toastCenter.show(text)
+                    default:
+                        isAddToPlaylistPresented = false
+                    }
+                }
+            }
+        }
         .songMenu(song: $menuSong, leavesPlayer: true)
         .sleepTimerSheet(isPresented: $isSleepTimerSheetPresented)
-        // T65 follow-up — the timer pauses playback itself (it usually fires
-        // with the phone locked); the screen's only job is to leave and say so.
+        // The timer pauses playback itself (it usually fires with the phone
+        // locked); the screen's only job is to leave and say so.
         .onChange(of: sleepTimer.firedCount) {
             coordinator.dismissFullScreen()
             toastCenter.show("Sleep timer ended. Time to rest")
         }
-        .appSheet(isPresented: $isTipSheetPresented) {
-            if let song {
-                TipDonationSheet(artistName: song.creator?.name ?? song.primaryArtists) { amount, note in
-                    sendTip(amount: amount, note: note, creatorId: song.creator?.creatorId, songId: song.id)
-                }
-            }
+        // `BlocListener(listenWhen: songId != null -> null)` pops the player.
+        .onChange(of: engine.currentSong?.id) { _, newValue in
+            if newValue == nil { coordinator.dismissFullScreen() }
         }
     }
 
     private var playerContent: some View {
         ScrollView {
-            VStack(spacing: Spacing.lg) {
+            VStack(spacing: 0) {
                 PlayerArtworkPager(queueController: queueController)
-                    .padding(.horizontal, Spacing.md)
 
-                headline
-
-                VStack(spacing: Spacing.md) {
-                    SeekBar(
+                VStack(spacing: 0) {
+                    headline
+                    PlayerSeekBar(
                         position: engine.currentPosition,
-                        duration: engine.currentItemDuration ?? TimeInterval(song?.duration ?? 0)
+                        duration: engine.currentItemDuration ?? TimeInterval(song?.duration ?? 0),
+                        barHeight: PlayerStyle.seekBarHeight
                     ) { target in
                         engine.seek(to: target)
                     }
+                    .padding(.top, 16)
                     PlayerTransportControls(engine: engine, queueController: queueController)
+                        .padding(.top, 20)
+                    SleepTimerBadge(controller: sleepTimer)
+                        .padding(.top, 24)
+                    queueAndShareRow
+                        .padding(.top, sleepTimer.isActive ? 0 : 24)
+                    metaSection
+                        .padding(.top, 24)
                 }
-                .padding(.horizontal, Spacing.md)
-
-                actionRow
-
-                SleepTimerBadge(controller: sleepTimer)
-
-                if let song {
-                    PlayerLyricsPreviewCard(song: song, currentPosition: engine.currentPosition) {
-                        coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? ""))
-                    }
-                    .padding(.horizontal, Spacing.md)
-                }
+                .padding(.top, 20)
+                .padding(.horizontal, PlayerStyle.pageSidePadding)
+                .padding(.bottom, 8)
             }
-            .padding(.top, Spacing.md)
-            .padding(.bottom, Spacing.xxl)
         }
-        .background(theme.color(.backgroundPrimary).ignoresSafeArea())
+        .scrollBounceBehavior(.always)
+        .background(PlayerStyle.black.ignoresSafeArea())
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { coordinator.dismissFullScreen() } label: {
-                    theme.icon(.chevronDown)
-                        .foregroundStyle(theme.color(.textPrimary))
+                    theme.icon(.back)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(PlayerStyle.white)
+                        .frame(width: 44, height: 44, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
+                .accessibilityLabel("Back")
             }
             ToolbarItem(placement: .principal) {
-                playingFromHeader
+                PlayingFromTitle(queueController: queueController, song: song)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                if song != nil {
+                    Button { menuSong = song } label: {
+                        // `Icons.more_vert`.
+                        Image(systemName: "ellipsis")
+                            .rotationEffect(.degrees(90))
+                            .font(.system(size: 22))
+                            .foregroundStyle(PlayerStyle.white)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("More")
+                }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .toolbarBackground(PlayerStyle.black, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 
-    @ViewBuilder
-    private var playingFromHeader: some View {
-        if let title = queueController.queue?.source.title {
-            VStack(spacing: 0) {
-                Text("Playing from")
-                    .typography(Typography.labelSmall)
-                    .foregroundStyle(theme.color(.textSecondary))
-                Text(title)
-                    .typography(Typography.labelLarge)
-                    .foregroundStyle(theme.color(.textPrimary))
-            }
-        }
-    }
-
+    /// `_SongHeadline`: title (`titleMedium` w700) and artists
+    /// (`bodyMedium`) marquees, then the favourite heart (24) and the
+    /// add-to-playlist circle (24 with 8 padding).
     private var headline: some View {
-        HStack(alignment: .center, spacing: Spacing.sm) {
-            VStack(alignment: .leading, spacing: 2) {
-                MarqueeText(text: song?.title ?? "", typography: Typography.titleLarge, color: theme.color(.textPrimary), height: 26)
-                MarqueeText(text: subtitle, typography: Typography.bodyMedium, color: theme.color(.textSecondary), height: 20)
+        HStack(alignment: .center, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                MarqueeText(
+                    text: song?.title ?? "",
+                    typography: PlayerStyle.titleMediumBold,
+                    color: PlayerStyle.white,
+                    height: 24
+                )
+                MarqueeText(
+                    text: subtitle,
+                    typography: Typography.bodyMedium,
+                    color: PlayerStyle.white,
+                    height: 21
+                )
             }
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
             favouriteButton
-            tipButton
-            moreButton
+            if song != nil {
+                Button { isAddToPlaylistPresented = true } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 24))
+                        .foregroundStyle(PlayerStyle.white)
+                        .padding(8)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add to playlist")
+            }
         }
-        .padding(.horizontal, Spacing.md)
     }
 
-    /// `FavouriteButton(song:, size: 24)` (`audio_player_screen.dart`'s
-    /// `_SongHeadline`) — no explicit `color:` there, so this leaves
-    /// `FavouriteToggleButton.color` at its own default (`textPrimary`),
-    /// matching Dart's own `FavouriteButton{color = Colors.white}` default.
     @ViewBuilder
     private var favouriteButton: some View {
         if let song {
-            FavouriteToggleButton(isFavorited: song.isFavorited, size: 24) {
+            FavouriteToggleButton(isFavorited: song.isFavorited, size: 24, color: PlayerStyle.white) {
                 let target = !song.isFavorited
                 engine.setCurrentSongFavorited(target, songId: song.id)
                 do {
@@ -240,195 +214,123 @@ struct FullPlayerView: View {
         }
     }
 
-    /// `TipPayIcon` (`audio_player_screen.dart`'s `_SongHeadline`) — see this
-    /// type's own doc comment for why this is wired live despite Dart's own
-    /// call site being dead code. A plain SF Symbol literal rather than a new
-    /// `IconToken` case, same precedent `ShareSheetView`'s own per-platform
-    /// icons already use (`IconToken.swift` has no suitable "tip"/"gift"
-    /// case, and is a protected file this task may not edit directly).
-    @ViewBuilder
-    private var tipButton: some View {
-        if song != nil {
-            Button {
-                isTipSheetPresented = true
-            } label: {
-                Image(systemName: "gift")
-                    .font(.system(size: 20))
-                    .foregroundStyle(theme.color(.textPrimary))
+    /// `_QueueAndShareRow`: `spaceBetween` — the queue `menu.svg` glyph, then
+    /// the share glyph.
+    private var queueAndShareRow: some View {
+        HStack {
+            Button { isQueuePresented = true } label: {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 24))
+                    .foregroundStyle(PlayerStyle.white)
             }
             .buttonStyle(.plain)
-        }
-    }
-
-    @ViewBuilder
-    private var moreButton: some View {
-        if song != nil {
-            Button { menuSong = song } label: {
-                theme.icon(.more)
-                    .font(.system(size: 20))
-                    .foregroundStyle(theme.color(.textPrimary))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("More")
-        }
-    }
-
-    private var actionRow: some View {
-        HStack(spacing: Spacing.xl) {
-            Button { coordinator.pushInPlayer(.queue) } label: {
-                theme.icon(.queue)
-                    .font(.system(size: 20))
-                    .foregroundStyle(theme.color(.textPrimary))
-            }
-            .buttonStyle(.plain)
+            .accessibilityLabel("Queue")
 
             Spacer()
 
-            sleepTimerButton
-
-            downloadButton
-
-            shareButton
-
-            AudioRoutePickerView(
-                tintColor: UIColor(theme.color(.textPrimary)),
-                activeTintColor: UIColor(theme.color(.brandPrimary))
-            )
-            .frame(width: 28, height: 28)
+            if song != nil {
+                Button { isSharePresented = true } label: {
+                    theme.icon(.share)
+                        .font(.system(size: 24))
+                        .foregroundStyle(PlayerStyle.white)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Share")
+            }
         }
-        .padding(.horizontal, Spacing.md)
     }
 
-    /// T46 — Download engine: a plain icon button wired straight to
-    /// `DownloadEngine`, the same "single icon, straight to the
-    /// engine/repository, no menu" shape `favouriteButton` above already
-    /// established for T44. Three visual states, read straight off
-    /// `DownloadEngine`: a plain down-arrow when the song isn't downloaded,
-    /// a small spinner while `downloadEngine.tasks[song.id]` is
-    /// `.queued`/`.downloading`/`.paused`, and the same glyph in its filled
-    /// SF Symbol variant (`.symbolVariant(.fill)` — no new `IconToken` case
-    /// needed; `.download` already covers both, matching that enum's own
-    /// "closest system equivalent" posture) once `isDownloaded` is true. A
-    /// `.failed` task reads as "not downloaded" and a tap re-enqueues —
-    /// this button only exposes the two tap actions the download contract
-    /// names for the player (enqueue, remove); a dedicated retry affordance
-    /// belongs to the Downloads management screen T46 also builds.
+    /// `SongMetaDataUi`: lyrics card, then (not ported: creator card and
+    /// credits) a 16pt gap, "Description" (`bodyMedium`) and the expandable
+    /// description (`bodySmall`).
     @ViewBuilder
-    private var downloadButton: some View {
+    private var metaSection: some View {
         if let song {
-            switch downloadButtonState(for: song) {
-            case .downloaded:
-                Button {
-                    isRemoveDownloadConfirmationPresented = true
-                } label: {
-                    theme.icon(.download)
-                        .symbolVariant(.fill)
-                        .font(.system(size: 20))
-                        .foregroundStyle(theme.color(.brandPrimary))
+            VStack(alignment: .leading, spacing: 0) {
+                PlayerLyricsPreviewCard(song: song, currentPosition: engine.currentPosition) {
+                    coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? "Lyrics"))
+                }
+                Text("Description")
+                    .typography(Typography.bodyMedium)
+                    .foregroundStyle(PlayerStyle.white)
+                    .padding(.top, 16)
+                PlayerExpandableText(text: song.description ?? "")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// `showAddToPlaylistSheet` hosted by the player's `add_circle_outline`
+/// button: the song menu's own playlist picker, driven by its view model.
+private struct PlayerAddToPlaylistSheet: View {
+    @State private var viewModel: SongMenuViewModel
+    let onOutcome: (SongMenuOutcome) -> Void
+
+    init(song: Song, onOutcome: @escaping (SongMenuOutcome) -> Void) {
+        _viewModel = State(initialValue: SongMenuViewModel(song: song))
+        self.onOutcome = onOutcome
+    }
+
+    var body: some View {
+        AddToPlaylistView(viewModel: viewModel, onOutcome: onOutcome)
+    }
+}
+
+/// `ExpandableText` (`verse_unit_ui.dart`): `bodySmall`, three lines with a
+/// "Read more" / "Read less" toggle shown only when the text overflows.
+struct PlayerExpandableText: View {
+    let text: String
+    var maxLines: Int = 3
+
+    @State private var isExpanded = false
+    @State private var fullHeight: CGFloat = 0
+    @State private var limitedHeight: CGFloat = 0
+
+    private var overflows: Bool { fullHeight > limitedHeight + 1 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(text)
+                .typography(Typography.bodySmall)
+                .foregroundStyle(PlayerStyle.white)
+                .lineLimit(isExpanded ? nil : maxLines)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    Text(text)
+                        .typography(Typography.bodySmall)
+                        .lineLimit(maxLines)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .hidden()
+                        .background(HeightReader { limitedHeight = $0 })
+                )
+                .background(
+                    Text(text)
+                        .typography(Typography.bodySmall)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .hidden()
+                        .background(HeightReader { fullHeight = $0 })
+                )
+            if overflows {
+                Button { isExpanded.toggle() } label: {
+                    Text(isExpanded ? "Read less" : "Read more")
+                        .typography(TypographyToken(size: 12, weight: .bold, lineHeightMultiple: 1.5))
+                        .foregroundStyle(PlayerStyle.white)
                 }
                 .buttonStyle(.plain)
-            case .inProgress:
-                ProgressView()
-                    .frame(width: 20, height: 20)
-            case .notDownloaded:
-                Button {
-                    Task { await startDownload(song) }
-                } label: {
-                    theme.icon(.download)
-                        .font(.system(size: 20))
-                        .foregroundStyle(theme.color(.textPrimary))
-                }
-                .buttonStyle(.plain)
             }
         }
     }
+}
 
-    /// Premium-only (`song_menu_sheet.dart`): free listeners are sent to the
-    /// plans screen instead of the sheet.
-    private var sleepTimerButton: some View {
-        Button {
-            Task {
-                if await premiumGate.allows(.sleepTimer) {
-                    isSleepTimerSheetPresented = true
-                } else {
-                    coordinator.dismissFullScreen()
-                    coordinator.push(.subscriptionPlans)
-                }
-            }
-        } label: {
-            Image(systemName: sleepTimer.isActive ? "moon.zzz.fill" : "moon.zzz")
-                .font(.system(size: 20))
-                .foregroundStyle(sleepTimer.isActive ? theme.color(.brandPrimary) : theme.color(.textPrimary))
+private struct HeightReader: View {
+    let onChange: (CGFloat) -> Void
+
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear
+                .onAppear { onChange(proxy.size.height) }
+                .onChange(of: proxy.size.height) { _, newValue in onChange(newValue) }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Sleep timer")
-    }
-
-    @ViewBuilder
-    private var shareButton: some View {
-        if song != nil {
-            Button {
-                isSharePresented = true
-            } label: {
-                theme.icon(.share)
-                    .font(.system(size: 20))
-                    .foregroundStyle(theme.color(.textPrimary))
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private enum DownloadButtonState {
-        case notDownloaded
-        case inProgress
-        case downloaded
-    }
-
-    private func downloadButtonState(for song: Song) -> DownloadButtonState {
-        if downloadEngine.isDownloaded(songID: song.id) { return .downloaded }
-        switch downloadEngine.tasks[song.id]?.state {
-        case .queued, .downloading, .paused: return .inProgress
-        case .failed, .completed, nil: return .notDownloaded
-        }
-    }
-
-    /// Enqueues at the user's current effective playback quality —
-    /// `AudioQualitySelector.targetQuality()` (plan cap × network cap; the
-    /// same selector `AppComposition` builds its own instance of for
-    /// `PlaybackAnalyticsRecorder` — stateless, so a fresh instance here is
-    /// equivalent, same reasoning already used there).
-    private func startDownload(_ song: Song) async {
-        // T65 — downloads are premium-only (`song_menu_sheet.dart`). A free
-        // listener is sent to the plans screen instead, the same redirect.
-        guard await premiumGate.allows(.downloads) else {
-            coordinator.dismissFullScreen()
-            coordinator.push(.subscriptionPlans)
-            return
-        }
-        let selector = AudioQualitySelector.live(keyValueStore: keyValueStore)
-        let quality = await selector.targetQuality()
-        await downloadEngine.enqueue(song: song, quality: quality)
-    }
-
-    /// `TipService.instance.sendTip(...)` (`audio_player_screen.dart`'s
-    /// `onSend` callback) — fire-and-forget from the UI's perspective, same
-    /// as Dart: `TipDonationSheet` has already dismissed itself by the time
-    /// this runs, and the only observable outcome is the toast below.
-    private func sendTip(amount: Int, note: String, creatorId: String?, songId: String?) {
-        Task {
-            do {
-                if try await tipPurchaseManager.sendTip(amount: amount, note: note, creatorId: creatorId, songId: songId) {
-                    toastCenter.show("Thank you for supporting the artist! 🙏")
-                }
-            } catch {
-                toastCenter.show(Self.tipErrorMessage(for: error))
-            }
-        }
-    }
-
-    private static func tipErrorMessage(for error: any Error) -> String {
-        if let error = error as? TipPurchaseManager.TipPurchaseError { return error.displayMessage }
-        if let error = error as? TipError { return error.message }
-        return "Something went wrong. Please try again."
     }
 }

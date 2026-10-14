@@ -378,8 +378,10 @@ struct ContentSearchView: View {
             EmptyView()
         }
         if viewModel.isLoadingMore {
-            ForEach(0..<3, id: \.self) { _ in
-                ParityShimmerItem()
+            VStack(spacing: 0) {
+                ForEach(0..<3, id: \.self) { _ in
+                    ParityShimmerItem()
+                }
             }
             .shimmer()
         }
@@ -517,12 +519,12 @@ private struct SearchFilterChip: View {
                 .padding(.horizontal, Dimens.spacing16)
                 .frame(maxHeight: .infinity)
                 .background(
-                    RoundedRectangle(cornerRadius: Dimens.cornerRadiusLarge - 4, style: .continuous)
+                    RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous)
                         .fill(isSelected ? Color.white : Color.clear)
                         .shadow(color: isSelected ? ParityColor.darkGold.opacity(0.35) : Color.clear, radius: 4, x: 0, y: 2)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: Dimens.cornerRadiusLarge - 4, style: .continuous)
+                    RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous)
                         .stroke(isSelected ? Color.white : ParityColor.greyDark, lineWidth: 1)
                 )
                 .contentShape(Rectangle())
