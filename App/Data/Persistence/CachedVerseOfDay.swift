@@ -19,7 +19,7 @@ final class VerseOfDayCache: VerseOfDayCaching, Sendable {
     }
 
     func verse(id: String) async -> VerseOfDay? {
-        guard let record = try? database.queue.read({ db in
+        guard let record = try? await database.queue.read({ db in
             try CachedVerseOfDay.filter(Column("verseID") == id).fetchOne(db)
         }) else {
             return nil
@@ -29,7 +29,7 @@ final class VerseOfDayCache: VerseOfDayCaching, Sendable {
 
     func store(_ verse: VerseOfDay) async {
         guard let payload = try? JSONEncoder().encode(verse) else { return }
-        try? database.queue.write { db in
+        try? await database.queue.write { db in
             var record = try CachedVerseOfDay.filter(Column("verseID") == verse.id).fetchOne(db) ?? CachedVerseOfDay(
                 id: nil,
                 verseID: verse.id,

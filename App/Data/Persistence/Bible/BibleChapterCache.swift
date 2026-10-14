@@ -27,7 +27,7 @@ final class BibleChapterCache: BibleChapterCaching, Sendable {
 
     func chapter(languageName: String, bookNumber: Int, chapterNumber: Int) async -> BibleChapter? {
         let key = Self.cacheKey(languageName: languageName, bookNumber: bookNumber, chapterNumber: chapterNumber)
-        guard let record = try? database.queue.read({ db in
+        guard let record = try? await database.queue.read({ db in
             try CachedBibleChapter.filter(Column("cacheKey") == key).fetchOne(db)
         }) else {
             return nil
@@ -64,7 +64,7 @@ final class BibleChapterCache: BibleChapterCaching, Sendable {
         else {
             return
         }
-        try? database.queue.write { db in
+        try? await database.queue.write { db in
             var record = try CachedBibleChapter.filter(Column("cacheKey") == key).fetchOne(db) ?? CachedBibleChapter(
                 id: nil,
                 cacheKey: key,
@@ -92,7 +92,7 @@ final class BibleChapterCache: BibleChapterCaching, Sendable {
     }
 
     func upsertLocalNote(_ note: VerseNote, bookNumber: Int, chapterNumber: Int, verseNumber: Int) async {
-        try? database.queue.write { db in
+        try? await database.queue.write { db in
             let existing = try CachedVerseNote.filter(Column("verseID") == note.verseId).fetchOne(db)
             var record = CachedVerseNote(
                 id: existing?.id,
@@ -108,13 +108,13 @@ final class BibleChapterCache: BibleChapterCaching, Sendable {
     }
 
     func deleteLocalNote(verseID: String) async {
-        try? database.queue.write { db in
+        try? await database.queue.write { db in
             _ = try CachedVerseNote.filter(Column("verseID") == verseID).deleteAll(db)
         }
     }
 
     func allLocalNotes() async -> [BibleNoteEntry] {
-        let records = (try? database.queue.read { db in
+        let records = (try? await database.queue.read { db in
             try CachedVerseNote.order(Column("updatedAt").desc).fetchAll(db)
         }) ?? []
         return records.map {
@@ -130,7 +130,7 @@ final class BibleChapterCache: BibleChapterCaching, Sendable {
     }
 
     func deleteChapters(languageName: String) async {
-        try? database.queue.write { db in
+        try? await database.queue.write { db in
             _ = try CachedBibleChapter.filter(Column("languageName") == languageName).deleteAll(db)
         }
     }
