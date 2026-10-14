@@ -15,6 +15,7 @@ struct GenreSearchView: View {
     @State private var browse = BrowseViewModel()
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @FocusState private var isFocused: Bool
+    @State private var isListening = false
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
 
@@ -52,12 +53,18 @@ struct GenreSearchView: View {
                     get: { viewModel.searchFieldText },
                     set: { viewModel.queryChanged($0) }
                 ),
-                prompt: Text("Search songs, genres...").foregroundColor(ParityColor.grey.opacity(0.7))
+                prompt: Text(isListening ? "Listening\u{2026}" : "Search songs, genres...").foregroundColor(ParityColor.grey.opacity(0.7))
             )
             .typography(Typography.bodyMedium)
             .foregroundStyle(Color.white)
             .focused($isFocused)
             .autocorrectionDisabled()
+            VoiceSearchButton(
+                onResult: { text, _ in viewModel.queryChanged(text) },
+                onListeningChanged: { isListening = $0 },
+                size: 20
+            )
+            .frame(width: 32, height: 32)
             if !query.isEmpty {
                 Button { viewModel.clearButtonTapped() } label: {
                     Image(systemName: "xmark")

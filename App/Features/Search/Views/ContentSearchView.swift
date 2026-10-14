@@ -8,7 +8,7 @@ import SwiftUI
 /// found", the "All" overview (Top Result + 5-item sections with "See all"),
 /// or one paginated section with a load-more shimmer and an end message.
 ///
-/// Not ported: the microphone `VoiceSearchButton`, and the locked
+/// Not ported: the locked
 /// select-mode entry points (`searchUiItemType`/`isSelect`, which drive the
 /// add-songs/add-artists pickers — native has its own `AddSongsToPlaylistView`).
 struct ContentSearchView: View {
@@ -16,6 +16,7 @@ struct ContentSearchView: View {
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var menuTarget: ContentMenuTarget?
     @FocusState private var isFieldFocused: Bool
+    @State private var isListening = false
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.appTheme) private var theme
@@ -74,7 +75,7 @@ struct ContentSearchView: View {
                     get: { viewModel.searchFieldText },
                     set: { viewModel.queryChanged($0) }
                 ),
-                prompt: Text("What do you want to listen to?").foregroundColor(ParityColor.grey)
+                prompt: Text(isListening ? "Listening\u{2026}" : "What do you want to listen to?").foregroundColor(ParityColor.grey)
             )
             .typography(Typography.bodyMedium)
             .foregroundStyle(Color.white)
@@ -83,6 +84,13 @@ struct ContentSearchView: View {
             .submitLabel(.search)
             .autocorrectionDisabled()
 
+            VoiceSearchButton(
+                onResult: { text, _ in viewModel.queryChanged(text) },
+                onListeningChanged: { listening in
+                    isListening = listening
+                    if listening { isFieldFocused = false }
+                }
+            )
             if !viewModel.searchFieldText.isEmpty {
                 Button { viewModel.clearButtonTapped() } label: {
                     Image(systemName: "xmark")
