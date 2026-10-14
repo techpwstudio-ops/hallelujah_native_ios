@@ -1,254 +1,174 @@
 import SwiftUI
 
-/// Ports `SubscriptionPlansPage` (`lib/views/subscription/plans_screen.dart`):
-/// plan catalogue, tap-to-select cards, and the purchase/restore/cancel
-/// action row. Apple/StoreKit rail only — see `SubscriptionPlansViewModel`'s
-/// doc comment for what's deliberately out of scope (Razorpay, family-member
-/// management).
+/// Ports `SubscriptionPlansPage` (`lib/views/subscription/plans_screen.dart`)
+/// with the Flutter widget tree: Premium app-bar title, `PlansHero`, selectable
+/// `PlanOptionCard`s, `PaymentSummaryCard` (not yet subscribed only),
+/// expandable store legal copy, a pinned action row (Cancel Plan outline +
+/// white CTA pill) and `Terms | Privacy | Restore` footer links.
 ///
-/// Not ported: Dart's `selectedPlan.description?['benefits']` checklist
-/// (`plans_screen.dart:172-196`). `SubscriptionPlan.description` decodes as
-/// a flat display string, not the structured `{benefits: [...]}` object —
-/// a deliberate simplification from when that DTO was first written (no
-/// native call site read inside it yet). This view falls back to rendering
-/// that flat string as a single paragraph when the server sends one, rather
-/// than a per-benefit checklist.
+/// Free-trial copy (pill, "Then ₹x / Month", summary rows) is wired through
+/// `PlanCopy.trial(for:)`, which returns nil until `SubscriptionPlan` carries
+/// a `freeTrial` field. See `SubscriptionPlansViewModel` for Apple-rail scope.
 struct SubscriptionPlansView: View {
     @State private var viewModel = SubscriptionPlansViewModel()
-    @Environment(\.appTheme) private var theme
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         content
-            .navigationTitle(navigationTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .background(theme.color(.backgroundPrimary))
+            .parityScaffold()
+            .parityNavTitle { PlansAppBarTitle() }
             .task { await viewModel.load() }
-    }
-
-    private var navigationTitle: String {
-        viewModel.isPremiumUser ? "Subscription" : "Continue with Ads"
     }
 
     @ViewBuilder
     private var content: some View {
         switch viewModel.loadState {
         case .loading:
-            LoadingStateView()
-        case let .failed(message):
-            ErrorStateView(title: "Something went wrong", message: message) {
-                Task { await viewModel.load() }
-            }
+            ProgressView()
+                .tint(AccountParity.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .failed:
+            Text("Something went wrong")
+                .font(AccountParity.bodyMedium)
+                .foregroundStyle(AccountParity.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .loaded:
-            loadedContent
+            if viewModel.plans.isEmpty {
+                Text("No plans available")
+                    .font(AccountParity.bodyMedium)
+                    .foregroundStyle(AccountParity.white)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                loadedContent
+            }
         }
     }
 
     private var loadedContent: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.md) {
-                Text("Upgrade to Premium for ad-free worship, high-quality audio, and offline listening.")
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(theme.color(.textSecondary))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    PlansHero()
+                    Spacer().frame(height: Dimens.spacing24)
 
-                if let selectedPlan = viewModel.selectedPlan, let description = selectedPlan.description, !description.isEmpty {
-                    GlassSurface(.regular, cornerRadius: Radius.lg) {
-                        Text(description)
-                            .typography(Typography.bodyMedium)
-                            .foregroundStyle(theme.color(.textPrimary))
-                            .padding(Spacing.md)
-                    }
-                }
-
-                ForEach(viewModel.plans) { plan in
-                    PlanCard(
-                        plan: plan,
-                        isSelected: viewModel.resolvedSelectedPlanID == plan.id,
-                        isCurrentPlan: plan.id == viewModel.subscription?.planId
-                    ) {
-                        viewModel.selectPlan(plan)
-                    }
-                }
-
-                if viewModel.isCancelled, let endDate = viewModel.subscription?.endDate {
-                    Text("Your Premium benefits will continue until \(endDate.formatted(date: .abbreviated, time: .omitted)). You can re-activate Premium anytime from this page.")
-                        .typography(Typography.bodyMedium)
-                        .foregroundStyle(theme.color(.textSecondary))
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                }
-
-                legalLinks
-
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.statusError))
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                }
-
-                if viewModel.isOwner {
-                    actionRow
-                }
-            }
-            .padding(Spacing.md)
-        }
-        .refreshable { await viewModel.refresh() }
-    }
-
-    @ViewBuilder
-    private var actionRow: some View {
-        HStack(spacing: Spacing.sm) {
-            if viewModel.showRestoreButton {
-                AppButton.secondary(
-                    "Restore",
-                    isLoading: viewModel.purchaseStatus == .restoring,
-                    width: nil
-                ) {
-                    Task { await viewModel.restoreTapped() }
-                }
-            }
-
-            if viewModel.showCancelButton {
-                AppButton.secondary("Cancel Plan", width: nil) {
-                    switch viewModel.cancelAction {
-                    case let .openManageSubscriptions(url):
-                        openURL(url)
-                    case .unsupported:
-                        break
-                    }
-                }
-            }
-
-            if viewModel.showPrimaryButton {
-                AppButton(
-                    label: viewModel.primaryButtonTitle,
-                    action: {
-                        switch viewModel.primaryAction {
-                        case .purchase:
-                            Task { await viewModel.purchaseSelectedPlan() }
-                        case let .openManageSubscriptions(url):
-                            openURL(url)
-                        case .disabled:
-                            break
+                    ForEach(viewModel.plans) { plan in
+                        PlanOptionCard(
+                            plan: plan,
+                            isSelected: viewModel.resolvedSelectedPlanID == plan.id,
+                            isCurrent: plan.id == viewModel.subscription?.planId
+                        ) {
+                            viewModel.selectPlan(plan)
                         }
-                    },
-                    isLoading: viewModel.purchaseStatus == .purchasing,
-                    enabled: viewModel.primaryAction != .disabled
-                )
-            }
-        }
-    }
-
-    private var legalLinks: some View {
-        VStack(spacing: Spacing.xs) {
-            Text(
-                "Payment will be charged to your Apple ID account at confirmation of purchase. " +
-                    "Subscription automatically renews unless canceled at least 24 hours before the end of the current period. " +
-                    "Your account will be charged for renewal within 24 hours prior to the end of the current period."
-            )
-            .typography(Typography.bodySmall)
-            .foregroundStyle(theme.color(.textSecondary))
-            .multilineTextAlignment(.center)
-
-            HStack(spacing: Spacing.xs) {
-                Link("Terms of Use", destination: AppConfiguration.current.termsAndConditionsURL)
-                Text("|").foregroundStyle(theme.color(.textTertiary))
-                Link("Privacy Policy", destination: AppConfiguration.current.privacyPolicyURL)
-            }
-            .typography(Typography.bodySmall)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-/// One plan card: gradient-free native equivalent of Dart's
-/// `AnimatedContainer` selection ring (`plans_screen.dart:198-448`) — a
-/// bordered `GlassSurface` that highlights on selection, rather than a
-/// pixel-identical port of the custom shadow/ring/gradient treatment there.
-private struct PlanCard: View {
-    let plan: SubscriptionPlan
-    let isSelected: Bool
-    let isCurrentPlan: Bool
-    let onTap: () -> Void
-
-    @Environment(\.appTheme) private var theme
-
-    private var isIndividual: Bool { plan.maxMembers <= 1 }
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                HStack {
-                    Label {
-                        Text(plan.name)
-                            .typography(Typography.labelSmall)
-                    } icon: {
-                        Image(systemName: isIndividual ? "person.fill" : "person.2.fill")
+                        .padding(.bottom, Dimens.verticalSpacing)
                     }
-                    .foregroundStyle(theme.color(.textSecondary))
 
-                    Spacer()
-
-                    if isCurrentPlan {
-                        Text("Current Plan")
-                            .typography(Typography.labelSmall)
-                            .foregroundStyle(theme.color(.textSecondary))
+                    if !viewModel.isPremiumUser, let selectedPlan = viewModel.selectedPlan {
+                        PaymentSummaryCard(plan: selectedPlan)
+                        Spacer().frame(height: Dimens.spacing16)
                     }
+
+                    ParityExpandableText(
+                        text: "Payment will be charged to your Apple ID account at confirmation of purchase. "
+                            + "Subscription automatically renews unless canceled at least 24 hours before the end of the current period. "
+                            + "Your account will be charged for renewal within 24 hours prior to the end of the current period.",
+                        maxLines: 2
+                    )
+
+                    if viewModel.isCancelled, let endDate = viewModel.subscription?.endDate {
+                        Text("Your Premium benefits will continue until \(Self.dateFormatter.string(from: endDate)).You can re-activate Premium anytime from the subscription page.")
+                            .font(AccountParity.font(14, .light))
+                            .lineSpacing(7)
+                            .foregroundStyle(AccountParity.white70)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, Dimens.paddingLarge)
+                    }
+
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                            .font(AccountParity.bodySmall)
+                            .foregroundStyle(AccountParity.red)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, Dimens.spacing8)
+                    }
+                    Spacer().frame(height: Dimens.spacing16)
                 }
+                .padding(.horizontal, Dimens.paddingLarge)
+                .padding(.vertical, Dimens.spacing8)
+            }
+            .refreshable { await viewModel.refresh() }
 
-                Text(isIndividual ? "Music just for you" : "Music for your family")
-                    .typography(Typography.bodySmall)
-                    .foregroundStyle(theme.color(.textSecondary))
+            actions
+                .padding(.top, Dimens.spacing8)
+                .padding(.horizontal, Dimens.paddingLarge)
+                .padding(.bottom, Dimens.spacing4)
+        }
+    }
 
-                HStack(alignment: .firstTextBaseline) {
-                    if let price = plan.price {
-                        Text(priceText(price))
-                            .typography(Typography.headlineMedium)
-                            .foregroundStyle(theme.color(.textPrimary))
-                    } else {
-                        Text(plan.name)
-                            .typography(Typography.headlineMedium)
-                            .foregroundStyle(theme.color(.textPrimary))
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "dd/MM/yyyy"
+        return formatter
+    }()
+
+    // MARK: Actions
+
+    private var actions: some View {
+        VStack(spacing: 0) {
+            if viewModel.isOwner && (viewModel.showCancelButton || viewModel.showPrimaryButton) {
+                HStack(spacing: 0) {
+                    if viewModel.showCancelButton {
+                        cancelButton
                     }
-
-                    Spacer()
-
-                    if plan.maxMembers > 1 {
-                        Text("Up to \(plan.maxMembers) members")
-                            .typography(Typography.labelSmall)
-                            .foregroundStyle(theme.color(.textSecondary))
-                            .padding(.horizontal, Spacing.sm)
-                            .padding(.vertical, Spacing.xs)
-                            .background {
-                                Capsule().fill(theme.color(.surfaceSecondary))
+                    if viewModel.showCancelButton && viewModel.showPrimaryButton {
+                        Spacer().frame(width: Dimens.spacing8)
+                    }
+                    if viewModel.showPrimaryButton {
+                        PlansCtaButton(
+                            label: viewModel.primaryButtonTitle,
+                            isLoading: viewModel.purchaseStatus == .purchasing,
+                            enabled: viewModel.primaryAction != .disabled
+                        ) {
+                            switch viewModel.primaryAction {
+                            case .purchase:
+                                Task { await viewModel.purchaseSelectedPlan() }
+                            case let .openManageSubscriptions(url):
+                                openURL(url)
+                            case .disabled:
+                                break
                             }
-                    }
-
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(theme.color(.textPrimary))
+                        }
                     }
                 }
             }
-            .padding(Spacing.md)
+            PlansFooterLinks(
+                onTerms: { openURL(AppConfiguration.current.termsAndConditionsURL) },
+                onPrivacy: { openURL(AppConfiguration.current.privacyPolicyURL) },
+                onRestore: viewModel.isPremiumUser ? nil : { Task { await viewModel.restoreTapped() } }
+            )
+        }
+    }
+
+    private var cancelButton: some View {
+        Button {
+            switch viewModel.cancelAction {
+            case let .openManageSubscriptions(url):
+                openURL(url)
+            case .unsupported:
+                break
+            }
+        } label: {
+            Text("Cancel Plan")
+                .font(AccountParity.font(14, .medium))
+                .tracking(0.1)
+                .foregroundStyle(AccountParity.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: Dimens.buttonHeight)
+                .overlay(Capsule().strokeBorder(AccountParity.white24, lineWidth: 1))
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                .fill(theme.color(.surfacePrimary))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                .strokeBorder(isSelected ? theme.color(.textPrimary) : .clear, lineWidth: 2)
-        }
-    }
-
-    private func priceText(_ price: Double) -> String {
-        let currency = plan.currency ?? ""
-        return "\(currency) \(price.formatted(.number.precision(.fractionLength(0...2)))) / \(plan.billingCycle == .yearly ? "Year" : "Month")"
     }
 }

@@ -133,9 +133,11 @@ struct MiniPlayerDockView: View {
     private static let commitFlickDistance: CGFloat = 88
     private static let contentHorizontalPadding: CGFloat = 14 // music_player_bottom_ios26.dart:216-217
     private static let artworkSize: CGFloat = 44
-    private static let artworkCornerRadius: CGFloat = Radius.lg // 12 — music_player_bottom_ios26.dart:250-253
-    private static let progressBarHeight: CGFloat = 2 // song_progress_bar.dart's mini-player (preview:true) minHeight
+    private static let musicArtworkCornerRadius: CGFloat = 12 // music_player_bottom_ios26.dart `_Artwork`: 12 music / 6 episode
+    private static let episodeArtworkCornerRadius: CGFloat = 6
     private static let titleTypography = TypographyToken(size: 14, weight: .semibold, lineHeightMultiple: 1.4, tracking: -0.2)
+    /// `_SongMeta` colours: title white, subtitle white @ 60%.
+    private static let subtitleColor = Color.white.opacity(0.6)
     private static let textLineHeight: CGFloat = 18 // music_player_bottom_ios26.dart:312 MyMarquee(height: 18, ...)
 
     private var song: Song? { engine.currentSong }
@@ -169,6 +171,9 @@ struct MiniPlayerDockView: View {
             .frame(height: Spacing.miniPlayerHeight)
         }
         .opacity(isVisible ? 1 : 0)
+        // `SlideTransition` (0,1) -> 0 plus `ScaleTransition` 0.92 -> 1.0
+        // anchored at the bottom centre, 380 ms out / 260 ms back.
+        .scaleEffect(isVisible ? 1 : 0.92, anchor: .bottom)
         .offset(y: isVisible ? 0 : Spacing.miniPlayerHeight)
         .animation(isVisible ? MotionCurve.dockShow : MotionCurve.dockHide, value: isVisible)
         .allowsHitTesting(isVisible)
@@ -190,30 +195,36 @@ struct MiniPlayerDockView: View {
         .matchedTransitionSource(id: Self.transitionID, in: namespace)
     }
 
+    private var isEpisode: Bool { song?.isEpisode ?? false }
+    private var artworkCornerRadius: CGFloat { isEpisode ? Self.episodeArtworkCornerRadius : Self.musicArtworkCornerRadius }
+
+    /// `_Artwork`: 44pt high, 44 wide for music / 44 * 16/9 for an episode.
     private var contentRow: some View {
-        HStack(spacing: Spacing.sm) {
+        HStack(spacing: 0) {
             ArtworkView(
                 url: resolvedArtwork,
-                width: Self.artworkSize,
-                height: (song?.isEpisode ?? false) ? Self.artworkSize * 16 / 9 : Self.artworkSize,
-                cornerRadius: Self.artworkCornerRadius
+                width: isEpisode ? Self.artworkSize * 16 / 9 : Self.artworkSize,
+                height: Self.artworkSize,
+                cornerRadius: artworkCornerRadius
             )
             .overlay {
-                RoundedRectangle(cornerRadius: Self.artworkCornerRadius, style: .continuous)
+                RoundedRectangle(cornerRadius: artworkCornerRadius, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
             }
             .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 3)
 
             VStack(alignment: .leading, spacing: 2) {
-                MarqueeText(text: song?.title ?? "", typography: Self.titleTypography, color: theme.color(.textPrimary), height: Self.textLineHeight)
-                MarqueeText(text: subtitle, typography: Typography.bodySmall, color: theme.color(.textSecondary), height: Self.textLineHeight)
+                MarqueeText(text: song?.title ?? "", typography: Self.titleTypography, color: Color.white, height: Self.textLineHeight)
+                MarqueeText(text: subtitle, typography: Typography.bodySmall, color: Self.subtitleColor, height: Self.textLineHeight)
             }
+            .padding(.leading, 12)
 
             Spacer(minLength: 0)
 
             favouriteButton
-            outputRouteButton
+            Spacer().frame(width: 10)
             playPauseButton
+            Spacer().frame(width: 8)
         }
     }
 
@@ -228,7 +239,7 @@ struct MiniPlayerDockView: View {
             FavouriteToggleButton(
                 isFavorited: song.isFavorited,
                 size: 20,
-                color: theme.color(.textPrimary).opacity(0.85)
+                color: Color.white.opacity(0.85)
             ) {
                 let target = !song.isFavorited
                 engine.setCurrentSongFavorited(target, songId: song.id)
@@ -241,33 +252,15 @@ struct MiniPlayerDockView: View {
         }
     }
 
-    /// T39 — same `AVRoutePickerView` wrapper T35's full player already
-    /// uses (`AudioRoutePickerView`'s own doc comment: a full-repo grep of
-    /// the Flutter reference found no AirPlay/output-route widget anywhere,
-    /// mini or full player, so there's no Dart source to match here either
-    /// way) — added to the mini pill too, sized down to fit its single-row
-    /// height, closing T39's own "works from both mini and full player"
-    /// Done criterion. Sits inside the same `.onTapGesture { onExpand() }`
-    /// pill `playPauseButton` already does, and works the same way that
-    /// button already does: a real interactive control's own touches don't
-    /// also trigger the pill's outer tap gesture.
-    private var outputRouteButton: some View {
-        AudioRoutePickerView(
-            tintColor: UIColor(theme.color(.textPrimary)),
-            activeTintColor: UIColor(theme.color(.brandPrimary))
-        )
-        .frame(width: 22, height: 22)
-    }
-
     private var playPauseButton: some View {
         Button {
             if isPlaying { engine.pause() } else { engine.resume() }
         } label: {
             ZStack {
-                Circle().strokeBorder(theme.color(.textPrimary), lineWidth: 1.25)
+                Circle().strokeBorder(Color.white, lineWidth: 1.25)
                 theme.icon(isPlaying ? .pause : .play)
-                    .font(.system(size: 16))
-                    .foregroundStyle(theme.color(.textPrimary))
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.white)
             }
             .frame(width: 24, height: 24)
             .contentShape(Circle())
@@ -276,22 +269,12 @@ struct MiniPlayerDockView: View {
         .animation(.easeInOut(duration: 0.2), value: isPlaying)
     }
 
-    /// `song_progress_bar.dart`'s mini-player (`preview: true`) path: a
-    /// plain determinate bar, not tappable/scrubbable (no `onSeek` wired,
-    /// matching Dart exactly — only the full player's progress bar seeks).
-    /// Last child of the pill's `VStack`, so it's clipped by the outer
-    /// `GlassSurface`'s corner radius at the bottom, same as Dart's own
-    /// z-order (`music_player_bottom_ios26.dart:229`).
+    /// `song_progress_bar.dart`'s mini-player (`preview: true`) path:
+    /// `LinearProgressIndicator(minHeight: 2)`, white over `fillColor @ 0.8`;
+    /// not scrubbable. Last child of the pill's `VStack`, clipped by the
+    /// glass shape.
     private var progressHairline: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Rectangle().fill(theme.color(.textPrimary).opacity(0.2))
-                Rectangle()
-                    .fill(theme.color(.textPrimary))
-                    .frame(width: proxy.size.width * progressFraction)
-            }
-        }
-        .frame(height: Self.progressBarHeight)
+        PlayerProgressLine(progress: progressFraction)
     }
 
     /// Horizontal-only (`swipe_to_skip.dart` has no vertical drag/dismiss).
@@ -362,8 +345,18 @@ struct GlassTabBarView: View {
                 Text(tab.titleKey)
                     .typography(Typography.labelSmall)
             }
-            .foregroundStyle(isSelected ? theme.color(.textPrimary) : theme.color(.textSecondary))
+            .foregroundStyle(isSelected ? Color.white : Color(white: 0.62))
             .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+            // iOS 26's native `UITabBar` (what Flutter embeds) lights the
+            // selected item with a capsule inside the glass.
+            .background {
+                if isSelected {
+                    Capsule(style: .continuous).fill(Color.white.opacity(0.12))
+                }
+            }
+            .padding(.horizontal, 2)
+            .animation(.easeInOut(duration: 0.2), value: isSelected)
         }
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

@@ -403,3 +403,163 @@ struct ParityRequiredLabel: View {
             + Text(required ? " * " : "").font(AccountParity.titleSmall).foregroundStyle(Color.red))
     }
 }
+
+// MARK: - Bottom-sheet primitives (`showAppSheet`)
+
+private struct ParityHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+/// Sizes the sheet to its content (Flutter `showModalBottomSheet` +
+/// `Column(mainAxisSize: min)`), on the flat `bottomSheetBgColor` fill.
+private struct ParityFitSheetContent<Content: View>: View {
+    let cornerRadius: CGFloat
+    let dismissible: Bool
+    let content: Content
+    @State private var height: CGFloat = 320
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(key: ParityHeightKey.self, value: proxy.size.height)
+                }
+            )
+            .onPreferenceChange(ParityHeightKey.self) { newValue in
+                if newValue > 0 { height = newValue }
+            }
+            .presentationDetents([.height(height)])
+            .presentationDragIndicator(.hidden)
+            .presentationBackground(AccountParity.sheetBackground)
+            .presentationCornerRadius(cornerRadius)
+            .interactiveDismissDisabled(!dismissible)
+    }
+}
+
+extension View {
+    /// Presents `content` as a content-height bottom sheet with Flutter's
+    /// sheet chrome (flat #111111, no system drag indicator; add
+    /// `ParityDragHandler` inside the content as Flutter does).
+    func parityFitSheet<Content: View>(
+        isPresented: Binding<Bool>,
+        cornerRadius: CGFloat = 28,
+        dismissible: Bool = true,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        sheet(isPresented: isPresented, onDismiss: onDismiss) {
+            ParityFitSheetContent(cornerRadius: cornerRadius, dismissible: dismissible, content: content())
+        }
+    }
+
+    func parityFitSheet<Item: Identifiable, Content: View>(
+        item: Binding<Item?>,
+        cornerRadius: CGFloat = 28,
+        dismissible: Bool = true,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping (Item) -> Content
+    ) -> some View {
+        sheet(item: item, onDismiss: onDismiss) { value in
+            ParityFitSheetContent(cornerRadius: cornerRadius, dismissible: dismissible, content: content(value))
+        }
+    }
+}
+
+/// `Bullet` (`lib/widgets/widgets.dart`): 6pt white70 dot, 10pt gap, bodyMedium
+/// white70 at height 1.4, 10pt bottom padding.
+struct ParityBullet: View {
+    let text: String
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(AccountParity.white70)
+                .frame(width: 6, height: 6)
+                .padding(.top, 6)
+            Text(text)
+                .font(AccountParity.bodyMedium)
+                .lineSpacing(14 * 0.4 - 3)
+                .foregroundStyle(AccountParity.white70)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.bottom, 10)
+    }
+}
+
+/// Sheet buttons: Material `FilledButton` (white/black by default theme) and
+/// `OutlinedButton` with configurable radius, vertical padding and border.
+struct ParitySheetButton: View {
+    enum Style { case filled, outlined }
+
+    let title: String
+    var style: Style = .filled
+    var radius: CGFloat = 14
+    var verticalPadding: CGFloat = 16
+    var borderColor: Color = Color(white: 0.74)
+    var fillColor: Color = AccountParity.white
+    var foreground: Color? = nil
+    var weight: Font.Weight = .semibold
+    var isLoading: Bool = false
+    var enabled: Bool = true
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if isLoading {
+                    ProgressView().tint(style == .filled ? AccountParity.black : AccountParity.white)
+                } else {
+                    Text(title)
+                        .font(AccountParity.font(14, weight))
+                        .tracking(0.1)
+                        .foregroundStyle(foreground ?? (style == .filled ? AccountParity.black : AccountParity.white))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, verticalPadding)
+            .background(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(style == .filled ? fillColor : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .strokeBorder(style == .outlined ? borderColor : Color.clear, lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled || isLoading)
+        .opacity(enabled ? 1 : 0.5)
+    }
+}
+
+/// Flutter's `AlertIcon` / `TickIcon` SVG stand-ins (assets
+/// `cancel_premium_icon.svg`, `tick-circle.svg` not yet in the catalog).
+struct ParitySheetIcon: View {
+    enum Kind { case alert, tick, system(String) }
+    let kind: Kind
+    var size: CGFloat = 56
+
+    var body: some View {
+        switch kind {
+        case .alert:
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: size * 0.7))
+                .foregroundStyle(AccountParity.white)
+                .frame(width: size, height: size)
+        case .tick:
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: size * 0.8))
+                .foregroundStyle(AccountParity.white)
+                .frame(width: size, height: size)
+        case .system(let name):
+            Image(systemName: name)
+                .font(.system(size: size * 0.8))
+                .foregroundStyle(AccountParity.white)
+                .frame(width: size, height: size)
+        }
+    }
+}

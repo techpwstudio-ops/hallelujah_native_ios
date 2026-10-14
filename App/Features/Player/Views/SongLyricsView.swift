@@ -66,8 +66,7 @@ struct SongLyricsView: View {
                 }
                 .onAppear {
                     // `_onPositionChanged` on the first frame.
-                    let index = activeIndex
-                    Task { @MainActor in scroll(proxy, to: index) }
+                    scroll(proxy, to: activeIndex)
                 }
             }
 

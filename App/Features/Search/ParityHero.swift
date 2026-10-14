@@ -140,3 +140,67 @@ struct ParitySpinner: View {
             .frame(maxWidth: .infinity, minHeight: fills ? 200 : nil)
     }
 }
+
+/// The shared header of `DownloadsPage` and `FavouriteSongsScreen`
+/// (`lib/views/library/downloads.dart`, `favourite_songs_list.dart`): a 220pt
+/// `top -> black` gradient behind the status bar, 60pt of status-bar space,
+/// the (system) back button's 48pt row, then a 16pt-padded row with the title
+/// (26pt bold white) and Shuffle + Play, an 8pt gap, a `white70` subtitle,
+/// and a 16pt gap before `content`.
+struct ParityGradientHeader<Extra: View, Content: View>: View {
+    let top: Color
+    let title: String
+    let subtitle: String
+    let isShuffled: Bool
+    let isPlaying: Bool
+    let onShuffle: () -> Void
+    let onPlay: () -> Void
+    @ViewBuilder var extra: () -> Extra
+    @ViewBuilder var content: () -> Content
+
+    private static var titleStyle: TypographyToken {
+        TypographyToken(size: 26, weight: .bold, lineHeightMultiple: 1.0)
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            Color.black
+            LinearGradient(colors: [top, Color.black], startPoint: .top, endPoint: .bottom)
+                .frame(height: 220)
+                .frame(maxWidth: .infinity)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Color.clear.frame(height: 60 + 48)
+
+                HStack(spacing: 0) {
+                    Text(title)
+                        .typography(Self.titleStyle)
+                        .foregroundStyle(Color.white)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    ParityShuffleButton(isOn: isShuffled, action: onShuffle)
+                    ParityPlayPauseButton(isPlaying: isPlaying, action: onPlay)
+                        .padding(8)
+                }
+                .padding(.horizontal, 16)
+
+                Spacer().frame(height: 8)
+
+                Text(subtitle)
+                    .font(.custom(Typography.fontFamily, size: 14))
+                    .foregroundStyle(ParityColor.white70)
+                    .padding(.horizontal, 16)
+
+                Spacer().frame(height: 16)
+
+                extra()
+
+                content()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .ignoresSafeArea(edges: .top)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .navigationTitle("")
+    }
+}

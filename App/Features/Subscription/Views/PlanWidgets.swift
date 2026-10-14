@@ -199,6 +199,7 @@ struct PaymentSummaryCard: View {
         let price = plan.price ?? 0
         let trial = PlanCopy.trial(for: plan)
         let period = trial.map { PlanCopy.freeTrialPeriod($0) }
+        let periodText = period ?? ""
         let chargedToday: Double = trial == nil ? price : 0
         let payableToday = PlanCopy.formatAmount(chargedToday, currency: currency)
         let monthly = PlanCopy.formatPrice(price, currency: currency)
@@ -253,7 +254,7 @@ struct PaymentSummaryCard: View {
                     .foregroundStyle(AccountParity.white70)
                 Text(period == nil
                     ? "You'll be charged \(monthly) per month. Cancel anytime before renewal."
-                    : "Free for \(period ?? \"\"), then \(monthly) per month. Cancel anytime.")
+                    : "Free for \(periodText), then \(monthly) per month. Cancel anytime.")
                     .font(AccountParity.bodySmall)
                     .lineSpacing(6)
                     .foregroundStyle(AccountParity.white70)

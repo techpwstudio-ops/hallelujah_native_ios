@@ -69,7 +69,7 @@ struct HomeTrendingCarouselView: View {
         .frame(height: railHeight)
     }
 
-    private var visibleOffsets: [Int] { [-2, -1, 0, 1, 2] }
+    private var visibleOffsets: [Int] { ordered.isEmpty ? [] : [-2, -1, 0, 1, 2] }
 
     private func cardLayer(offset: Int) -> some View {
         let count = ordered.count

@@ -9,10 +9,11 @@ struct SheetDragHandle: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
+        // `DragHandler` (`lib/widgets/drag_handler.dart`): 80x2, #D9D9D9, 16pt above and below.
         Capsule(style: .continuous)
-            .fill(theme.color(.border))
-            .frame(width: 36, height: 5)
-            .padding(.top, Spacing.sm)
+            .fill(Color(red: 0xD9 / 255, green: 0xD9 / 255, blue: 0xD9 / 255))
+            .frame(width: Dimens.dragHandlerWidth, height: Dimens.dragHandlerHeight)
+            .padding(.vertical, Dimens.paddingLarge)
     }
 }
 
@@ -41,26 +42,32 @@ struct AppSheetContainer<Content: View>: View {
         self.content = content()
     }
 
+    /// Material 3 default bottom-sheet top corner radius.
+    private static var topRadius: CGFloat { 28 }
+    /// `ColorTheme.bottomSheetBgColor`.
+    private static var fill: Color { Color(red: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255) }
+
     private var sheetShape: UnevenRoundedRectangle {
         UnevenRoundedRectangle(
-            topLeadingRadius: Radius.xl,
+            topLeadingRadius: Self.topRadius,
             bottomLeadingRadius: 0,
             bottomTrailingRadius: 0,
-            topTrailingRadius: Radius.xl,
+            topTrailingRadius: Self.topRadius,
             style: .continuous
         )
     }
 
     var body: some View {
-        GlassSurface(.regular, in: sheetShape) {
-            VStack(spacing: 0) {
-                if showsDragHandle {
-                    SheetDragHandle()
-                }
-                content
+        // D12: `showAppSheet` is a flat `ColorTheme.bottomSheetBgColor` (#111111)
+        // Material bottom sheet (default 28pt top corners), not glass.
+        VStack(spacing: 0) {
+            if showsDragHandle {
+                SheetDragHandle()
             }
-            .frame(maxWidth: .infinity)
+            content
         }
+        .frame(maxWidth: .infinity)
+        .background(Self.fill, in: sheetShape)
         .onAppear { coordinator?.sheetPresented() }
         .onDisappear { coordinator?.sheetDismissed() }
     }

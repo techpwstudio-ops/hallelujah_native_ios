@@ -13,6 +13,11 @@ struct CreatorSongRow: View {
     let song: Song
     var userPlaylistID: String?
     var showsMenu: Bool = true
+    /// Replaces the genre/duration subtitle (e.g. a downloaded snapshot that
+    /// only carries a genre name).
+    var subtitleOverride: String?
+    /// Extra content under the subtitle (`DownloadProgressWidget`).
+    var statusView: AnyView?
     var onTap: () -> Void = {}
 
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
@@ -34,7 +39,8 @@ struct CreatorSongRow: View {
     }
 
     private var subtitle: String {
-        isMusic ? (song.primaryGenre?.name ?? "") : parityDurationText(song.duration)
+        if let subtitleOverride { return subtitleOverride }
+        return isMusic ? (song.primaryGenre?.name ?? "") : parityDurationText(song.duration)
     }
 
     var body: some View {
@@ -58,6 +64,9 @@ struct CreatorSongRow: View {
                     Text(subtitle)
                         .typography(Typography.bodySmall)
                         .foregroundStyle(ParityColor.white70)
+                    if let statusView {
+                        statusView.padding(.vertical, 4)
+                    }
                 }
                 Spacer(minLength: 0)
 
