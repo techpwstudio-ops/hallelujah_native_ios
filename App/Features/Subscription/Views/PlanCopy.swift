@@ -4,14 +4,14 @@ import Foundation
 /// trial wording. Strings come from the Flutter l10n ARB (`app_localizations_en`).
 enum PlanCopy {
     /// A plan's free period (`FreeTrial` in `subscription_plan_model.dart`).
-    /// `SubscriptionPlan` has no free-trial field natively yet, so
-    /// `trial(for:)` returns nil until the domain model gains it.
     struct FreeTrial: Equatable {
         let months: Int
         let days: Int
     }
 
-    static func trial(for plan: SubscriptionPlan) -> FreeTrial? { nil }
+    static func trial(for plan: SubscriptionPlan) -> FreeTrial? {
+        plan.freeTrial.map { FreeTrial(months: $0.months, days: $0.days) }
+    }
 
     // MARK: Free trial
 

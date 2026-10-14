@@ -18,4 +18,6 @@ struct AccountSetupProfileRequest: Encodable, Sendable {
     let lName: String?
     let dateOfBirth: String
     let gender: String
+    /// S3 key of a freshly uploaded profile photo (`initData['image']`).
+    var image: String? = nil
 }

@@ -101,7 +101,7 @@ struct ReaderView: View {
             onDismiss: runPendingAction,
             detents: [.fraction(0.5), .fraction(0.9)]
         ) {
-            MyNotesView(books: viewModel.books) { entry in
+            MyNotesView(books: viewModel.books, currentLanguage: viewModel.currentLanguage) { entry in
                 showNotes = false
                 viewModel.select(
                     bookNumber: entry.bookNumber,

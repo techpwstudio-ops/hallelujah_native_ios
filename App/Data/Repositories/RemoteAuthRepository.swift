@@ -122,8 +122,8 @@ final class RemoteAuthRepository: AuthRepository {
     }
 
     @discardableResult
-    func updateProfile(name: String, fName: String?, lName: String?, dateOfBirth: String, gender: String) async throws -> User {
-        let request = AccountSetupProfileRequest(name: name, fName: fName, lName: lName, dateOfBirth: dateOfBirth, gender: gender)
+    func updateProfile(name: String, fName: String?, lName: String?, dateOfBirth: String, gender: String, image: String?) async throws -> User {
+        let request = AccountSetupProfileRequest(name: name, fName: fName, lName: lName, dateOfBirth: dateOfBirth, gender: gender, image: image)
         let body = try JSONEncoder().encode(request)
         let response = try await client.send(.userProfileSave, body: body)
         guard response.statusCode == 200 else {

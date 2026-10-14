@@ -276,6 +276,9 @@ enum AppComposition {
         container.register((any AIChatRepository).self) {
             RemoteAIChatRepository(client: HTTPClient(configuration: configuration, authProvider: session))
         }
+        container.register((any UploadRepository).self) {
+            RemoteUploadRepository(client: HTTPClient(configuration: configuration, authProvider: session))
+        }
         container.register(AIChatStreamingClient.self) {
             AIChatStreamingClient(configuration: configuration, authProvider: session)
         }

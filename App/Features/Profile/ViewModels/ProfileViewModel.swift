@@ -19,6 +19,7 @@ final class ProfileViewModel {
     private(set) var state: ProfileFlowState = .idle
 
     private let authRepository: any AuthRepository
+    private let uploadRepository: any UploadRepository
     private let currentUserStore: CurrentUserStore
     // No dedicated `.profile` `LogCategory` exists yet (adding one is out of
     // this task's file scope) — `.authentication` is the category
@@ -29,6 +30,7 @@ final class ProfileViewModel {
 
     init(container: DependencyContainer = .current) {
         authRepository = container.resolve()
+        uploadRepository = container.resolve()
         currentUserStore = container.resolve()
     }
 
@@ -63,16 +65,25 @@ final class ProfileViewModel {
     /// as its new unchanged baseline; `false` on failure, with the message
     /// left in `state` for the caller to toast.
     @discardableResult
-    func save(fName: String?, lName: String?, dateOfBirth: String, gender: String) async -> Bool {
+    func save(fName: String?, lName: String?, dateOfBirth: String, gender: String, imageFileURL: URL? = nil) async -> Bool {
         state = .loading
 
         // `initData['name'] = "${initData['fName'] ?? "User"} ${initData['lName'] ?? ''}"`.
         let name = "\(fName ?? "User") \(lName ?? "")"
 
         do {
-            try await authRepository.updateProfile(name: name, fName: fName, lName: lName, dateOfBirth: dateOfBirth, gender: gender)
+            // `AuthBloc._updateProfile`: upload the new photo first, then
+            // send its S3 key as `image` with the rest of the profile.
+            var imageKey: String?
+            if let imageFileURL {
+                imageKey = try await uploadRepository.upload(fileURL: imageFileURL, kind: .profilePhoto, mimeType: "image/jpeg")
+            }
+            try await authRepository.updateProfile(name: name, fName: fName, lName: lName, dateOfBirth: dateOfBirth, gender: gender, image: imageKey)
             state = .success
             return true
+        } catch let error as UploadError {
+            state = .error(message: error.message)
+            return false
         } catch let error as AuthOTPError {
             state = .error(message: error.message)
             return false

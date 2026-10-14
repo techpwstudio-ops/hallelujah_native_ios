@@ -34,7 +34,7 @@ protocol AuthRepository: Sendable {
     /// same `{user: ...}` envelope, per `OurSession.updateUserModel`'s
     /// `setUser(map['user'])`).
     @discardableResult
-    func updateProfile(name: String, fName: String?, lName: String?, dateOfBirth: String, gender: String) async throws -> User
+    func updateProfile(name: String, fName: String?, lName: String?, dateOfBirth: String, gender: String, image: String?) async throws -> User
 
     /// `EndPoints.getLanguagesApi` (`/languages`, GET) — the full list the
     /// content-language picker renders, in server (`rank`) order.
@@ -60,4 +60,12 @@ protocol AuthRepository: Sendable {
     /// CarPlay/websocket teardown cascade in Dart's `logout()` belongs to
     /// T26 (Session lifecycle), not here.
     func logout() async
+}
+
+extension AuthRepository {
+    /// Account setup never sets a photo.
+    @discardableResult
+    func updateProfile(name: String, fName: String?, lName: String?, dateOfBirth: String, gender: String) async throws -> User {
+        try await updateProfile(name: name, fName: fName, lName: lName, dateOfBirth: dateOfBirth, gender: gender, image: nil)
+    }
 }

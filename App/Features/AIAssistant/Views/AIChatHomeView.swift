@@ -1,4 +1,6 @@
+import PhotosUI
 import SwiftUI
+import UIKit
 
 /// The AI Assistant tab root. Ports Flutter's `AiPage`
 /// (`lib/views/ai/ai_page.dart`): a custom black app bar (logo + gradient
@@ -249,6 +251,11 @@ struct AIChatConversationView: View {
     @State private var hasSentInitialMessage = false
     @State private var inputText = ""
     @State private var fadedIn = false
+    @State private var attachments: [AIPendingAttachment] = []
+    @State private var isPhotoPickerPresented = false
+    @State private var photoSelection: PhotosPickerItem?
+
+    private let uploadRepository: any UploadRepository = DependencyContainer.current.resolve()
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
@@ -266,9 +273,14 @@ struct AIChatConversationView: View {
                 .opacity(fadedIn ? 1 : 0)
             AIChatInputBar(
                 text: $inputText,
+                attachments: attachments,
                 isBusy: viewModel.isSending,
                 isStreaming: viewModel.isStreaming,
                 onVoice: { coordinator.presentAIAudioConversation(conversationID: conversationID) },
+                onAttach: { isPhotoPickerPresented = true },
+                onRemoveAttachment: { index in
+                    if attachments.indices.contains(index) { attachments.remove(at: index) }
+                },
                 onSend: { send() },
                 onStop: { viewModel.cancelStream() }
             )
@@ -280,6 +292,12 @@ struct AIChatConversationView: View {
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.28)) { fadedIn = true }
+        }
+        .photosPicker(isPresented: $isPhotoPickerPresented, selection: $photoSelection, matching: .images)
+        .onChange(of: photoSelection) { _, item in
+            guard let item else { return }
+            photoSelection = nil
+            Task { await attach(item) }
         }
         .onChange(of: viewModel.error) { _, newValue in
             if let newValue, !newValue.isEmpty {
@@ -350,8 +368,45 @@ struct AIChatConversationView: View {
     private func send() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        // `_send`: only fully uploaded attachments go out; the strip clears.
+        let uploaded = attachments.compactMap { attachment -> AIAttachmentPayload? in
+            guard let key = attachment.uploadedKey else { return nil }
+            return AIAttachmentPayload(key: key, mimeType: attachment.mimeType)
+        }
         inputText = ""
-        Task { await viewModel.sendMessage(payload: AISendPayload(message: text, attachments: [])) }
+        attachments = []
+        Task { await viewModel.sendMessage(payload: AISendPayload(message: text, attachments: uploaded)) }
+    }
+
+    /// `_pickFile` + `_uploadAttachment`: one image at a time (a new pick
+    /// replaces the strip), uploaded straight away through the presigned flow.
+    private func attach(_ item: PhotosPickerItem) async {
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let image = UIImage(data: data),
+              let jpeg = image.jpegData(compressionQuality: 0.9) else {
+            toastCenter.show("Something went wrong, please check your network and try again.")
+            return
+        }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).jpg")
+        do { try jpeg.write(to: url, options: .atomic) } catch {
+            toastCenter.show("Something went wrong, please check your network and try again.")
+            return
+        }
+        let id = UUID()
+        attachments = [AIPendingAttachment(
+            id: id, fileName: url.lastPathComponent, thumbnail: image,
+            isUploading: true, uploadedKey: nil, mimeType: "image/jpeg"
+        )]
+        do {
+            let key = try await uploadRepository.upload(fileURL: url, kind: .aiImage, mimeType: "image/jpeg")
+            if let index = attachments.firstIndex(where: { $0.id == id }) {
+                attachments[index].isUploading = false
+                attachments[index].uploadedKey = key
+            }
+        } catch {
+            attachments.removeAll { $0.id == id }
+            toastCenter.show("Something went wrong, please check your network and try again.")
+        }
     }
 
     private func sendInitialMessageIfNeeded() async {

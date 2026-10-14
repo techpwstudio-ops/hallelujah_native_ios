@@ -32,11 +32,13 @@ final class MyNotesViewModel {
 /// the date (dd/MM/yyyy) on one row, a white "Notes" tag, then the note in
 /// bodyLarge w300. Tapping a note jumps the reader to that verse.
 ///
-/// Gap vs Flutter: `BibleNoteEntry` carries neither the verse text nor the
-/// note's language, so the italic quoted verse and the "· Language" header
-/// suffix cannot be drawn yet (domain change needed, outside this feature).
+/// The italic quoted verse and the "· Language" header suffix come from the
+/// cached chapter `BibleChapterCache.allLocalNotes()` resolves each note
+/// against; a note whose chapter isn't cached simply omits them.
 struct MyNotesView: View {
     let books: [BibleBook]
+    /// The language currently being read, if known (suppresses the suffix).
+    var currentLanguage: String? = nil
     let onSelect: (BibleNoteEntry) -> Void
 
     @State private var viewModel = MyNotesViewModel()
@@ -78,12 +80,21 @@ struct MyNotesView: View {
         var result: [Row] = []
         for key in order {
             guard let entries = groups[key], let first = entries.first else { continue }
-            result.append(.header(id: key, title: "\(bookName(for: first)) \(first.chapterNumber)"))
+            result.append(.header(id: key, title: headerTitle(for: first)))
             for entry in entries.sorted(by: { $0.verseNumber < $1.verseNumber }) {
                 result.append(.note(entry))
             }
         }
         return result
+    }
+
+    /// `_GroupHeader`: the language is only named when the note was written
+    /// in a different Bible language from the one being read.
+    private func headerTitle(for entry: BibleNoteEntry) -> String {
+        let base = "\(bookName(for: entry)) \(entry.chapterNumber)"
+        guard let language = entry.languageName, !language.isEmpty,
+              language.lowercased() != (currentLanguage ?? "").lowercased() else { return base }
+        return "\(base) \u{00B7} \(language)"
     }
 
     private func bookName(for entry: BibleNoteEntry) -> String {
@@ -148,6 +159,13 @@ struct MyNotesView: View {
             onSelect(entry)
         } label: {
             VStack(alignment: .leading, spacing: 0) {
+                if let verseText = entry.verseText, !verseText.isEmpty {
+                    Text("\u{201C} \(entry.verseNumber). \(verseText) \u{201D}")
+                        .font(.custom(Typography.fontFamily, size: 16, relativeTo: .body).weight(.light).italic())
+                        .foregroundStyle(ReadPalette.white)
+                        .multilineTextAlignment(.leading)
+                    Spacer().frame(height: 4)
+                }
                 HStack {
                     Text("Verse \(entry.verseNumber)")
                         .readText(Typography.bodySmall, weight: .bold)

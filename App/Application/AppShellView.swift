@@ -105,15 +105,13 @@ private struct TabRootView: View {
     let tab: AppTab
 
     var body: some View {
-        VStack(spacing: 0) {
-            // T19 — NoNetworkBanner's one real Dart mount point is
-            // home_screen.dart specifically, not a global app-shell overlay.
-            if tab == .home {
-                NoNetworkBanner()
-            }
-            content
-        }
-        .navigationTitle(Text(tab.titleKey))
+        // The banner now lives inside Home's scroll content (Flutter mounts
+        // it as the first sliver of `home_screen.dart`).
+        content
+            .navigationTitle(Text(tab.titleKey))
+            .navigationBarTitleDisplayMode(.inline)
+            // Home draws its own profile header; Flutter has no app bar there.
+            .toolbar(tab == .home ? .hidden : .automatic, for: .navigationBar)
     }
 
     @ViewBuilder

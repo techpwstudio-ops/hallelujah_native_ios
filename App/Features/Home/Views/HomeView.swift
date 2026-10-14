@@ -86,6 +86,7 @@ struct HomeView: View {
         let model = store.model(for: selected)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                NoNetworkBanner()
                 HomeParallaxHeaderBlock()
                 Section {
                     feed(model)

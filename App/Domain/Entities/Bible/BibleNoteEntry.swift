@@ -14,4 +14,8 @@ struct BibleNoteEntry: Sendable, Equatable, Identifiable {
     let verseNumber: Int
     let content: String
     let updatedAt: Date
+    /// Resolved from the cached chapter that holds this verse; `nil` when
+    /// that chapter was never cached on this device.
+    var verseText: String? = nil
+    var languageName: String? = nil
 }

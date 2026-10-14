@@ -8,9 +8,8 @@ import SwiftUI
 /// changed. Validation runs on Save-tap like the Dart `Form`; a successful
 /// save pops back with "Profile updated successfully".
 ///
-/// Known gap: the S3 presigned upload of a new photo (`/upload/generate/
-/// presigned`) has no native repository yet, so a newly cropped photo is
-/// previewed and counts as a change but is not uploaded (see report).
+/// A newly cropped photo is uploaded through `UploadRepository` (presigned
+/// S3 PUT) on Save and its key sent as `image`, like `AuthBloc._updateProfile`.
 struct ProfileView: View {
     var body: some View {
         // `.toastOverlay()` must wrap a *child* view, not decorate this same
@@ -531,7 +530,8 @@ private struct ProfileContentView: View {
             fName: fNameTrimmed,
             lName: lNameTrimmed,
             dateOfBirth: Self.isoFormatter.string(from: dateOfBirth),
-            gender: gender
+            gender: gender,
+            imageFileURL: imageLocalURL
         )
 
         if success {
