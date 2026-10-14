@@ -9,7 +9,7 @@ import UIKit
 /// `@UIApplicationDelegateAdaptor` solely to receive that one callback and
 /// forward it to the single registered `DownloadEngine` — everything else
 /// about app lifecycle stays on the SwiftUI `App`/`Scene` path, unchanged.
-final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate, @preconcurrency MessagingDelegate {
     func application(
         _ application: UIApplication,
         handleEventsForBackgroundURLSession identifier: String,

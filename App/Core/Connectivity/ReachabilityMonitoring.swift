@@ -10,6 +10,7 @@
 /// `AppNavigationCoordinator`/`SplashViewModel`'s own un-Sendable
 /// MainActor-class shape — unlike `ClockProviding`/`CrashReporting`/etc.,
 /// nothing needs to call this from off the main actor.
+@MainActor
 protocol ReachabilityMonitoring: AnyObject {
     /// Defaults `true` until a status is confirmed, mirroring Dart's
     /// `isOnline => _isOnline ?? true` ("assume online until confirmed
