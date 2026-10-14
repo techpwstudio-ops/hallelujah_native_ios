@@ -1,4 +1,0 @@
-module GoogleAdsOnDeviceConversionTarget {
-umbrella "/Users/teja/Library/Developer/Xcode/DerivedData/GHallelujah-gbibqdcnhicikoamsawfghmzatjf/SourcePackages/checkouts/google-ads-on-device-conversion-ios-sdk/GoogleAdsOnDeviceConversionWrapper/include"
-export *
-}

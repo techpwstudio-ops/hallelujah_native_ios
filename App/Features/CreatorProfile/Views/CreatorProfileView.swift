@@ -7,7 +7,7 @@ import SwiftUI
 ///
 /// Left out of this pass, all deliberate scope cuts:
 /// - The collapsing `SliverAppBar` hero-image parallax and the "⋮" creator
-///   menu itself (`showCreatorMenu`) — cosmetic/secondary. A plain header +
+///   hero parallax — cosmetic. A plain header +
 ///   `ScrollView` carries the same information. Share (T68) is wired as its
 ///   own `shareButton` rather than reviving that menu just to hold one item;
 ///   report has no native endpoint wiring and stays out.
@@ -17,7 +17,7 @@ import SwiftUI
 ///   what a tap should actually do; rows here are display-only for now.
 struct CreatorProfileView: View {
     @State private var viewModel: CreatorProfileViewModel
-    @State private var isSharePresented = false
+    @State private var menuTarget: ContentMenuTarget?
     @Environment(\.appTheme) private var theme
 
     init(creatorId: String) {
@@ -47,19 +47,9 @@ struct CreatorProfileView: View {
         }
         .background(theme.color(.backgroundPrimary))
         .task { await viewModel.onAppear() }
-        .appSheet(isPresented: $isSharePresented) {
-            if let creator = viewModel.creator {
-                ShareSheetView(
-                    target: .creator(id: creator.id),
-                    title: creator.name ?? "",
-                    subtitle: nil,
-                    artworkURL: ArtworkURLResolver().resolve(
-                        path: creator.image,
-                        variant: .lg,
-                        allowedVariants: creator.imageVariants
-                    )
-                )
-            }
+        .contentMenu(target: $menuTarget) {
+            // The menu can follow/unfollow; refresh so the header chip agrees.
+            Task { await viewModel.loadCreator() }
         }
     }
 
@@ -105,7 +95,7 @@ struct CreatorProfileView: View {
 
                     Spacer()
 
-                    shareButton
+                    moreButton(for: creator)
                 }
 
                 if let bio = creator.bio, !bio.isEmpty {
@@ -118,14 +108,15 @@ struct CreatorProfileView: View {
         }
     }
 
-    private var shareButton: some View {
-        Button {
-            isSharePresented = true
-        } label: {
-            theme.icon(.share)
+    /// `showCreatorMenu`: share, add the artist's songs to the queue, and
+    /// add/remove from the library.
+    private func moreButton(for creator: Creator) -> some View {
+        Button { menuTarget = .creator(creator) } label: {
+            theme.icon(.more)
                 .foregroundStyle(theme.color(.textSecondary))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("More")
     }
 
     // MARK: - Tabs

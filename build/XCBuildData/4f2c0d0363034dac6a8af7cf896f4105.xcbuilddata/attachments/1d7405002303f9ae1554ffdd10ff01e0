@@ -1,4 +1,0 @@
-module AppCheckRecaptchaProvider {
-header "AppCheckRecaptchaProvider-Swift.h"
-export *
-}

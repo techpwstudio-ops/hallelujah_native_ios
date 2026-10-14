@@ -93,17 +93,25 @@ struct ContentMenuSheet: View {
 extension View {
     /// Presents the container menu for `target` (set it to show, it resets to
     /// `nil` on dismissal) and toasts whatever the chosen action reports.
-    func contentMenu(target: Binding<ContentMenuTarget?>) -> some View {
-        modifier(ContentMenuPresenter(target: target))
+    func contentMenu(target: Binding<ContentMenuTarget?>, onDismiss: (() -> Void)? = nil) -> some View {
+        modifier(ContentMenuPresenter(target: target, onDismiss: onDismiss))
     }
 }
 
 private struct ContentMenuPresenter: ViewModifier {
     @Binding var target: ContentMenuTarget?
+    let onDismiss: (() -> Void)?
     @Environment(\.toastCenter) private var toastCenter
 
     private var isPresented: Binding<Bool> {
-        Binding(get: { target != nil }, set: { if !$0 { target = nil } })
+        Binding(
+            get: { target != nil },
+            set: {
+                guard !$0 else { return }
+                target = nil
+                onDismiss?()
+            }
+        )
     }
 
     func body(content: Content) -> some View {
@@ -112,6 +120,7 @@ private struct ContentMenuPresenter: ViewModifier {
                 ContentMenuSheet(target: target) { outcome in
                     if case .message(let text) = outcome { toastCenter.show(text) }
                     self.target = nil
+                    onDismiss?()
                 }
             }
         }

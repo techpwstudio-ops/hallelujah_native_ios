@@ -1,5 +1,7 @@
 # Xcode
 DerivedData/
+# Local `xcodebuild` products (an accidental 75 MB of frameworks was once committed).
+build/
 *.xcuserstate
 xcuserdata/
 .DS_Store
