@@ -230,11 +230,10 @@ extension Endpoint {
     }
 
     // MARK: User playlists (T45) — `userPlaylist.controller.js`, routes
-    // confirmed directly against `dashboard.routes.js:228-238`. Reorder,
-    // the song-menu "add to playlist" sheet, visibility toggle, follow/
-    // unfollow, share, and add-to-queue are all out of scope for T45 — see
-    // its own status-log entry — so `togglePlaylistVisibility`/
-    // `togglePlaylistFollowing`/`shareUserPlaylist` have no endpoint here.
+    // confirmed directly against `dashboard.routes.js:228-238`. Reorder and
+    // the song-menu "add to playlist" sheet remain out of scope; visibility
+    // toggle, follow/unfollow and share (link minted by `Endpoint+Share.swift`)
+    // are wired below.
 
     /// `getUserPlaylists` — `/library/user-playlist?page=`. `perPage`
     /// defaults server-side to 10 and is never sent, same precedent as
@@ -273,6 +272,22 @@ extension Endpoint {
     /// body `{songIds: [String]}`.
     static func detachSongsFromPlaylist(playlistId: String) -> Endpoint {
         .post("/library/user-playlist/\(playlistId)/detach")
+    }
+
+    /// `toggleUserPlaylistVisibilityApi` — `/library/user-playlist/:id/visibility`.
+    /// `end_points.dart` comments it PATCH, but the only caller
+    /// (`UserPlaylistBloc.toggleUserPlaylistVisibility`) sends it through
+    /// `DioApi.getData`, i.e. GET — the request the server demonstrably
+    /// accepts, so that is what is mirrored. No body.
+    static func toggleUserPlaylistVisibility(id: String) -> Endpoint {
+        .get("/library/user-playlist/\(id)/visibility")
+    }
+
+    /// `toggleFollowUserPlaylistApi` — `/library/user-playlist/:id/follow`.
+    /// Commented POST in `end_points.dart`, but `toggleFollowUserPlaylist`
+    /// calls `DioApi.getData`, i.e. GET. No body.
+    static func toggleFollowUserPlaylist(id: String) -> Endpoint {
+        .get("/library/user-playlist/\(id)/follow")
     }
 
     /// `getSongsByUserPlaylist` — `/library/user-playlist/:playlistId/songs?page=`.

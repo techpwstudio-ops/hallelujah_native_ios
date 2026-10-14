@@ -7,6 +7,8 @@ enum UserPlaylistRepositoryError: Error, Sendable, Equatable {
     /// missing), but `UserPlaylistSongsResponseDTO.toDomain()` has no domain
     /// default worth inventing for a missing owner.
     case missingPlaylist
+    /// A non-200 response that carried a server `message` (Dart toasts it).
+    case rejected(message: String)
 }
 
 final class RemoteUserPlaylistRepository: UserPlaylistRepository {
@@ -91,5 +93,31 @@ final class RemoteUserPlaylistRepository: UserPlaylistRepository {
             throw UserPlaylistRepositoryError.missingPlaylist
         }
         return page
+    }
+
+    func toggleVisibility(id: String) async throws -> UserPlaylist {
+        let response = try await client.send(.toggleUserPlaylistVisibility(id: id))
+        guard response.statusCode == 200 else {
+            if let message = Self.message(in: response.data) {
+                throw UserPlaylistRepositoryError.rejected(message: message)
+            }
+            throw UserPlaylistRepositoryError.unexpectedStatus(response.statusCode)
+        }
+        let decoded = try JSONDecoder().decode(UserPlaylistResponseDTO.self, from: response.data)
+        return decoded.data.toDomain()
+    }
+
+    func toggleFollow(id: String) async throws -> String {
+        let response = try await client.send(.toggleFollowUserPlaylist(id: id))
+        let message = Self.message(in: response.data)
+        guard response.statusCode == 200 else {
+            if let message { throw UserPlaylistRepositoryError.rejected(message: message) }
+            throw UserPlaylistRepositoryError.unexpectedStatus(response.statusCode)
+        }
+        return message ?? ""
+    }
+
+    private static func message(in data: Data) -> String? {
+        (try? JSONDecoder().decode(UserPlaylistMessageDTO.self, from: data))?.message
     }
 }

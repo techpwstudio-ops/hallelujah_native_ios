@@ -36,4 +36,10 @@ protocol UserPlaylistRepository: Sendable {
     func attachSongs(playlistID: String, songIDs: [String]) async throws
     func detachSongs(playlistID: String, songIDs: [String]) async throws
     func fetchSongs(playlistID: String, page: Int) async throws -> UserPlaylistSongsPage
+    /// `UserPlaylistBloc.toggleUserPlaylistVisibility`: returns the updated
+    /// playlist (`body['data']`).
+    func toggleVisibility(id: String) async throws -> UserPlaylist
+    /// `UserPlaylistBloc.toggleFollowUserPlaylist`: returns the server's
+    /// `message`, which Dart shows verbatim as the toast.
+    func toggleFollow(id: String) async throws -> String
 }

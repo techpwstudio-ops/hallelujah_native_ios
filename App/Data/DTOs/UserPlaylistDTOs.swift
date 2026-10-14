@@ -70,6 +70,11 @@ struct UserPlaylistResponseDTO: Decodable, Sendable {
     let data: UserPlaylistDTO
 }
 
+/// `{message}` — the toast text Dart shows for follow/visibility responses.
+struct UserPlaylistMessageDTO: Decodable, Sendable {
+    let message: String?
+}
+
 // MARK: - List envelope
 
 /// `getUserPlaylists`/`getSongsByUserPlaylist`'s shared meta shape
