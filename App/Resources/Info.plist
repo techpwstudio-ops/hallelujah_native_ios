@@ -74,6 +74,13 @@
 	     sets a placeholder root template only — T49 owns the real tab bar.
 	     Sibling `com.apple.developer.carplay-audio` entitlement is in
 	     `GHallelujah.entitlements`. -->
+	<!-- Siri voice play: the SiriIntentsExtension returns .continueInApp and iOS
+	     delivers the intent as an NSUserActivity of this type. -->
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>INPlayMediaIntent</string>
+	</array>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

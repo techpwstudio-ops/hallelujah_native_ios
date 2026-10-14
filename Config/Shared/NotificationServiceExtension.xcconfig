@@ -1,0 +1,9 @@
+// NotificationServiceExtension.xcconfig — rich-push image attachments (T66).
+// Inherits everything else from the project-level configuration xcconfig.
+
+PRODUCT_NAME = $(TARGET_NAME)
+PRODUCT_BUNDLE_IDENTIFIER = $(APP_BUNDLE_ID_BASE)$(APP_BUNDLE_ID_SUFFIX).NotificationServiceExtension
+GENERATE_INFOPLIST_FILE = NO
+INFOPLIST_FILE = Extensions/NotificationService/Info.plist
+SKIP_INSTALL = YES
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks

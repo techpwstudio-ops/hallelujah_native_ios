@@ -7,5 +7,9 @@
 	     this entitlement is an infra concern outside this task's scope. -->
 	<key>com.apple.developer.carplay-audio</key>
 	<true/>
+	<!-- Siri voice play ("play <song> in Hallelujah"); pairs with the
+	     SiriIntentsExtension target and NSUserActivityTypes in Info.plist. -->
+	<key>com.apple.developer.siri</key>
+	<true/>
 </dict>
 </plist>

@@ -1,0 +1,10 @@
+// SiriIntentsExtension.xcconfig — "Hey Siri, play <song> in Hallelujah" (INPlayMediaIntent).
+// Inherits everything else from the project-level configuration xcconfig.
+
+PRODUCT_NAME = $(TARGET_NAME)
+PRODUCT_BUNDLE_IDENTIFIER = $(APP_BUNDLE_ID_BASE)$(APP_BUNDLE_ID_SUFFIX).SiriIntents
+GENERATE_INFOPLIST_FILE = NO
+INFOPLIST_FILE = Extensions/SiriIntents/Info.plist
+CODE_SIGN_ENTITLEMENTS = Extensions/SiriIntents/SiriIntents.entitlements
+SKIP_INSTALL = YES
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks

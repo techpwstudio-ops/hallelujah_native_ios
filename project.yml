@@ -95,6 +95,32 @@ targets:
         product: GoogleSignIn
       - package: SocketIO
         product: SocketIO
+      # Extensions embed into the app bundle (PlugIns/). Rich push images
+      # (T66) and Siri voice play (CarPlay + phone).
+      - target: NotificationServiceExtension
+        embed: true
+      - target: SiriIntentsExtension
+        embed: true
+
+  NotificationServiceExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Extensions/NotificationService/Sources
+    configFiles:
+      Debug: Config/Shared/NotificationServiceExtension.xcconfig
+      Staging: Config/Shared/NotificationServiceExtension.xcconfig
+      Release: Config/Shared/NotificationServiceExtension.xcconfig
+
+  SiriIntentsExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Extensions/SiriIntents/Sources
+    configFiles:
+      Debug: Config/Shared/SiriIntentsExtension.xcconfig
+      Staging: Config/Shared/SiriIntentsExtension.xcconfig
+      Release: Config/Shared/SiriIntentsExtension.xcconfig
 
   GHallelujahTests:
     type: bundle.unit-test

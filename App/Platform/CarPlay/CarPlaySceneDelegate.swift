@@ -14,10 +14,12 @@ import UIKit
 /// file used has no equivalent here: `CarPlayController` talks to the same
 /// repositories and playback objects as the phone UI directly.
 ///
-/// Known gap vs the Flutter delegate: its `scene(_:continue:)` handled Siri's
-/// `INPlayMediaIntent` ("Hey Siri, play <song> in Hallelujah") via a separate
-/// SiriIntents extension. That extension doesn't exist in this native app
-/// yet, so Siri voice play isn't wired.
+/// Siri's `INPlayMediaIntent` ("Hey Siri, play <song> in Hallelujah") reaches
+/// the CarPlay scene through `scene(_:continue:)` below and is handled by
+/// `SiriPlayService`, as in the Flutter delegate. A cold launch where CarPlay
+/// is the only scene to connect is covered by the phone scene's
+/// `onContinueUserActivity` hook once that scene exists; whether iOS calls
+/// `scene(_:continue:)` for a CarPlay-only cold launch is unverified.
 final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     private let logger = AppLogger(category: .carPlay)
 
@@ -32,6 +34,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let controller = CarPlayController(interfaceController: interfaceController)
         self.controller = controller
         controller.start()
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        guard let query = SiriPlayService.query(from: userActivity) else { return }
+        Task { @MainActor in
+            await SiriPlayService().play(query: query)
+        }
     }
 
     func templateApplicationScene(

@@ -57,7 +57,7 @@ the CarPlay simulator or on a head unit.
 
 ## Known gaps
 
-- Siri "play X in Hallelujah" (`INPlayMediaIntent`) is not implemented natively.
+- Siri "play X in Hallelujah": implemented via `SiriIntentsExtension` + `SiriPlayService`; needs a device test (CarPlay-only cold launch unverified).
 - Recent *song* cards are resolved by searching their title (no song-by-id endpoint).
 - Downloads and Playlists lists do not live-refresh while open (Liked Songs does).
 - Auth guard is a simple signed-in check at connect time.

@@ -30,6 +30,11 @@ struct GHallelujahApp: App {
                 // `handle(url)` returns `true` only for a URL it recognizes
                 // as its own callback, matching the standard GoogleSignIn-iOS
                 // integration pattern.
+                // Siri voice play — hand-off from `SiriIntentsExtension`.
+                .onContinueUserActivity(SiriPlayService.activityType) { activity in
+                    guard let query = SiriPlayService.query(from: activity) else { return }
+                    Task { @MainActor in await SiriPlayService().play(query: query) }
+                }
                 .onOpenURL { url in
                     if GIDSignIn.sharedInstance.handle(url) { return }
                     DeepLinkService.shared.receive(url)
