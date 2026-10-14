@@ -13,9 +13,12 @@ import SwiftUI
 /// `AdBreakView` while an ad break is active, as `AudioPlayerScreen` swaps in
 /// `AdBreakScreen`.
 ///
+/// The ad takeover (`PlayerAdOverlay`) covers the artwork pager and the
+/// lingering `AdCompanionBanner` is pinned to the bottom, as in Flutter.
+///
 /// Not ported (data or services this codebase lacks): the creator card,
-/// credits, the related-content rail, the ad companion banner and the
-/// artwork pager's overscroll-to-skip gesture.
+/// credits, the related-content rail and the artwork pager's
+/// overscroll-to-skip gesture.
 struct FullPlayerView: View {
     @Environment(\.appTheme) private var theme
     @Environment(AppNavigationCoordinator.self) private var coordinator
@@ -24,6 +27,7 @@ struct FullPlayerView: View {
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var favouriteRepository: any FavouriteRepository = DependencyContainer.current.resolve()
     @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
+    @State private var playerAd: PlayerAdController = DependencyContainer.current.resolve()
     @State private var sleepTimer: SleepTimerController = DependencyContainer.current.resolve()
     @State private var isSharePresented = false
     @State private var isQueuePresented = false
@@ -32,6 +36,14 @@ struct FullPlayerView: View {
     @State private var menuSong: Song?
 
     private var song: Song? { engine.currentSong }
+
+    /// Nothing — the queue, a menu, a sheet, a pushed page — is covering the
+    /// player, so the ad's clock may run (`ModalRoute.isCurrentOf`).
+    private var isPlayerUncovered: Bool {
+        coordinator.playerPath.isEmpty
+            && !isSharePresented && !isQueuePresented && !isAddToPlaylistPresented
+            && !isSleepTimerSheetPresented && menuSong == nil
+    }
 
     private var subtitle: String {
         [song?.primaryArtists, song?.featuredArtists]
@@ -100,7 +112,15 @@ struct FullPlayerView: View {
     private var playerContent: some View {
         ScrollView {
             VStack(spacing: 0) {
-                PlayerArtworkPager(queueController: queueController)
+                // The ad takeover goes over the cover and nothing else: the
+                // title, progress bar and controls below it never change for an ad.
+                PlayerAdOverlay(
+                    controller: playerAd,
+                    onOpen: { ad in adPacing.openAction(for: ad, coordinator: coordinator) },
+                    isUncovered: isPlayerUncovered
+                ) {
+                    PlayerArtworkPager(queueController: queueController)
+                }
 
                 VStack(spacing: 0) {
                     headline
@@ -128,6 +148,10 @@ struct FullPlayerView: View {
         }
         .scrollBounceBehavior(.always)
         .background(PlayerStyle.black.ignoresSafeArea())
+        // `AdCompanionBanner`, bottom-aligned over the body.
+        .overlay(alignment: .bottom) {
+            AdCompanionBanner(pacing: adPacing)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { coordinator.dismissFullScreen() } label: {

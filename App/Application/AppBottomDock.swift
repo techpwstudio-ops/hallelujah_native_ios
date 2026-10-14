@@ -32,6 +32,11 @@ struct AppBottomDockView: View {
     // "dock is the one bridging point" reasoning as `audioEngine`/
     // `queueController` above.
     @State private var favouriteRepository: any FavouriteRepository = DependencyContainer.current.resolve()
+    // `MiniPlayerAdSlot`'s two ad sources (`AdPacingController`'s break,
+    // `PlayerAdController`'s image takeover), resolved here for the same
+    // "dock is the one bridging point" reasoning as above.
+    @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
+    @State private var playerAd: PlayerAdController = DependencyContainer.current.resolve()
     // T35 — shared with `FullScreenDestinationView`'s `.player` presentation
     // via `AppShellView`, letting the full player's `.navigationTransition(
     // .zoom(...))` originate from this exact pill's on-screen frame.
@@ -39,6 +44,12 @@ struct AppBottomDockView: View {
 
     var body: some View {
         VStack(spacing: Spacing.sm) {
+            // Rides above the pill, inset to the same margin, and only where
+            // the mini player is shown (`MiniPlayerAdSlot`), so a break the
+            // listener has backed out of still says so wherever they went.
+            if coordinator.isMiniPlayerVisible {
+                MiniPlayerAdSlot(pacing: adPacing, playerAd: playerAd)
+            }
             MiniPlayerDockView(
                 isVisible: coordinator.isMiniPlayerVisible,
                 engine: audioEngine,
