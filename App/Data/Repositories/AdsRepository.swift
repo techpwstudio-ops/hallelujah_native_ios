@@ -91,6 +91,8 @@ final class AdsRepository {
                 return nil
             }
 
+            rememberPacing(placement, ad.adLoad.pacingEveryN)
+
             if mutedCampaignIDs.contains(ad.campaignId) {
                 logger.debug("ads:skip placement=\(placement) reason=mutedCampaign campaignId=\(ad.campaignId)")
                 return nil
@@ -101,6 +103,47 @@ final class AdsRepository {
             logger.debug("ads:error placement=\(placement) error=\(error)")
             return nil
         }
+    }
+
+    /// `AdServeGate` (`lib/ads/ad_serve_gate.dart`) — one request per
+    /// placement-and-format at a time, and a remembered fill/no-fill verdict, so
+    /// a feed that mounts eight rail slots in one frame sends one probe, not
+    /// eight. Used by `serveThroughGate`.
+    let serveGate = AdServeGate()
+
+    /// `serve` behind `serveGate`: the entry point for surfaces that mount many
+    /// slots at once (the home feed's rail and banner ads). Nil on no-fill, on
+    /// any failure, or when the gate knows a request would be pointless.
+    func serveThroughGate(placement: String, assetType: String? = nil) async -> AdCreative? {
+        let key = AdServeGate.keyFor(placement, assetType)
+        guard let turn = await serveGate.admit(key) else { return nil }
+        defer { turn.failed() }
+        let ad = await serve(placement: placement, assetType: assetType)
+        if ad != nil { turn.filled() } else { turn.noFill() }
+        return ad
+    }
+
+    private static func pacingStorageKey(_ placement: String) -> String {
+        "ads_pacing_every_n:\(placement)"
+    }
+
+    /// The `adLoad.pacingEveryN` each placement reported this session.
+    private var pacingEveryNByPlacement: [String: Int] = [:]
+
+    /// `pacingEveryN` (Dart) — organic items between ads for `placement`, as
+    /// the server last reported it (this session, else the copy saved by an
+    /// earlier launch), or nil if it never has. A layout needs this BEFORE any
+    /// slot has asked for a creative.
+    func pacingEveryN(_ placement: String) -> Int? {
+        if let live = pacingEveryNByPlacement[placement] { return live }
+        let saved = UserDefaults.standard.integer(forKey: Self.pacingStorageKey(placement))
+        return saved > 0 ? saved : nil
+    }
+
+    private func rememberPacing(_ placement: String, _ everyN: Int?) {
+        guard let everyN, everyN > 0, pacingEveryNByPlacement[placement] != everyN else { return }
+        pacingEveryNByPlacement[placement] = everyN
+        UserDefaults.standard.set(everyN, forKey: Self.pacingStorageKey(placement))
     }
 
     /// Fire-and-forget: confirm `token`'s creative was genuinely rendered.
