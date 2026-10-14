@@ -14,8 +14,7 @@ import SwiftUI
 /// Skip chip, a non-seekable 6pt scrubber, the transport row (thumbs, inert
 /// prev/next, play-pause), and the footer line + CTA pill.
 ///
-/// Not ported: the app bar's ad-options sheet (no native equivalent yet), the
-/// two-back-presses escape hatch, the wide (16:9) picture variant (the native
+/// Not ported: the two-back-presses escape hatch, the wide (16:9) picture variant (the native
 /// `AdCreative` carries no `wideImageUrl`). Like / dislike persist through
 /// `AdsRepository.react`.
 struct AdBreakView: View {
@@ -46,7 +45,7 @@ private struct AudioAdBreak: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AdBreakAppBar()
+            AdBreakAppBar(pacing: pacing, ad: ad)
             AdBreakArtwork(ad: ad)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             AdBreakControlPanel(pacing: pacing, ad: ad, coordinator: coordinator)
@@ -74,7 +73,7 @@ private struct VideoAdBreak: View {
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                AdBreakAppBar()
+                AdBreakAppBar(pacing: pacing, ad: ad)
                     .background(scrim(fromTop: true))
                 Spacer(minLength: 0)
                 AdBreakControlPanel(pacing: pacing, ad: ad, coordinator: coordinator)
@@ -116,6 +115,9 @@ private struct AdVideoSurface: UIViewControllerRepresentable {
 /// `_AdBreakAppBar`: no back button; a 44pt leading space keeps the centred
 /// `bodySmall` white @ 70% line (max 2 lines) where it always sat.
 private struct AdBreakAppBar: View {
+    let pacing: AdPacingController
+    let ad: AdCreative
+
     var body: some View {
         HStack(spacing: 0) {
             Color.clear.frame(width: 44)
@@ -125,7 +127,15 @@ private struct AdBreakAppBar: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity)
-            Color.clear.frame(width: 44)
+            // `AdOptionsButton(style: plain, size: 24, onDismissAd:
+            // dismissAdBreakIfSkippable)` — respects the creative's own skip
+            // lock instead of handing out a second, hidden Skip.
+            AdOptionsButton(ad: ad, onDismissAd: {
+                guard pacing.canSkip else { return false }
+                pacing.skip()
+                return true
+            }, style: .plain, size: 24)
+            .padding(.trailing, 4)
         }
         .frame(height: PlayerStyle.toolbarHeight)
     }

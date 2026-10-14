@@ -112,6 +112,20 @@ final class AdsRepository {
         }
     }
 
+    /// `submitFeedback` — a mute kind keeps the campaign out of this session
+    /// at once (`mutedCampaignIDs`); the server owns the durable suppression.
+    /// Company ads have no paid token, so only the local mute applies.
+    func submitFeedback(ad: AdCreative, kind: AdFeedbackKind, reason: String? = nil, note: String? = nil) {
+        if kind.mutes { mutedCampaignIDs.insert(ad.campaignId) }
+        guard !ad.isCompany else { return }
+        var payload: [String: String] = ["token": ad.impressionToken, "kind": kind.wireValue]
+        if let reason { payload["reason"] = reason }
+        if let note = note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty { payload["note"] = note }
+        Task {
+            _ = try? await client.send(.post("/ads/feedback"), body: try? JSONSerialization.data(withJSONObject: payload))
+        }
+    }
+
     /// `_reactions` (Dart) — the thumb each served creative currently shows,
     /// keyed by impression token. Session-local.
     private var reactions: [String: AdReaction] = [:]
@@ -162,5 +176,61 @@ enum AdReaction: Sendable, Equatable {
     /// `nextReaction`: pressing the lit thumb takes it back; the other switches.
     static func next(current: AdReaction?, tapped: AdReaction) -> AdReaction? {
         current == tapped ? nil : tapped
+    }
+}
+
+/// `ads/ad_feedback.dart` — what a listener says about an ad from the ⋮ menu.
+enum AdFeedbackKind: Sendable, Equatable {
+    case interested
+    case notInterested
+    case report
+    case close
+
+    var wireValue: String {
+        switch self {
+        case .interested: "interested"
+        case .notInterested: "not_interested"
+        case .report: "report"
+        case .close: "close"
+        }
+    }
+
+    /// Whether this verdict keeps the campaign away from this listener.
+    var mutes: Bool {
+        switch self {
+        case .notInterested, .report: true
+        case .interested, .close: false
+        }
+    }
+}
+
+/// `AdFeedbackReasons` — the backend's vocabulary, keys not labels.
+enum AdFeedbackReason: String, Sendable, CaseIterable {
+    case notRelevant = "not_relevant"
+    case seenTooOften = "seen_too_often"
+    case dislikeBrand = "dislike_brand"
+    case inappropriate, misleading, sexual, violence, copyright, broken, other
+
+    /// `l10n.adReason*`.
+    var label: String {
+        switch self {
+        case .notRelevant: "Not relevant to me"
+        case .seenTooOften: "I've seen this too many times"
+        case .dislikeBrand: "I don't like this brand"
+        case .inappropriate: "Inappropriate or offensive"
+        case .misleading: "Misleading or a scam"
+        case .sexual: "Sexual content"
+        case .violence: "Violence or dangerous content"
+        case .copyright: "Copyright infringement"
+        case .broken: "The ad didn't work properly"
+        case .other: "Something else"
+        }
+    }
+
+    /// The two lists `_showReasonSheet` offers, in Flutter's order.
+    static func reasons(for kind: AdFeedbackKind) -> [AdFeedbackReason] {
+        kind == .report
+            ? [.inappropriate, .misleading, .sexual, .violence, .copyright, .broken, .other]
+            : [.notRelevant, .seenTooOften, .dislikeBrand, .other]
     }
 }

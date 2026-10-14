@@ -19,3 +19,27 @@ struct AdReactionTests {
         #expect(AdReaction.next(current: nil, tapped: .like) == .like)
     }
 }
+
+/// `ads/ad_feedback.dart`: wire values, which verdicts mute, reason lists.
+struct AdFeedbackTests {
+    @Test func wireValues() {
+        #expect(AdFeedbackKind.interested.wireValue == "interested")
+        #expect(AdFeedbackKind.notInterested.wireValue == "not_interested")
+        #expect(AdFeedbackKind.report.wireValue == "report")
+        #expect(AdFeedbackKind.close.wireValue == "close")
+    }
+
+    @Test func onlyNotInterestedAndReportMute() {
+        #expect(AdFeedbackKind.notInterested.mutes)
+        #expect(AdFeedbackKind.report.mutes)
+        #expect(!AdFeedbackKind.interested.mutes)
+        #expect(!AdFeedbackKind.close.mutes)
+    }
+
+    @Test func reasonListsFollowTheKind() {
+        #expect(AdFeedbackReason.reasons(for: .notInterested) == [.notRelevant, .seenTooOften, .dislikeBrand, .other])
+        #expect(AdFeedbackReason.reasons(for: .report).count == 7)
+        #expect(AdFeedbackReason.reasons(for: .report).last == .other)
+        #expect(AdFeedbackReason.notRelevant.rawValue == "not_relevant")
+    }
+}

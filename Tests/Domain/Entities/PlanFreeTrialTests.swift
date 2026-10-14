@@ -6,10 +6,8 @@ import Testing
 /// numbers or numeric strings; an all-zero or malformed block is "no trial".
 struct PlanFreeTrialTests {
     private func decodePlan(freeTrial: String?) throws -> SubscriptionPlan {
-        let trial = freeTrial.map { ",\\"freeTrial\\":\\($0)" } ?? ""
-        let json = """
-        {"id":"p1","name":"Premium","billingCycle":"monthly"\\(trial)}
-        """
+        let trial = freeTrial.map { ",\"freeTrial\":\($0)" } ?? ""
+        let json = "{\"id\":\"p1\",\"name\":\"Premium\",\"billingCycle\":\"monthly\"\(trial)}"
         return try JSONDecoder().decode(SubscriptionPlan.self, from: Data(json.utf8))
     }
 
