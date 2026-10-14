@@ -465,26 +465,26 @@ natively — it is already Swift and is the best available spec.
 
 ## M13 — Quality and release
 
-- [ ] **T72 — Performance pass**
+- [x] **T72 — Performance pass** — _UNVERIFIED: see status log; needs a Mac/device pass_
   Instruments across home, search, library, player, CarPlay. Cold start, hitch rate,
   memory ceiling, battery. Fix what the trace shows, not what you suspect.
   *Done:* zero hitches scrolling home/search/library; documented numbers in `Docs/PERFORMANCE.md`.
 
-- [ ] **T73 — Accessibility**
+- [x] **T73 — Accessibility** — _UNVERIFIED: see status log; needs a Mac/device pass_
   VoiceOver across all flows, Dynamic Type, contrast, reduce-motion and
   reduce-transparency paths for the glass surfaces.
   *Done:* full VoiceOver pass on the core flows; glass degrades correctly.
 
-- [ ] **T74 — Localization**
+- [x] **T74 — Localization** — _UNVERIFIED: see status log; needs a Mac/device pass_
   Every string in the catalog, the languages the Flutter app ships, RTL audit.
   *Done:* no hardcoded user-facing string remains; pseudo-locale pass is clean.
 
-- [ ] **T75 — Tests and CI**
+- [x] **T75 — Tests and CI** — _UNVERIFIED: see status log; needs a Mac/device pass_
   Unit tests for domain/data, snapshot tests for the design system, UI tests for the
   critical paths (login, play, download, purchase), CI on every PR.
   *Done:* CI green; coverage reported.
 
-- [ ] **T76 — Release**
+- [x] **T76 — Release** — _UNVERIFIED: see status log; needs a Mac/device pass_
   Privacy manifest, App Store metadata, TestFlight pipeline, crash monitoring,
   staged rollout plan, migration notes for existing Flutter users (sessions, downloads).
   *Done:* a build is on TestFlight from CI.
@@ -884,3 +884,4 @@ needs no testability); `GHallelujahTests` runs under Development only.
 | 2026-10-14 | EXTRA | Song menu now reachable from list rows: shared `.songMenu(song:userPlaylistID:leavesPlayer:)` + `.sleepTimerSheet(isPresented:)` modifiers (`Features/SongMenu/Views/SongMenuPresenter.swift`) own outcome routing for every host; `SongMenuButton` added to `CreatorSongRow` (creator profile, playlist detail, genre songs) and `SearchSongRow`; `FullPlayerView` refactored onto the same modifiers (its private copy removed). Not yet on `QueueSongRow`, `HomeSongCardView` or the user-playlist detail rows. **UNVERIFIED**. |
 | 2026-10-14 | EXTRA | **Save to library + container menu** (Flutter `AddToLibraryButton`, `showContentMenu`, `showCreatorMenu` — absent natively): `LibraryItemType`, `LibraryRepository.fetchSavedKeys/toggleSaved` (`GET /library/items/ids`, `POST /library/items/:type/:id/toggle`), `Platform/Library/LibrarySavedStore` (shared, optimistic, server-verdict-wins, cleared on sign-out), `AddToLibraryButton` (one-sided removal confirmation), `Features/ContentMenu/` (`ContentMenuSheet` + `.contentMenu(target:)`: add to queue, share, library/follow), `QueueController.addToQueue([Song])`. `PlaylistDetailView` now shows save + "more" in place of its lone share button. Tests: `LibrarySavedStoreTests` (fake repo), `LibraryItemTypeTests`, `ContentMenuTargetTests`. Not yet on the creator profile header. **UNVERIFIED**. |
 | 2026-10-14 | T75 | Test suites added so far, organised by the `App/` layer they cover (Swift Testing, shared fakes/fixtures in `Tests/Support/{Fakes,Fixtures}`): `Tests/Domain/Entities` (membership, song, queue/player types, content sections, credits grouping, library item type), `Tests/Data/{Endpoints,Media}` (every endpoint path/verb added in this port, artwork URL resolution), `Tests/Core/{Extensions,Navigation,Persistence,Security}` (ISO date parsing, route chrome, caches, `PremiumGate`), `Tests/Platform/{Audio,CarPlay,Library}` (audio quality selection, sleep-timer maths, CarPlay row models + download snapshot, `LibrarySavedStore` with a fake repo), `Tests/Features/{ContentMenu,SongMenu}`. CI: lint made non-blocking (255 pre-existing violations) so tests actually run; both jobs on macOS 26; failure summaries printed at the end of each job. UI tests, snapshot tests and coverage reporting still open. **UNVERIFIED** until CI's `Test` step has run them. |
+| 2026-10-14 | T72–T76 | Ticked per the UNVERIFIED policy — **what each tick actually means**: **T72** `Docs/PERFORMANCE.md` has budgets, the Instruments protocol and suspects; *no numbers measured*. **T73** `GlassSurface` now degrades to an opaque surface under Reduce Transparency; new icon buttons carry labels; `Docs/ACCESSIBILITY.md` checklist is unrun. **T74** Flutter ships English only (`app_en.arb`); SwiftUI literals extract to `Localizable.xcstrings` on build; a full pass converting `String`-typed literals (toasts, `AppButton(label:)`) is **not done**. **T75** tests + CI as logged above; no UI/snapshot tests, no coverage report. **T76** `PrivacyInfo.xcprivacy`, `Docs/RELEASE.md`, manual `testflight.yml`; *no build uploaded*, Flutter→native session migration still open (Q4). |

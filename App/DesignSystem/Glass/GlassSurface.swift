@@ -33,6 +33,11 @@ struct GlassSurface<S: InsettableShape, Content: View>: View {
     private let isInteractive: Bool
     private let content: Content
 
+    /// T73 — with Reduce Transparency on, glass degrades to an opaque
+    /// surface. iOS 26's own `glassEffect` already adapts to the setting; the
+    /// material fallback below does not, so it is handled here.
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     init(
         _ variant: GlassVariant = .regular,
         in shape: S,
@@ -49,6 +54,11 @@ struct GlassSurface<S: InsettableShape, Content: View>: View {
         if #available(iOS 26.0, *) {
             content
                 .glassEffect(glass, in: shape)
+        } else if reduceTransparency {
+            content
+                .background { shape.fill(ColorToken.backgroundElevated.color) }
+                .overlay { shape.strokeBorder(ColorToken.glassStroke.color, lineWidth: 1) }
+                .clipShape(shape)
         } else {
             content
                 .background {
