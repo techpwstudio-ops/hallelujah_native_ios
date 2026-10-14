@@ -50,4 +50,12 @@ struct EndpointTests {
         #expect(Endpoint.get("/x").base == .api)
         #expect(Endpoint.get("/x", base: .proxy).base == .proxy)
     }
+
+    @Test func uploadCreatorAndPremiumEndpoints() {
+        #expect(Endpoint.presignedUpload.path == "/upload/generate/presigned")
+        #expect(Endpoint.presignedUpload.method == .post)
+        #expect(Endpoint.allCreators(page: 4).path == "/creators?page=4")
+        #expect(Endpoint.cancelSubscription.path == "/premium/subscription/cancel")
+        #expect(Endpoint.cancelSubscription.method == .get)
+    }
 }
