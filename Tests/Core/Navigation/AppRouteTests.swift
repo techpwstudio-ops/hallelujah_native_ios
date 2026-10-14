@@ -14,6 +14,6 @@ struct AppRouteTests {
     }
 
     @Test func downloadsKeepsTheTabBar() {
-        #expect(!AppRoute.downloads.hidesTabBar)
+        #expect(!AppRoute.downloads(type: "all").hidesTabBar)
     }
 }

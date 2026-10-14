@@ -177,7 +177,7 @@ private struct AppRouteDestinationView: View {
         case let .seeAllArtists(type, title, dataID, _):
             SeeAllArtistsView(type: type, title: title, uiId: dataID)
         case .recentSongs:
-            RecentSongsView(type: .all)
+            RecentSongsView()
         case let .creatorSongs(creatorID, userPlaylistID):
             CreatorProfileView(creatorID: creatorID, userPlaylistID: userPlaylistID)
         case .episodes:

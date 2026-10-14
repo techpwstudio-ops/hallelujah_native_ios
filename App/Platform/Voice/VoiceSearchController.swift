@@ -103,11 +103,9 @@ final class VoiceSearchController {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         input.removeTap(onBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self, request] buffer, _ in
-            request.append(buffer)
-            let level = Self.normalisedLevel(buffer)
-            Task { @MainActor [weak self] in self?.level = level }
-        }
+        input.installTap(onBus: 0, bufferSize: 1024, format: format, block: Self.makeTapBlock(request: request) { [weak self] level in
+            Task { @MainActor in self?.level = level }
+        })
         engine.prepare()
         try engine.start()
 
@@ -216,6 +214,18 @@ final class VoiceSearchController {
         guard pausedMusic else { return }
         pausedMusic = false
         audio.resume()
+    }
+
+    /// Built outside the main actor: the tap runs on the audio thread.
+    nonisolated private static func makeTapBlock(
+        request: SFSpeechAudioBufferRecognitionRequest,
+        onLevel: @escaping @Sendable (Double) -> Void
+    ) -> @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void {
+        nonisolated(unsafe) let request = request
+        return { buffer, _ in
+            request.append(buffer)
+            onLevel(normalisedLevel(buffer))
+        }
     }
 
     nonisolated private static func normalisedLevel(_ buffer: AVAudioPCMBuffer) -> Double {

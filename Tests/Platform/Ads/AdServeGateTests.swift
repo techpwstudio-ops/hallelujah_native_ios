@@ -8,7 +8,7 @@ struct AdServeGateTests {
         var now = Date(timeIntervalSince1970: 5_000)
     }
 
-    private func gate(_ clock: Clock, maxProbeWait: Duration = .seconds(20)) -> AdServeGate {
+    private func makeGate(_ clock: Clock, maxProbeWait: Duration = .seconds(20)) -> AdServeGate {
         AdServeGate(maxProbeWait: maxProbeWait, now: { clock.now })
     }
 
@@ -19,7 +19,7 @@ struct AdServeGateTests {
 
     @Test func noFillTurnsEveryoneAwayUntilItExpires() async {
         let clock = Clock()
-        let gate = gate(clock)
+        let gate = makeGate(clock)
         let turn = await gate.admit("p")
         #expect(turn != nil)
         turn?.noFill()
@@ -33,7 +33,7 @@ struct AdServeGateTests {
 
     @Test func noFillHonoursAServerRetryAfter() async {
         let clock = Clock()
-        let gate = gate(clock)
+        let gate = makeGate(clock)
         let turn = await gate.admit("p")
         turn?.noFill(retryAfter: 5)
         #expect(gate.noFillRemaining("p") == 5)
@@ -41,7 +41,7 @@ struct AdServeGateTests {
 
     @Test func fillLetsEveryoneStraightThrough() async {
         let clock = Clock()
-        let gate = gate(clock)
+        let gate = makeGate(clock)
         let probe = await gate.admit("p")
         probe?.filled()
         #expect(await gate.admit("p") != nil)
@@ -51,7 +51,7 @@ struct AdServeGateTests {
 
     @Test func waitersTakeTheProbesVerdict() async {
         let clock = Clock()
-        let gate = gate(clock)
+        let gate = makeGate(clock)
         let probe = await gate.admit("p")
         #expect(probe != nil)
 
@@ -68,7 +68,7 @@ struct AdServeGateTests {
 
     @Test func waitersAreLetThroughWhenTheProbeFills() async {
         let clock = Clock()
-        let gate = gate(clock)
+        let gate = makeGate(clock)
         let probe = await gate.admit("p")
 
         async let waiter = gate.admit("p")
@@ -81,7 +81,7 @@ struct AdServeGateTests {
 
     @Test func failedProbeRemembersNothingButReleasesWaiters() async {
         let clock = Clock()
-        let gate = gate(clock)
+        let gate = makeGate(clock)
         let probe = await gate.admit("p")
 
         async let waiter = gate.admit("p")
@@ -96,14 +96,14 @@ struct AdServeGateTests {
 
     @Test func aWaiterGivesUpOnASlowProbe() async {
         let clock = Clock()
-        let gate = gate(clock, maxProbeWait: .milliseconds(30))
+        let gate = makeGate(clock, maxProbeWait: .milliseconds(30))
         _ = await gate.admit("p")
         #expect(await gate.admit("p") == nil)
     }
 
     @Test func forceAlwaysAdmitsWithoutOpeningAProbe() async {
         let clock = Clock()
-        let gate = gate(clock)
+        let gate = makeGate(clock)
         let first = await gate.admit("p")
         first?.noFill()
         #expect(await gate.admit("p", force: true) != nil)
@@ -111,7 +111,7 @@ struct AdServeGateTests {
 
     @Test func reportingIsIdempotent() async {
         let clock = Clock()
-        let gate = gate(clock)
+        let gate = makeGate(clock)
         let turn = await gate.admit("p")
         turn?.filled()
         turn?.noFill()
@@ -122,7 +122,7 @@ struct AdServeGateTests {
 
     @Test func resetForgetsRememberedVerdicts() async {
         let clock = Clock()
-        let gate = gate(clock)
+        let gate = makeGate(clock)
         let turn = await gate.admit("p")
         turn?.noFill()
         gate.reset()
