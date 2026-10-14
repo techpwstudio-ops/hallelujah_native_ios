@@ -1,71 +1,103 @@
 import SwiftUI
 
-/// T35 — ports `SongLyricsDetails` (`lib/widgets/player/lyrics_ui.dart`):
-/// a glass card shown only when the current song has transcripts, holding
-/// a non-interactive, position-synced lyrics preview plus a button to the
-/// real lyrics screen. `AbsorbPointer` (Dart) maps to `.scrollDisabled(true)`
-/// here — the preview auto-scrolls with playback, it never takes a manual
-/// scroll gesture of its own. `SongLyricsPage` itself (`lib/views/home/
-/// SongLyricsPage.dart`) is T36's screen — this pushes the already-existing
-/// `PlayerRoute.lyrics` placeholder, same "T35 supplies the entry point"
-/// split already used for the queue button.
+/// Ports `SongLyricsDetails` + `LyricsPreview` (`lib/widgets/player/
+/// lyrics_ui.dart`, `lyrics_preview.dart`): a 20pt-radius card (top-left to
+/// bottom-right gradient white 7% -> 3%, 1pt white 12% border) holding a
+/// "Lyrics" header, a 220pt non-interactive, position-synced preview with
+/// faded edges, and a "View Full Lyrics" pill. Shown only when the song has
+/// transcripts. The active line is `lastIndexWhere(start <= position)`; the
+/// preview scrolls it to 40% of the viewport over 350 ms easeOutCubic.
 struct PlayerLyricsPreviewCard: View {
-    @Environment(\.appTheme) private var theme
     let song: Song
     let currentPosition: TimeInterval
     let onViewFull: () -> Void
 
     private static let previewHeight: CGFloat = 220
+    private static let cardRadius: CGFloat = 20
+    private static let scrollAnimation = Animation.timingCurve(0.215, 0.61, 0.355, 1.0, duration: 0.35)
+    /// `labelLarge` with w500 / 0.5 tracking, `labelMedium` with w600 / 0.3.
+    private static let headerToken = TypographyToken(size: 14, weight: .medium, lineHeightMultiple: 1, tracking: 0.5)
+    private static let buttonToken = TypographyToken(size: 12, weight: .semibold, lineHeightMultiple: 1, tracking: 0.3)
+    private static let topAnchorID = "lyrics-preview-top"
 
     private var transcripts: [LyricsTranscript] { song.transcripts ?? [] }
 
-    /// `_updateForSeconds` (`lib/widgets/player/lyrics_preview.dart`) and
-    /// `SongLyricsPage._onPositionChanged` (`SongLyricsPage.dart:86-93`)
-    /// both use `lines.lastIndexWhere((l) => l.start <= seconds)` — the
-    /// LAST line whose start has passed, ignoring `end` entirely, so a
-    /// line stays highlighted until the next one starts even past its own
-    /// `end`. `first { start <= pos < end }` (the previous version of this
-    /// property) is a different, un-ported range check.
-    private var activeLineID: String? {
-        transcripts.last { currentPosition >= $0.startTime }?.id
+    private var activeIndex: Int? {
+        var result: Int?
+        for (index, line) in transcripts.enumerated() where currentPosition >= line.startTime {
+            result = index
+        }
+        return result
     }
 
     var body: some View {
         if !transcripts.isEmpty {
-            GlassSurface(.regular, cornerRadius: Radius.xl) {
-                VStack(alignment: .leading, spacing: Spacing.md) {
-                    Text("Lyrics")
-                        .typography(Typography.titleSmall)
-                        .foregroundStyle(theme.color(.textPrimary))
-
-                    preview
-
-                    viewFullButton
-                }
-                .padding(Spacing.md)
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+                preview
+                    .frame(height: Self.previewHeight)
+                    .padding(.top, 10)
+                viewFullButton
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 10)
+                    .padding(.bottom, 14)
             }
+            .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    colors: [PlayerStyle.whiteAlpha(0.07), PlayerStyle.whiteAlpha(0.03)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Self.cardRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: Self.cardRadius, style: .continuous)
+                    .strokeBorder(PlayerStyle.whiteAlpha(0.12), lineWidth: 1)
+            }
+            .padding(.vertical, 12)
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "quote.bubble")
+                .font(.system(size: 16))
+                .foregroundStyle(PlayerStyle.whiteAlpha(0.6))
+            Text("Lyrics")
+                .typography(Self.headerToken)
+                .foregroundStyle(PlayerStyle.whiteAlpha(0.6))
         }
     }
 
     private var preview: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    ForEach(transcripts) { line in
-                        Text(line.text ?? "")
-                            .typography(Typography.bodyMedium)
-                            .foregroundStyle(line.id == activeLineID ? theme.color(.textPrimary) : theme.color(.textSecondary))
-                            .id(line.id)
+                VStack(spacing: 4) {
+                    Color.clear.frame(height: 0).id(Self.topAnchorID)
+                    ForEach(Array(transcripts.enumerated()), id: \.element.id) { index, line in
+                        LyricsLineItem(
+                            text: line.text ?? "",
+                            isActive: index == activeIndex,
+                            isPast: activeIndex.map { index < $0 } ?? false
+                        )
+                        .id(line.id)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 8)
             }
             .scrollDisabled(true)
-            .frame(height: Self.previewHeight)
-            .onChange(of: activeLineID) { _, newValue in
-                guard let newValue else { return }
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    proxy.scrollTo(newValue, anchor: .center)
+            .allowsHitTesting(false)
+            .mask(LyricsEdgeFadeMask())
+            .onChange(of: activeIndex) { _, newValue in
+                withAnimation(Self.scrollAnimation) {
+                    if let newValue, transcripts.indices.contains(newValue) {
+                        proxy.scrollTo(transcripts[newValue].id, anchor: UnitPoint(x: 0.5, y: 0.4))
+                    } else {
+                        proxy.scrollTo(Self.topAnchorID, anchor: .top)
+                    }
                 }
             }
         }
@@ -74,14 +106,16 @@ struct PlayerLyricsPreviewCard: View {
     private var viewFullButton: some View {
         Button(action: onViewFull) {
             Text("View Full Lyrics")
-                .typography(Typography.labelLarge)
-                .foregroundStyle(theme.color(.textPrimary))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.sm)
+                .typography(Self.buttonToken)
+                .foregroundStyle(PlayerStyle.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+                .background(PlayerStyle.whiteAlpha(0.12), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(PlayerStyle.whiteAlpha(0.2), lineWidth: 0.8)
+                }
         }
         .buttonStyle(.plain)
-        .background {
-            Capsule(style: .continuous).strokeBorder(theme.color(.border), lineWidth: 1)
-        }
     }
 }

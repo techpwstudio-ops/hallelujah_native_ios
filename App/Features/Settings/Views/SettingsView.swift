@@ -1,40 +1,12 @@
 import SwiftUI
 
-/// Ports `SettingsPage` (`lib/views/settings_screen.dart`): a plain grouped
-/// list of account/preference/app/support rows, no view model — every row
-/// either reads an already-cached value (`CurrentUserStore`,
-/// `AudioQualitySelector`, `KeyValueStoring`) or fires a single navigation/
-/// side-effect call, the same posture `StorageSettingsView` (T47) already
-/// established for a settings-shaped screen with nothing worth a view model.
-///
-/// DELIBERATE SCOPE CUTS (grounded against the real Dart screen):
-/// 1. "Manage Family Members" (T63) is now a row below, gated on
-///    `showsManageFamilyMembersRow` — Dart's own gate minus the
-///    `SettingsService.instance.showSubscription` remote flag, matching the
-///    "Subscription" row's (T61) own precedent of omitting that flag.
-/// 2. No "Verse of Day" hide/unhide toggle — Dart's row only renders while
-///    `VerseOfDayHistoryBloc`'s `isHiddenToday` is true
-///    (`settings_screen.dart:261-278`), a home-screen feature not yet ported
-///    natively; it's conditional chrome, not an always-present settings
-///    fixture, so there's nothing to port until that bloc exists.
-/// 3. No premium-upsell banner — the "Listen Without Distractions" card at
-///    the top of Dart's screen (`settings_screen.dart:67-153`) is gated on
-///    the same `showSubscription`/`isOwner`/`isPremiumUser` state as item 1,
-///    for the same missing-subscription-infra reason.
-/// 4. No "Delete Account" row anywhere on this screen — matches the real
-///    Dart screen exactly (`settings_screen.dart` itself has no such row
-///    either). Account deletion lives one tap further inside Help & Support
-///    (`lib/views/support/dashboard.dart` -> `lib/views/support/
-///    delete_account.dart`), which is T71 (Support)'s job, not this
-///    screen's — this screen only links to Help & Support, below.
-///
-/// Two further, narrower deviations from a literal port, both explained at
-/// their call sites: Dart's "Security" heading (Help & Support + Logout,
-/// `settings_screen.dart:310`) is folded into a "Support" heading here per
-/// this task's brief, and a "Notifications" row is added under Preferences
-/// even though Dart's screen has no such row — routed to the already-
-/// existing `.notificationSettings` `AppRoute` case per this task's brief,
-/// ahead of the screen T66 is building to receive that push.
+/// Ports `SettingsPage` (`lib/views/settings_screen.dart`) 1:1: black scaffold,
+/// 12pt horizontal / 8pt vertical padding, optional premium upsell banner,
+/// flat `SettingsListItem` rows under `CustomHeading`s. The "Notifications"
+/// and "Storage" rows the earlier native cut added are gone: Flutter's
+/// settings screen has neither (notification settings is reachable only via
+/// its route). Icons are SF Symbol stand-ins for the Flutter SVG assets
+/// (see report for the asset list).
 struct SettingsView: View {
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.appTheme) private var theme
@@ -52,6 +24,7 @@ struct SettingsView: View {
     @State private var isDownloadOverWifiOnly = false
     @State private var isAudioQualityPickerPresented = false
     @State private var isLogoutConfirmationPresented = false
+    @State private var isVerseOfDayHidden = false
 
     /// `StorageService`'s key literal (`settings_screen.dart:248-249`),
     /// ported as-is — no native downloader reads it yet (T46/T47 gap), same
@@ -90,16 +63,9 @@ struct SettingsView: View {
         return languages.replacingOccurrences(of: ",", with: ", ")
     }
 
-    private var versionText: String {
-        let info = Bundle.main.infoDictionary
-        let shortVersion = info?["CFBundleShortVersionString"] as? String ?? "-"
-        let buildNumber = info?["CFBundleVersion"] as? String ?? "-"
-        return "\(shortVersion) (\(buildNumber))"
-    }
-
     private var logoutSubtitle: String {
-        let identity = user?.name ?? user?.mobile ?? user?.email ?? "—"
-        return "You're logged in as \(identity)"
+        let identity = user?.name ?? user?.mobile ?? user?.email ?? "-"
+        return "You are logged in as \(identity)."
     }
 
     /// Scope cut #1's own gating logic (`settings_screen.dart:170-198`:
@@ -112,100 +78,114 @@ struct SettingsView: View {
         return membership.isOwner && membership.subscription.isActive && membership.subscription.maxMembers > 1
     }
 
+    private var versionText: String {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "-"
+    }
+
+    private var showSubscription: Bool { RemoteSettings.current.showSubscription }
+    private var isOwner: Bool { membership?.isOwner != false }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
-                section("Account") {
-                    row(icon: "person.crop.circle", title: "Profile", subtitle: "View your profile page.") {
-                        coordinator.push(.profile)
-                    }
-                    row(icon: "creditcard", title: "Subscription", subtitle: "Manage your plan.") {
+            VStack(alignment: .leading, spacing: 0) {
+                if showSubscription && isOwner && !isPremium {
+                    upsellBanner
+                }
+                Spacer().frame(height: Dimens.verticalSpacing)
+                ParityHeading(text: "Account")
+                tile(icon: "person.circle", title: "Profile", subtitle: "View your profile page.") {
+                    coordinator.push(.profile)
+                }
+                if showSubscription {
+                    tile(icon: "creditcard", title: "Manage Subscription", subtitle: "Manage subscription plans") {
                         coordinator.push(.subscriptionPlans)
                     }
-                    if showsManageFamilyMembersRow {
-                        rowDivider
-                        row(icon: "person.2", title: "Manage Family Members") {
+                    if isPremium && isOwner && showsManageFamilyMembersRow {
+                        tile(icon: "person.2", title: "Manage Family Members", subtitle: "Manage upto 4 family members") {
                             coordinator.push(.manageFamilyMembers)
                         }
                     }
                 }
 
-                section("Preferences") {
-                    row(
-                        icon: "globe",
-                        title: "Content Languages",
-                        subtitle: contentLanguagesSubtitle
+                Spacer().frame(height: Dimens.dividerSpacing)
+                ParityHeading(text: "Preferences")
+                tile(icon: "globe", title: "Content Languages", subtitle: contentLanguagesSubtitle) {
+                    coordinator.push(.contentLanguage(label: "Choose Content Language", canPop: true))
+                }
+                if isPremium {
+                    tile(
+                        icon: "waveform",
+                        title: "Audio Quality",
+                        subtitle: "Selected audio quality is \(selectedAudioQuality.settingsLabel.lowercased())"
                     ) {
-                        coordinator.push(.contentLanguage(label: "Choose Content Language", canPop: true))
+                        isAudioQualityPickerPresented = true
                     }
-                    // T65 — shown to premium listeners only; Dart hides the
-                    // row for everyone else (`settings_screen.dart`).
-                    if isPremium {
-                        rowDivider
-                        row(
-                            icon: "waveform",
-                            title: "Audio Quality",
-                            subtitle: selectedAudioQuality.settingsLabel
-                        ) {
-                            isAudioQualityPickerPresented = true
-                        }
-                    }
-                    rowDivider
-                    SettingsRow(
-                        icon: "wifi",
-                        title: "Download Over Wi-Fi Only",
-                        trailing: .toggle(downloadOverWifiOnlyBinding)
+                }
+                ParityListTile(
+                    title: "Download Over Wi-Fi Only",
+                    subtitle: "If switched on, we will download content only with a Wi-Fi network",
+                    leading: { leadingIcon("arrow.down.circle") },
+                    trailing: { AppToggle(isOn: downloadOverWifiOnlyBinding) }
+                )
+                if isVerseOfDayHidden {
+                    ParityListTile(
+                        title: "Verse of Day",
+                        subtitle: "Hidden for today. Toggle to show.",
+                        leading: { leadingIcon("book") },
+                        trailing: { AppToggle(isOn: verseOfDayBinding) }
                     )
-                    rowDivider
-                    row(icon: "bell", title: "Notifications") {
-                        coordinator.push(.notificationSettings)
-                    }
-                    rowDivider
-                    NavigationLink {
-                        StorageSettingsView()
-                    } label: {
-                        SettingsRow(icon: "externaldrive", title: "Storage")
-                    }
-                    .buttonStyle(.plain)
                 }
 
-                section("App & Terms") {
-                    SettingsRow(icon: "info.circle", title: "Version", trailing: .value(versionText))
-                    rowDivider
-                    row(icon: "hand.raised", title: "Privacy Policy") {
-                        UIApplication.shared.open(AppConfiguration.current.privacyPolicyURL)
-                    }
-                    rowDivider
-                    row(icon: "doc.text", title: "Terms And Conditions") {
-                        UIApplication.shared.open(AppConfiguration.current.termsAndConditionsURL)
-                    }
+                Spacer().frame(height: Dimens.dividerSpacing)
+                ParityHeading(text: "App & Terms")
+                ParityListTile(
+                    title: "Version",
+                    subtitle: versionText,
+                    leading: {
+                        Image("AppLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 24, height: 24)
+                    },
+                    trailing: { EmptyView() }
+                )
+                tile(icon: "hand.raised", title: "Privacy Policy", subtitle: "Your data, your rights.") {
+                    UIApplication.shared.open(AppConfiguration.current.privacyPolicyURL)
+                }
+                tile(icon: "doc.text", title: "Terms And Conditions", subtitle: "All the details you need to know.") {
+                    UIApplication.shared.open(AppConfiguration.current.termsAndConditionsURL)
                 }
 
-                section("Support") {
-                    row(icon: "questionmark.circle", title: "Help & Support") {
-                        coordinator.push(.helpSupportDashboard)
-                    }
-                    rowDivider
-                    row(
-                        icon: "rectangle.portrait.and.arrow.right",
-                        title: "Log Out",
-                        subtitle: logoutSubtitle,
-                        isDestructive: true
-                    ) {
-                        isLogoutConfirmationPresented = true
+                Spacer().frame(height: Dimens.dividerSpacing)
+                ParityHeading(text: "Security")
+                tile(icon: "questionmark.circle", title: "Help & Support", subtitle: "For more info on support") {
+                    coordinator.push(.helpSupportDashboard)
+                }
+                tile(icon: "rectangle.portrait.and.arrow.right", title: "Logout", subtitle: logoutSubtitle) {
+                    isLogoutConfirmationPresented = true
+                }
+                if AppConfiguration.current.environment != .production {
+                    HStack {
+                        Spacer()
+                        ParityHeading(text: "You are tester")
+                            .fixedSize()
+                        Spacer()
                     }
                 }
+                Spacer().frame(height: 96)
             }
-            .padding(Spacing.md)
+            .padding(.vertical, Dimens.screenPaddingAll)
+            .padding(.horizontal, Dimens.screenPaddingAll * 1.5)
         }
-        .background(theme.color(.backgroundPrimary))
-        .navigationTitle("Settings")
+        .parityScaffold()
+        .parityNavTitle("Settings")
         .task {
             user = await currentUserStore.user
             membership = await membershipStore.membership
             isPremium = await premiumGate.hasPremium
             selectedAudioQuality = await audioQualitySelector.userSelectedQuality
             isDownloadOverWifiOnly = keyValueStore.bool(forKey: Self.downloadOverWifiOnlyKey)
+            isVerseOfDayHidden = VerseOfDayLocalStore(keyValueStore: keyValueStore).isHiddenToday
         }
         .confirmationDialog("Audio Quality", isPresented: $isAudioQualityPickerPresented, titleVisibility: .visible) {
             ForEach(AudioQuality.allCases, id: \.rawValue) { quality in
@@ -216,124 +196,76 @@ struct SettingsView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
-        .confirmationDialog(
-            "Are you sure you want to log out?",
+        .parityConfirmationDialog(
             isPresented: $isLogoutConfirmationPresented,
-            titleVisibility: .visible
+            message: "Are you sure to logout Hallelujah?"
         ) {
-            // `logout()` already triggers `session.logout()` +
-            // `currentUserStore.clear()` internally, which in turn fires
-            // `AppComposition`'s registered `session.setOnLogout` closure
-            // (`SignOutSignal.notify()` + downloads teardown) — calling
-            // anything else here would duplicate work it already does.
-            Button("Log Out", role: .destructive) {
-                Task { await authRepository.logout() }
+            // `logout()` already runs the full sign-out chain internally.
+            Task { await authRepository.logout() }
+        }
+    }
+
+    private var verseOfDayBinding: Binding<Bool> {
+        Binding(
+            get: { false },
+            set: { _ in
+                VerseOfDayLocalStore(keyValueStore: keyValueStore).unhide()
+                isVerseOfDayHidden = false
             }
-            Button("Cancel", role: .cancel) {}
-        }
+        )
     }
 
-    // MARK: - Section / row helpers
+    // MARK: - Pieces
 
-    private func section<Content: View>(_ heading: String, @ViewBuilder rows: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text(heading)
-                .typography(Typography.titleSmall)
-                .foregroundStyle(theme.color(.textSecondary))
-                .padding(.horizontal, Spacing.xs)
-
-            GlassSurface(.regular, cornerRadius: Radius.xl) {
-                VStack(spacing: 0) {
-                    rows()
-                }
-                .padding(.horizontal, Spacing.md)
-            }
-        }
+    private func leadingIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 22))
+            .foregroundStyle(AccountParity.white)
+            .frame(width: 24, height: 24)
     }
 
-    private func row(
-        icon: String,
-        title: String,
-        subtitle: String? = nil,
-        isDestructive: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            SettingsRow(icon: icon, title: title, subtitle: subtitle, isDestructive: isDestructive)
-        }
-        .buttonStyle(.plain)
+    private func tile(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        ParityListTile(
+            title: title,
+            subtitle: subtitle,
+            onTap: action,
+            leading: { leadingIcon(icon) },
+            trailing: { ParityArrowNext() }
+        )
     }
 
-    private var rowDivider: some View {
-        Divider()
-            .overlay(theme.color(.separator))
-    }
-}
-
-// MARK: - Row
-
-/// One settings row: leading SF Symbol (no `IconToken` case exists for a
-/// gear/person/bell/document/logout vocabulary, so this uses raw
-/// `Image(systemName:)` per this task's brief), title/subtitle, and a
-/// trailing chevron, value label, or toggle.
-private struct SettingsRow: View {
-    enum Trailing {
-        case chevron
-        case value(String)
-        case toggle(Binding<Bool>)
-        case none
-    }
-
-    let icon: String
-    let title: String
-    var subtitle: String? = nil
-    var isDestructive: Bool = false
-    var trailing: Trailing = .chevron
-
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        HStack(spacing: Spacing.md) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .frame(width: Spacing.lg)
-                .foregroundStyle(isDestructive ? theme.color(.statusError) : theme.color(.textSecondary))
-
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(title)
-                    .typography(Typography.bodyLarge)
-                    .foregroundStyle(isDestructive ? theme.color(.statusError) : theme.color(.textPrimary))
-                if let subtitle {
-                    Text(subtitle)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.textSecondary))
+    /// "Listen Without Distractions" card: 180pt, 12pt radius, 1pt border,
+    /// 0.2 -> 0.75 black gradient, content pinned 12pt from the bottom.
+    private var upsellBanner: some View {
+        ZStack(alignment: .bottomLeading) {
+            LinearGradient(
+                colors: [Color.black.opacity(0.2), Color.black.opacity(0.75)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Listen Without Distractions")
+                    .font(AccountParity.font(24, .bold))
+                    .foregroundStyle(AccountParity.white)
+                Spacer().frame(height: 8)
+                Text("Upgrade to Premium for ad-free worship, high-quality audio, and offline listening.")
+                    .font(AccountParity.bodyMedium)
+                    .foregroundStyle(AccountParity.white)
+                    .multilineTextAlignment(.leading)
+                Spacer().frame(height: 20)
+                ParityFilledButton(title: "Try Free For 1 Month") {
+                    coordinator.push(.subscriptionPlans)
                 }
             }
-
-            Spacer(minLength: Spacing.sm)
-
-            trailingView
+            .padding(12)
         }
-        .padding(.vertical, Spacing.sm)
-        .contentShape(Rectangle())
-    }
-
-    @ViewBuilder
-    private var trailingView: some View {
-        switch trailing {
-        case .chevron:
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(theme.color(.textTertiary))
-        case .value(let text):
-            Text(text)
-                .typography(Typography.bodyMedium)
-                .foregroundStyle(theme.color(.textSecondary))
-        case .toggle(let isOn):
-            AppToggle(isOn: isOn)
-        case .none:
-            EmptyView()
-        }
+        .frame(height: 180)
+        .background(AccountParity.black)
+        .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous)
+                .strokeBorder(AccountParity.border, lineWidth: Dimens.borderWidth)
+        )
     }
 }
 

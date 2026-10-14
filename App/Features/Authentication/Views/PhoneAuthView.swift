@@ -62,17 +62,18 @@ struct PhoneAuthView: View {
     }
 
     private var phoneInputRow: some View {
-        HStack(spacing: Spacing.sm) {
+        HStack(spacing: 0) {
             Button {
                 isFieldFocused = false
                 isCountryPickerPresented = true
             } label: {
-                HStack(spacing: 2) {
+                HStack(spacing: 0) {
                     Text(selectedCountry.dialCodeDisplay)
                         .typography(Typography.titleMedium)
                         .fontWeight(.semibold)
                         .foregroundStyle(.white)
                     theme.icon(.chevronDown)
+                        .font(.system(size: Dimens.iconSize))
                         .foregroundStyle(.white)
                 }
             }
@@ -81,11 +82,11 @@ struct PhoneAuthView: View {
             TextField(
                 "",
                 text: $digits,
-                prompt: Text("Enter phone number").foregroundStyle(AuthColors.hint)
+                prompt: Text("Enter phone number").font(Typography.bodyMedium.font).foregroundStyle(AuthColors.hint)
             )
             .keyboardType(.numberPad)
             .textContentType(.telephoneNumber)
-            .typography(Typography.bodyMedium)
+            .typography(Typography.bodyLarge)
             .foregroundStyle(.white)
             .focused($isFieldFocused)
             .onChange(of: digits) { _, newValue in
@@ -99,7 +100,7 @@ struct PhoneAuthView: View {
             }
         }
         .padding(.horizontal, Spacing.md)
-        .frame(height: Spacing.inputHeight)
+        .frame(height: AuthMetrics.textFieldHeight)
         .background {
             RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
                 .fill(AuthColors.fill)

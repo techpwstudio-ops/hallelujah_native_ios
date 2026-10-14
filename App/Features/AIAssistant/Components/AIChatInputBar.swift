@@ -1,116 +1,184 @@
 import SwiftUI
+import UIKit
 
-/// T58 — the composer shared between `AIChatHomeView` and `AIChatDetailView`
-/// (via `AIChatConversationView`, `Views/AIChatHomeView.swift`). v1 scope
-/// cut: text only — no attach button, no mic button (both future work, not
-/// this task). A rounded, vertically-growing text field plus one trailing
-/// circular button whose glyph/behavior tracks send state:
-/// - empty text, not busy → disabled, greyed out
-/// - non-empty text, not busy → a send arrow; tapping calls `onSend` with
-///   the trimmed text and clears the field
-/// - `isSending` (queued, no stream started yet) → a small spinner,
-///   non-interactive
-/// - `isStreaming` → a stop glyph; tapping calls `onStop`
-///
-/// No `IconToken` case fits "send"/"stop" (`IconToken.swift` is out of scope
-/// to extend for this task, same as every other design-system file this
-/// task must not touch); raw `Image(systemName:)` is this codebase's own
-/// established fallback for exactly that gap — see `SettingsView.swift`/
-/// `AddSongsToPlaylistRow.swift`/`LanguageSelectionViews.swift` for existing
-/// precedent of the same pattern.
+/// UI state for a file being (or already) attached to the next message.
+/// Ports `PendingAttachment` (`lib/views/ai/widgets/ai_input_bar.dart`).
+struct AIPendingAttachment: Identifiable {
+    let id: UUID
+    var fileName: String
+    var thumbnail: UIImage?
+    var isUploading: Bool
+    var uploadedKey: String?
+    var mimeType: String
+}
+
+/// The AI composer. Ports `AiInputBar`: a `fillColor` card (radius 12, margin
+/// 10/8) holding an optional attachment strip and a row of attach button,
+/// multi-line field (1-5 lines) and one right-hand action that is a spinner,
+/// stop, send, or mic depending on state.
 struct AIChatInputBar: View {
-    var isSending: Bool = false
+    @Binding var text: String
+    var attachments: [AIPendingAttachment] = []
+    var isBusy: Bool = false
     var isStreaming: Bool = false
-    var onSend: (String) -> Void
+    /// `nil` hides the mic button (Flutter: `VoiceFeature.showVoiceEntryPoint`).
+    var onVoice: (() -> Void)? = nil
+    var onAttach: (() -> Void)? = nil
+    var onRemoveAttachment: ((Int) -> Void)? = nil
+    var hintText: String = "Ask anything about the Bible..."
+    var onSend: () -> Void
     var onStop: () -> Void
 
-    @State private var text = ""
     @FocusState private var isFocused: Bool
-    @Environment(\.appTheme) private var theme
 
-    private static let buttonDiameter: CGFloat = 36
-    private static let maxLines = 5
-
-    private var trimmedText: String {
-        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var hasText: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private var isTextEmpty: Bool { trimmedText.isEmpty }
+    private var canSend: Bool {
+        if isBusy { return false }
+        if !hasText { return false }
+        if attachments.contains(where: { $0.isUploading }) { return false }
+        return true
+    }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: Spacing.sm) {
-            TextField("Ask anything…", text: $text, axis: .vertical)
-                .typography(Typography.bodyMedium)
-                .foregroundStyle(theme.color(.textPrimary))
-                .lineLimit(1...Self.maxLines)
-                .focused($isFocused)
-                .padding(.horizontal, Spacing.md)
-                .padding(.vertical, Spacing.sm)
-                .background {
-                    RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
-                        .fill(theme.color(.surfaceInput))
-                }
-
-            trailingButton
-        }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
-        .background(theme.color(.backgroundPrimary))
-        .animation(MotionCurve.fast, value: isStreaming)
-        .animation(MotionCurve.fast, value: isSending)
-    }
-
-    private var trailingButton: some View {
-        Button(action: handleTap) {
-            ZStack {
-                Circle().fill(buttonBackground)
-                buttonGlyph
+        VStack(spacing: 0) {
+            if !attachments.isEmpty {
+                attachmentStrip
             }
-            .frame(width: Self.buttonDiameter, height: Self.buttonDiameter)
+            HStack(alignment: .center, spacing: 0) {
+                Button {
+                    onAttach?()
+                } label: {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 20))
+                        .foregroundStyle(isBusy ? AIColors.white24 : AIColors.white70)
+                        .frame(width: 22, height: 22)
+                        .padding(.bottom, 2)
+                }
+                .buttonStyle(.plain)
+                .disabled(isBusy)
+
+                TextField(
+                    "",
+                    text: $text,
+                    prompt: Text(hintText).foregroundStyle(AIColors.hint),
+                    axis: .vertical
+                )
+                .font(AIColors.font(14))
+                .foregroundStyle(Color.white)
+                .tint(Color.white)
+                .lineLimit(1...5)
+                .focused($isFocused)
+                .disabled(isBusy)
+                .padding(.leading, 10)
+                .padding(.trailing, 10)
+
+                rightButton
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
         }
-        .buttonStyle(.plain)
-        .disabled(isButtonDisabled)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(AIColors.fill)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(AIColors.background)
     }
+
+    // MARK: - Right action
 
     @ViewBuilder
-    private var buttonGlyph: some View {
-        if isStreaming {
-            Image(systemName: "stop.fill")
-                .font(.system(size: 13))
-                .foregroundStyle(theme.color(.textInverse))
-        } else if isSending {
+    private var rightButton: some View {
+        if isBusy && !isStreaming {
             ProgressView()
                 .progressViewStyle(.circular)
-                .tint(theme.color(.textInverse))
-                .scaleEffect(0.7)
-        } else {
-            Image(systemName: "arrow.up")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(theme.color(.textInverse))
+                .tint(Color.white.opacity(0.54))
+                .frame(width: 24, height: 24)
+        } else if isStreaming {
+            Button(action: onStop) {
+                Image(systemName: "stop.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.black)
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(Color.white))
+            }
+            .buttonStyle(.plain)
+        } else if hasText || !attachments.isEmpty {
+            Button {
+                if canSend { onSend() }
+            } label: {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(canSend ? Color.black : AIColors.white38)
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(canSend ? Color.white : AIColors.white24))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSend)
+        } else if let onVoice {
+            Button(action: onVoice) {
+                // `assets/icons/voice_pulses.svg` is not bundled natively yet.
+                Image(systemName: "waveform")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.black)
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(Color.white))
+            }
+            .buttonStyle(.plain)
+            .disabled(isBusy)
         }
     }
 
-    /// `isSending` (queued, pre-stream) is the only state with nothing
-    /// useful to do on tap — `isStreaming` still needs to reach `onStop`,
-    /// and an empty field's send action simply isn't valid yet.
-    private var isButtonDisabled: Bool {
-        if isStreaming { return false }
-        if isSending { return true }
-        return isTextEmpty
-    }
+    // MARK: - Attachment strip
 
-    private var buttonBackground: Color {
-        isButtonDisabled ? theme.color(.textTertiary).opacity(0.4) : theme.color(.textPrimary)
-    }
+    private var attachmentStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Array(attachments.enumerated()), id: \.element.id) { index, attachment in
+                    ZStack(alignment: .topTrailing) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(AIColors.darkFill)
+                            if let thumbnail = attachment.thumbnail {
+                                Image(uiImage: thumbnail)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 56, height: 56)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            } else {
+                                Image(systemName: "doc.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundStyle(AIColors.white54)
+                            }
+                            if attachment.isUploading {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.black.opacity(0.54))
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .tint(Color.white)
+                            }
+                        }
+                        .frame(width: 56, height: 56)
 
-    private func handleTap() {
-        if isStreaming {
-            onStop()
-            return
+                        Button {
+                            onRemoveAttachment?(index)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(Color.white)
+                                .frame(width: 18, height: 18)
+                                .background(Circle().fill(Color.black.opacity(0.87)))
+                        }
+                        .buttonStyle(.plain)
+                        .padding(2)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
         }
-        guard !isSending, !isTextEmpty else { return }
-        let message = trimmedText
-        text = ""
-        onSend(message)
+        .frame(height: 72, alignment: .top)
     }
 }

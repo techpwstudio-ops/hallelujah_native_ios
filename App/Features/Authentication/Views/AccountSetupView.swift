@@ -81,37 +81,32 @@ struct AccountSetupView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if step == .languages {
-                languagesHeader
-            }
+            appBar
 
-            ScrollView {
-                Group {
-                    if step == .languages {
-                        languagesStep
-                    } else {
-                        detailsStep
+            VStack(spacing: 0) {
+                ScrollView {
+                    Group {
+                        if step == .languages {
+                            languagesStep
+                        } else {
+                            detailsStep
+                        }
                     }
+                    .padding(Dimens.screenPaddingAll)
                 }
-                .padding(Spacing.sm)
-            }
 
-            if step == .languages {
-                LanguageSelectionSummaryView(
-                    viewModel: languageViewModel,
-                    onContinue: { Task { await finishLanguages() } }
-                )
-                .padding(.horizontal, Spacing.md)
-                .padding(.bottom, Spacing.md)
-            } else {
-                AppButton(
-                    label: "Continue",
-                    action: { Task { await submit() } },
-                    isLoading: viewModel.state == .loading
-                )
-                .padding(.horizontal, Spacing.md)
-                .padding(.bottom, Spacing.md)
+                Spacer().frame(height: Dimens.spacing12)
+
+                if step == .languages {
+                    LanguageSelectionSummaryView(
+                        viewModel: languageViewModel,
+                        onContinue: { Task { await finishLanguages() } }
+                    )
+                } else {
+                    continueButton
+                }
             }
+            .padding(Dimens.screenPaddingAll)
         }
         .background(AuthColors.background.ignoresSafeArea())
         .toastOverlay()
@@ -131,26 +126,54 @@ struct AccountSetupView: View {
 
     // MARK: Languages step
 
-    /// The page-title-plus-Reset-action AppBar Dart shows only on this step
-    /// (`account_setup_page.dart`'s `AppBar.title`/`actions`) — inline here
-    /// since this screen has no navigation bar chrome of its own.
-    private var languagesHeader: some View {
-        HStack {
-            Spacer()
-            Text("Choose Your Languages")
-                .typography(Typography.titleMedium)
-                .fontWeight(.bold)
-                .foregroundStyle(.white)
-            Spacer()
+    /// Empty `AppBar` (kToolbarHeight 56, black, centred title) on the details
+    /// step; on the languages step it carries the title and the Reset action
+    /// (`account_setup_page.dart`'s `AppBar.title`/`actions`).
+    private var appBar: some View {
+        ZStack {
+            if step == .languages {
+                Text("Choose Your Languages")
+                    .typography(Typography.titleMedium)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+            }
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
         .overlay(alignment: .trailing) {
-            Button("Reset") { languageViewModel.reset() }
-                .typography(Typography.bodyMedium)
-                .foregroundStyle(languageViewModel.hasSelection ? AuthColors.secondaryText : AuthColors.white24)
-                .disabled(!languageViewModel.hasSelection)
-                .padding(.trailing, Spacing.md)
+            if step == .languages {
+                Button("Reset") { languageViewModel.reset() }
+                    .typography(Typography.bodyMedium)
+                    .foregroundStyle(languageViewModel.hasSelection ? AuthColors.secondaryText : AuthColors.white24)
+                    .disabled(!languageViewModel.hasSelection)
+                    .padding(.horizontal, Dimens.spacing12)
+            }
         }
-        .padding(.vertical, Spacing.sm)
+    }
+
+    /// `_ContinueButton`: white `MyContainer`, radius 8, 8pt padding around a
+    /// `titleSmall` label coloured `colorScheme.surface` (0xFF1D1D1D).
+    private var continueButton: some View {
+        Button {
+            Task { await submit() }
+        } label: {
+            Group {
+                if viewModel.state == .loading {
+                    MaterialSpinner(color: AuthColors.fill, size: 20, lineWidth: 2.5)
+                } else {
+                    Text("Continue")
+                        .typography(Typography.titleSmall)
+                        .foregroundStyle(AuthColors.fill)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(Dimens.paddingSmall)
+            .background {
+                RoundedRectangle(cornerRadius: Dimens.cornerRadius, style: .continuous)
+                    .fill(Color.white)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     /// `ContentLanguageUi` (`read_language.dart`) — the scrollable half only;
@@ -160,20 +183,23 @@ struct AccountSetupView: View {
     /// (`_step` flipping to `.languages` always creates a new
     /// `ContentLanguageUi` instance in Dart too, not a reused one).
     private var languagesStep: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("Select the languages you love listening to")
                 .typography(Typography.bodyMedium)
                 .foregroundStyle(AuthColors.tertiaryText)
 
+            Spacer().frame(height: Dimens.spacing16)
+
             RuleBannerView()
 
+            Spacer().frame(height: Dimens.spacing20)
+
             if languageViewModel.isLoading {
-                ProgressView()
-                    .tint(.white)
+                MaterialSpinner(color: .white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, Spacing.xxl)
+                    .padding(.vertical, Dimens.spacing48)
             } else if let errorMessage = languageViewModel.errorMessage {
-                VStack(spacing: Spacing.md) {
+                VStack(spacing: Dimens.spacing16) {
                     Text(errorMessage)
                         .typography(Typography.bodyMedium)
                         .foregroundStyle(.white)
@@ -182,7 +208,7 @@ struct AccountSetupView: View {
                         .foregroundStyle(.white)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.xxl)
+                .padding(.vertical, Dimens.spacing48)
             } else {
                 LanguageGridView(
                     languageOptions: languageViewModel.languageOptions,
@@ -205,17 +231,18 @@ struct AccountSetupView: View {
                 .fontWeight(.bold)
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, Dimens.spacing12)
                 .frame(maxWidth: .infinity)
 
-            Spacer().frame(height: Spacing.xs)
+            Spacer().frame(height: Dimens.spacing4)
 
             Text("This helps us personalize your listening experience..")
                 .typography(Typography.bodyMedium)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
 
-            Spacer().frame(height: Spacing.lg)
+            Spacer().frame(height: Dimens.spacing24)
 
             if !isAppleProvider {
                 nameField(
@@ -237,13 +264,13 @@ struct AccountSetupView: View {
                     field: .lName,
                     autofill: .familyName
                 )
-
-                Spacer().frame(height: Spacing.sm)
             }
+
+            Spacer().frame(height: Dimens.spacing8)
 
             dateField
 
-            Spacer().frame(height: Spacing.sm)
+            Spacer().frame(height: Dimens.spacing8)
 
             genderField
         }
@@ -254,19 +281,18 @@ struct AccountSetupView: View {
         field: Field, autofill: UITextContentType
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            requiredLabel(label)
+            requiredLabel(label, labelTypography: Typography.titleSmall)
 
-            Spacer().frame(height: Spacing.xs)
+            Spacer().frame(height: Dimens.spacing8)
 
-            TextField("", text: text, prompt: Text(hint).foregroundStyle(AuthColors.hint))
+            TextField("", text: text, prompt: Text(hint).font(Self.hintFont).foregroundStyle(AuthColors.hint))
                 .textContentType(autofill)
                 .textInputAutocapitalization(.words)
-                .typography(Typography.bodyMedium)
-                .fontWeight(.medium)
+                .typography(Typography.bodyLarge)
                 .foregroundStyle(.white)
                 .focused($focusedField, equals: field)
-                .padding(.horizontal, Spacing.md)
-                .frame(height: Spacing.inputHeight)
+                .padding(.horizontal, Dimens.spacing12)
+                .frame(height: AuthMetrics.textFieldHeight)
                 .background {
                     RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
                         .fill(AuthColors.fill)
@@ -279,18 +305,23 @@ struct AccountSetupView: View {
 
             if let error {
                 Text(error)
-                    .typography(Typography.labelSmall)
-                    .foregroundStyle(.red)
-                    .padding(.top, Spacing.xs)
+                    .typography(Typography.bodySmall)
+                    .foregroundStyle(AuthColors.error)
+                    .padding(.top, Dimens.spacing8)
+                    .padding(.leading, Dimens.spacing12)
             }
         }
+        .padding(.vertical, Dimens.spacing2)
     }
+
+    /// `bodySmall` + `w500`, the hint style in `custom_inputs.dart`.
+    private static let hintFont = Font.custom(Typography.fontFamily, size: 12).weight(.medium)
 
     private var dateField: some View {
         VStack(alignment: .leading, spacing: 0) {
-            requiredLabel("Date Of Birth")
+            requiredLabel("Date Of Birth", labelTypography: Typography.titleSmall)
 
-            Spacer().frame(height: Spacing.xs)
+            Spacer().frame(height: Dimens.spacing8)
 
             Button {
                 focusedField = nil
@@ -304,10 +335,11 @@ struct AccountSetupView: View {
                         .foregroundStyle(dateOfBirth == nil ? AuthColors.hint : .white)
                     Spacer()
                     IconToken.calendar.image
+                        .font(.system(size: 18))
                         .foregroundStyle(.white)
                 }
-                .padding(.horizontal, Spacing.md)
-                .frame(height: Spacing.inputHeight)
+                .padding(.horizontal, Dimens.spacing12)
+                .padding(.vertical, Dimens.spacing16)
                 .background {
                     RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
                         .fill(AuthColors.fill)
@@ -315,6 +347,7 @@ struct AccountSetupView: View {
             }
             .buttonStyle(.plain)
         }
+        .padding(.vertical, Dimens.spacing2)
     }
 
     /// `_DatePickerSheet` (`custom_inputs.dart`) — `.appSheet` gives this the
@@ -325,16 +358,27 @@ struct AccountSetupView: View {
     private var datePickerContent: some View {
         VStack(spacing: 0) {
             HStack {
-                Button("Cancel") { isDatePickerPresented = false }
+                Button {
+                    isDatePickerPresented = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .foregroundStyle(Color.white.opacity(0.6))
+                        .frame(width: 48, height: 48)
+                }
+                .accessibilityLabel("Cancel")
                 Spacer()
-                Button("Done") {
+                Button {
                     dateOfBirth = pickerDate
                     isDatePickerPresented = false
+                } label: {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.white)
+                        .frame(width: 48, height: 48)
                 }
-                .fontWeight(.semibold)
+                .accessibilityLabel("Select")
             }
-            .padding(.horizontal, Spacing.md)
-            .padding(.top, Spacing.sm)
+            .padding(.horizontal, Dimens.spacing8)
+            .padding(.vertical, Dimens.spacing4)
 
             DatePicker(
                 "Date of Birth",
@@ -344,31 +388,35 @@ struct AccountSetupView: View {
             )
             .datePickerStyle(.wheel)
             .labelsHidden()
-            .padding(.horizontal, Spacing.md)
-            .padding(.bottom, Spacing.md)
+            .frame(height: 220)
+
+            Spacer().frame(height: Dimens.spacing8)
         }
     }
 
     private var genderField: some View {
         VStack(alignment: .leading, spacing: 0) {
-            requiredLabel("Gender")
+            requiredLabel("Gender", labelTypography: Typography.bodyMedium)
 
-            Spacer().frame(height: Spacing.xs)
-
-            HStack(spacing: Spacing.lg) {
+            HStack(spacing: 0) {
                 genderOption(label: "Male", value: "male")
                 genderOption(label: "Female", value: "female")
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// `Radio` (48pt tap target, 18pt circle, grey when active, `white60`
+    /// outline otherwise) followed by the label.
     private func genderOption(label: String, value: String) -> some View {
         Button {
             gender = value
         } label: {
-            HStack(spacing: Spacing.xs) {
+            HStack(spacing: 0) {
                 Image(systemName: gender == value ? "largecircle.fill.circle" : "circle")
-                    .foregroundStyle(.white)
+                    .font(.system(size: 18))
+                    .foregroundStyle(gender == value ? Color.gray : Color.white.opacity(0.6))
+                    .frame(width: 48, height: 48)
                 Text(label)
                     .typography(Typography.bodyMedium)
                     .foregroundStyle(.white)
@@ -377,13 +425,13 @@ struct AccountSetupView: View {
         .buttonStyle(.plain)
     }
 
-    private func requiredLabel(_ text: String) -> some View {
+    private func requiredLabel(_ text: String, labelTypography: TypographyToken) -> some View {
         HStack(spacing: 0) {
             Text(text)
-                .typography(Typography.titleSmall)
+                .typography(labelTypography)
                 .foregroundStyle(.white)
             Text(" * ")
-                .typography(Typography.bodyMedium)
+                .typography(labelTypography)
                 .foregroundStyle(.red)
         }
     }
@@ -461,7 +509,7 @@ struct AccountSetupView: View {
     private static func validateName(_ value: String, hint: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty { return hint }
-        if trimmed.count < 2 { return "Please enter at least 2 characters." }
+        if value.count < 2 { return "Please enter at least 2 characters." }
         return nil
     }
 

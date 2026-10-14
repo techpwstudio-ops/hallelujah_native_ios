@@ -1,89 +1,117 @@
 import SwiftUI
 
-/// T35 — ports `PlayerControls`' transport row (`audio_player_screen.dart`):
-/// shuffle / previous / big center play-pause / next / repeat. Both toggle
-/// buttons reuse the SAME glyph for their "off" and "on-but-not-distinct"
-/// states, tinted differently, exactly matching Dart's own
-/// `ShuffleWidget`/`LoopModeWidget` (grey when off, white when on) rather
-/// than swapping icons: `IconToken.repeatAll`'s "repeat" glyph covers both
-/// `.off` and `.all`; `.repeatOne`'s SF Symbol (`repeat.1`) already bakes in
-/// the small "1" Dart draws as a separate badge overlay
-/// (`loop_mode_widget.dart:38-58`), so no custom badge view is needed here.
+/// Ports `PlayerControls` (`lib/widgets/player/player_controls.dart`):
+/// `MainAxisAlignment.spaceAround` row of shuffle / previous / 58pt white
+/// play-pause disc / next / loop. Shuffle and loop sit in a 48pt circle
+/// filled `white @ 6%` (`MyContainer(background: white.withOpacity(0.06),
+/// radius: 32)` around a 24pt glyph with 12pt padding), grey when off and
+/// white when on; loop-one adds the 13pt white "1" badge
+/// (`loop_mode_widget.dart`). Previous/next are 22pt glyphs with 12pt padding
+/// that shrink to 0.75 while pressed (`_SeekButton`). Never disabled.
+///
+/// The Flutter glyphs are bundled SVGs (`arrow_left.svg`, `arrow_right.svg`,
+/// `shuffle.svg`, `loop.svg`); until those are added to the asset catalog the
+/// closest SF Symbols stand in for them.
 struct PlayerTransportControls: View {
-    @Environment(\.appTheme) private var theme
     let engine: AudioEngine
     let queueController: QueueController
 
-    private static let playPauseDiameter: CGFloat = 58
-    private static let sideGlyphSize: CGFloat = 22
-    private static let toggleGlyphSize: CGFloat = 18
-    private static let playGlyphSize: CGFloat = 26
-
     private var isPlaying: Bool { engine.status == .playing }
+    private var isLoading: Bool { engine.status == .loading }
 
     var body: some View {
-        HStack(spacing: Spacing.xl) {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
             shuffleButton
-            transportButton(.previous, size: Self.sideGlyphSize) {
+            Spacer(minLength: 0)
+            seekButton(systemName: "backward.end.fill") {
                 Task { await queueController.skipToPrevious() }
             }
+            Spacer(minLength: 0)
             playPauseButton
-            transportButton(.next, size: Self.sideGlyphSize) {
+            Spacer(minLength: 0)
+            seekButton(systemName: "forward.end.fill") {
                 Task { await queueController.skipToNext() }
             }
-            repeatButton
+            Spacer(minLength: 0)
+            loopButton
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
     }
 
-    private func transportButton(_ icon: IconToken, size: CGFloat, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            theme.icon(icon)
-                .font(.system(size: size))
-                .foregroundStyle(theme.color(.textPrimary))
-        }
-        .buttonStyle(.plain)
+    private func toggleBackground<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .frame(
+                width: PlayerStyle.toggleGlyphSize + PlayerStyle.controlGlyphPadding * 2,
+                height: PlayerStyle.toggleGlyphSize + PlayerStyle.controlGlyphPadding * 2
+            )
+            .background(PlayerStyle.whiteAlpha(PlayerStyle.shadowOpacity), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .contentShape(Rectangle())
     }
 
     private var shuffleButton: some View {
         Button {
             Task { await queueController.toggleShuffle() }
         } label: {
-            theme.icon(.shuffle)
-                .font(.system(size: Self.toggleGlyphSize))
-                .foregroundStyle(queueController.isShuffled ? theme.color(.textPrimary) : theme.color(.textSecondary))
+            toggleBackground {
+                Image(systemName: "shuffle")
+                    .font(.system(size: PlayerStyle.toggleGlyphSize * 0.8))
+                    .foregroundStyle(queueController.isShuffled ? PlayerStyle.white : PlayerStyle.grey)
+            }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Shuffle")
     }
 
-    private var repeatButton: some View {
-        Button {
+    private var loopButton: some View {
+        let mode = queueController.repeatMode
+        return Button {
             queueController.cycleRepeatMode()
         } label: {
-            theme.icon(queueController.repeatMode == .one ? .repeatOne : .repeatAll)
-                .font(.system(size: Self.toggleGlyphSize))
-                .foregroundStyle(queueController.repeatMode == .off ? theme.color(.textSecondary) : theme.color(.textPrimary))
+            toggleBackground {
+                ZStack {
+                    Image(systemName: "repeat")
+                        .font(.system(size: PlayerStyle.toggleGlyphSize * 0.8))
+                        .foregroundStyle(mode == .off ? PlayerStyle.grey : PlayerStyle.white)
+                    if mode == .one {
+                        Text("1")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(PlayerStyle.black)
+                            .frame(width: 13, height: 13)
+                            .background(Circle().fill(PlayerStyle.white))
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: .infinity,
+                                alignment: .bottomTrailing
+                            )
+                            .padding(6)
+                    }
+                }
+            }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Repeat")
     }
 
-    /// `PlayPauseIconFilled`: filled background circle (not the mini
-    /// player's stroke-only ring), "white bg, dark icon" mapped to
-    /// `textPrimary`/`backgroundPrimary` rather than literal
-    /// black/white so it still reads correctly in both themes.
+    private func seekButton(systemName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: PlayerStyle.seekGlyphSize))
+                .foregroundStyle(PlayerStyle.white)
+                .padding(PlayerStyle.controlGlyphPadding)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PlayerPressScaleStyle())
+    }
+
     private var playPauseButton: some View {
         Button {
             if isPlaying { engine.pause() } else { engine.resume() }
         } label: {
-            ZStack {
-                Circle().fill(theme.color(.textPrimary))
-                theme.icon(isPlaying ? .pause : .play)
-                    .font(.system(size: Self.playGlyphSize))
-                    .foregroundStyle(theme.color(.backgroundPrimary))
-            }
-            .frame(width: Self.playPauseDiameter, height: Self.playPauseDiameter)
+            PlayerPlayPauseDisc(isPlaying: isPlaying, isLoading: isLoading)
         }
         .buttonStyle(.plain)
-        .animation(.easeInOut(duration: 0.2), value: isPlaying)
+        .accessibilityLabel(isPlaying ? "Pause" : "Play")
     }
 }

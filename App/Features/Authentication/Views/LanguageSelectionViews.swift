@@ -7,7 +7,7 @@ import SwiftUI
 /// Ports `RuleBanner` (`lib/widgets/authentication/read_language.dart`).
 struct RuleBannerView: View {
     var body: some View {
-        HStack(alignment: .top, spacing: Spacing.sm) {
+        HStack(alignment: .top, spacing: Dimens.spacing8) {
             Image(systemName: "info.circle")
                 .font(.system(size: 16))
                 .foregroundStyle(.white)
@@ -74,8 +74,8 @@ struct LanguageSelectionItemView: View {
                     .foregroundStyle(isSelected ? .white : AuthColors.secondaryText)
                     .lineLimit(1)
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Dimens.paddingLarge)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
                     .fill(isSelected ? AuthColors.accentFill : AuthColors.fill)
@@ -190,6 +190,7 @@ struct LanguageSelectionSummaryView: View {
             }
         }
         .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
                 .fill(AuthColors.fill)
@@ -214,7 +215,7 @@ struct LanguageSelectionSummaryView: View {
     }
 
     private func summaryRow(badge: String, isPrimary: Bool, value: String, trailing: String?) -> some View {
-        HStack {
+        HStack(spacing: 0) {
             Text(badge)
                 .typography(Typography.labelSmall)
                 .fontWeight(.bold)
@@ -226,12 +227,13 @@ struct LanguageSelectionSummaryView: View {
                     RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
                         .fill(isPrimary ? Color.white : AuthColors.darkFill)
                 }
+            Spacer().frame(width: Dimens.spacing8)
             Text(value)
                 .typography(Typography.bodySmall)
                 .fontWeight(isPrimary ? .semibold : .regular)
                 .foregroundStyle(isPrimary ? .white : AuthColors.secondaryText)
                 .lineLimit(1)
-            Spacer(minLength: Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
             if let trailing {
                 Text(trailing)
                     .typography(Typography.labelSmall)
@@ -250,7 +252,7 @@ struct LanguageSelectionSummaryView: View {
                     .typography(Typography.titleSmall)
                     .fontWeight(.semibold)
                 if viewModel.saveState == .loading {
-                    ProgressView().tint(.black)
+                    MaterialSpinner(color: .black, size: 20, lineWidth: 2.5)
                 } else {
                     Image(systemName: "arrow.right")
                         .font(.system(size: 16))

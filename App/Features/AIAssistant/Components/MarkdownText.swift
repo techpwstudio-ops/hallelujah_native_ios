@@ -1,23 +1,25 @@
 import SwiftUI
 
-/// T58 — a lightweight, dependency-free Markdown renderer (no SPM package
-/// exists in this project, and this task must not add one). Parses
-/// block-level structure line by line — paragraphs, level 1-3 headers,
-/// fenced code blocks, blockquotes, bullet list items, horizontal rules —
-/// then does a simple regex pass per text run for inline bold/italic/code
-/// spans. Not a spec-compliant CommonMark parser — just correct enough for
-/// typical AI chat prose, per this task's own scope note.
+/// Dependency-free Markdown renderer for assistant replies. Styled to match the
+/// `MarkdownStyleSheet` in Flutter's `AiMessageBubble`
+/// (`lib/views/ai/widgets/ai_message_bubble.dart`): white 14pt paragraphs at
+/// 1.55 line height, bold white strong, italic white70 emphasis, h1/h2/h3
+/// 20 bold / 24 bold / 16 w600, amber monospace inline code, `darkFillColor`
+/// code blocks, gold-barred blockquotes, 24pt list gutters, white24 rules.
 struct MarkdownText: View {
     let markdown: String
 
-    @Environment(\.appTheme) private var theme
+    /// `height: 1.55` at 14pt, minus the face's natural ~1.15 line box.
+    private static let paragraphLineSpacing: CGFloat = 14 * (1.55 - 1.15)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
+        VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(MarkdownParser.parse(markdown).enumerated()), id: \.offset) { _, block in
                 blockView(block)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .textSelection(.enabled)
     }
 
     @ViewBuilder
@@ -25,67 +27,76 @@ struct MarkdownText: View {
         switch block {
         case .paragraph(let text):
             inlineText(text)
-                .typography(Typography.bodyMedium)
-                .foregroundStyle(theme.color(.textPrimary))
+                .font(AIColors.font(14))
+                .foregroundStyle(Color.white)
+                .lineSpacing(Self.paragraphLineSpacing)
                 .fixedSize(horizontal: false, vertical: true)
 
         case .header(let level, let text):
             inlineText(text)
-                .typography(headerTypography(level))
-                .foregroundStyle(theme.color(.textPrimary))
+                .font(headerFont(level))
+                .foregroundStyle(Color.white)
                 .fixedSize(horizontal: false, vertical: true)
 
         case .codeBlock(let code):
             Text(code)
-                // No `TypographyToken` in the type scale specifies a
-                // monospaced design; same "raw system API, no token fits"
-                // fallback this file's own `Image(systemName:)`-style
-                // precedent elsewhere in the codebase uses.
-                .font(.system(.footnote, design: .monospaced))
-                .foregroundStyle(theme.color(.textPrimary))
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(AIColors.amber200)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(Spacing.sm)
+                .padding(8)
                 .background {
-                    RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                        .fill(theme.color(.surfaceSecondary))
+                    RoundedRectangle(cornerRadius: Dimens.cornerRadius, style: .continuous)
+                        .fill(AIColors.darkFill)
                 }
 
         case .blockquote(let text):
-            HStack(alignment: .top, spacing: Spacing.sm) {
+            HStack(alignment: .top, spacing: 0) {
                 Rectangle()
-                    .fill(theme.color(.border))
+                    .fill(AIColors.gold)
                     .frame(width: 3)
                 inlineText(text)
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(theme.color(.textSecondary))
+                    .font(AIColors.font(14))
                     .italic()
+                    .foregroundStyle(AIColors.white70)
+                    .lineSpacing(14 * (1.5 - 1.15))
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(8)
             }
 
         case .listItem(let text):
-            HStack(alignment: .top, spacing: Spacing.sm) {
-                Text("•")
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(theme.color(.textSecondary))
-                inlineText(text)
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(theme.color(.textPrimary))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            listRow(marker: "\u{2022}", text: text)
+
+        case .orderedItem(let number, let text):
+            listRow(marker: "\(number).", text: text)
 
         case .horizontalRule:
             Rectangle()
-                .fill(theme.color(.separator))
+                .fill(AIColors.white24)
                 .frame(height: 1)
-                .padding(.vertical, Spacing.xs)
+                .padding(.vertical, 4)
         }
     }
 
-    private func headerTypography(_ level: Int) -> TypographyToken {
+    private func listRow(marker: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            Text(marker)
+                .font(AIColors.font(14))
+                .foregroundStyle(Color.white)
+                .frame(width: 19, alignment: .trailing)
+                .padding(.trailing, 5)
+            inlineText(text)
+                .font(AIColors.font(14))
+                .foregroundStyle(Color.white)
+                .lineSpacing(Self.paragraphLineSpacing)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func headerFont(_ level: Int) -> Font {
         switch level {
-        case 1: Typography.titleLarge
-        case 2: Typography.titleMedium
-        default: Typography.titleSmall
+        case 1: AIColors.font(20, .bold)
+        case 2: AIColors.font(24, .bold)
+        default: AIColors.font(16, .semibold)
         }
     }
 }
@@ -98,6 +109,7 @@ private enum MarkdownBlock {
     case codeBlock(String)
     case blockquote(String)
     case listItem(String)
+    case orderedItem(number: Int, text: String)
     case horizontalRule
 }
 
@@ -167,6 +179,12 @@ private enum MarkdownParser {
                 continue
             }
 
+            if let (number, rest) = orderedListItem(trimmed) {
+                flushParagraph()
+                blocks.append(.orderedItem(number: number, text: rest))
+                continue
+            }
+
             paragraphLines.append(trimmed)
         }
 
@@ -179,6 +197,23 @@ private enum MarkdownParser {
         flushParagraph()
 
         return blocks
+    }
+
+    /// `1. text` / `12) text`.
+    private static func orderedListItem(_ trimmed: String) -> (Int, String)? {
+        var digits = ""
+        var index = trimmed.startIndex
+        while index < trimmed.endIndex, trimmed[index].isNumber, digits.count < 9 {
+            digits.append(trimmed[index])
+            index = trimmed.index(after: index)
+        }
+        guard !digits.isEmpty, let number = Int(digits), index < trimmed.endIndex else { return nil }
+        let marker = trimmed[index]
+        guard marker == "." || marker == ")" else { return nil }
+        let afterMarker = trimmed.index(after: index)
+        guard afterMarker < trimmed.endIndex, trimmed[afterMarker] == " " else { return nil }
+        let rest = String(trimmed[trimmed.index(after: afterMarker)...]).trimmingCharacters(in: .whitespaces)
+        return (number, rest)
     }
 
     private static func isHorizontalRule(_ trimmed: String) -> Bool {
@@ -196,7 +231,7 @@ private enum MarkdownParser {
             guard character == "#" else { break }
             level += 1
         }
-        guard (1...3).contains(level) else { return nil }
+        guard (1...6).contains(level) else { return nil }
         let rest = trimmed.dropFirst(level)
         guard rest.hasPrefix(" ") else { return nil }
         return level
@@ -269,9 +304,11 @@ private func inlineText(_ raw: String) -> Text {
         case .bold:
             segment = Text(span.text).bold()
         case .italic:
-            segment = Text(span.text).italic()
+            segment = Text(span.text).italic().foregroundStyle(AIColors.white70)
         case .code:
-            segment = Text(span.text).font(.system(.footnote, design: .monospaced))
+            segment = Text(span.text)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(AIColors.amber200)
         }
         return partial + segment
     }

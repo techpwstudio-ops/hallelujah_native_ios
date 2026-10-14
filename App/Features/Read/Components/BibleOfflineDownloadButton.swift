@@ -1,25 +1,42 @@
 import SwiftUI
 
-/// T55 — tri-state offline-download control, ported from
-/// `bible_offline_download_button.dart`'s one shared button (used in both
-/// the Bible menu and the language picker), so a language looks the same
-/// wherever it's shown: an outlined icon to download it, a ring while it
-/// downloads, a filled checkmark once it's on the device. Tap only starts a
-/// download from the `notSaved` state; long-press only removes from the
-/// `saved` state — the `downloading` state responds to neither, mirroring
-/// Dart's `InkResponse(onTap: tappable ? ... : null, onLongPress: removable
-/// ? ... : null)`.
-///
-/// Scope cut from Dart's `startBibleOfflineDownload`: no "already saved" /
-/// "already downloading" / "no internet" toast before starting — this
-/// button relies on `BibleOfflineDownloadService.downloadLanguage`'s own
-/// idempotent join behavior instead (a second tap while downloading is a
-/// no-op via `isDownloading`, so no separate messaging is load-bearing).
+/// `startBibleOfflineDownload` (`lib/widgets/book/bible_offline_download_button.dart`):
+/// safe to call for a language in any state — already saved or already
+/// downloading says so in a toast instead of starting twice, and offline says
+/// so before trying.
+@MainActor
+func startBibleOfflineDownload(
+    language: String,
+    service: BibleOfflineDownloadService,
+    toast: ToastCenter
+) async {
+    if service.isLanguageDownloaded(language) {
+        toast.show("The \(language) Bible is already saved on this device.")
+        return
+    }
+    if service.isDownloading(language) {
+        toast.show("The \(language) Bible is already downloading.")
+        return
+    }
+    let reachability: any ReachabilityMonitoring = DependencyContainer.current.resolve()
+    if !reachability.isOnline {
+        toast.show("You need an internet connection to save the \(language) Bible for offline reading.")
+        return
+    }
+    // No toast on start — the ring is the feedback (matches Flutter).
+    await service.downloadLanguage(language)
+}
+
+/// The control that saves one Bible language for offline reading and doubles
+/// as that language's status: outlined download icon (white 70%), a progress
+/// ring (white on white 24% track, 2pt) while downloading, a filled check
+/// (white) once saved — long-pressed to remove. All three draw in the same
+/// `size` box so nothing shifts as one becomes the next.
 struct BibleOfflineDownloadButton: View {
     let language: String
     var size: CGFloat = 24
 
-    @Environment(\.appTheme) private var theme
+    @Environment(\.toastCenter) private var toastCenter
     @State private var service: BibleOfflineDownloadService = DependencyContainer.current.resolve()
     @State private var isRemoveConfirmationPresented = false
 
@@ -33,7 +50,7 @@ struct BibleOfflineDownloadButton: View {
             .contentShape(Circle())
             .onTapGesture {
                 guard !isDownloaded, !isDownloading else { return }
-                Task { await service.downloadLanguage(language) }
+                Task { await startBibleOfflineDownload(language: language, service: service, toast: toastCenter) }
             }
             .onLongPressGesture {
                 guard isDownloaded else { return }
@@ -47,7 +64,12 @@ struct BibleOfflineDownloadButton: View {
                 titleVisibility: .visible
             ) {
                 Button("Remove", role: .destructive) {
-                    Task { await service.deleteLanguage(language) }
+                    Task {
+                        let removed = await service.deleteLanguage(language)
+                        if removed {
+                            toastCenter.show("\(language) Bible removed from this device.")
+                        }
+                    }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -57,36 +79,64 @@ struct BibleOfflineDownloadButton: View {
 
     @ViewBuilder
     private var indicator: some View {
-        if isDownloaded {
+        if isDownloading {
+            // Determinate once the book count is known, indeterminate before
+            // (`active.total > 0 ? active.fraction : null`).
+            if let progress, progress.total > 0 {
+                BibleOfflineRing(fraction: progress.fraction)
+            } else {
+                BibleOfflineRing(fraction: nil)
+            }
+        } else if isDownloaded {
             Image(systemName: "checkmark.circle.fill")
                 .resizable()
-                .foregroundStyle(theme.color(.textPrimary))
-        } else if isDownloading {
-            // Determinate as soon as the book count is known, matching
-            // Dart's `active.total > 0 ? active.fraction : null` (indeterminate
-            // spinner briefly, until the first book count arrives).
-            if let progress, progress.total > 0 {
-                ProgressView(value: progress.fraction)
-                    .progressViewStyle(.circular)
-            } else {
-                ProgressView()
-                    .progressViewStyle(.circular)
-            }
+                .scaledToFit()
+                .foregroundStyle(ReadPalette.white)
         } else {
-            theme.icon(.download)
+            // `Icons.download_for_offline_outlined`.
+            Image(systemName: "arrow.down.circle")
                 .resizable()
-                .foregroundStyle(theme.color(.textSecondary))
+                .scaledToFit()
+                .foregroundStyle(ReadPalette.white70)
         }
     }
 
     private var accessibilityLabel: String {
+        if isDownloading {
+            let percent = progress?.percent ?? 0
+            return "Saving \(language) Bible, \(percent) percent done"
+        }
         if isDownloaded {
             return "\(language) Bible is saved on this device. Long press to remove it."
         }
-        if isDownloading {
-            let percent = Int(((progress?.fraction ?? 0) * 100).rounded())
-            return "Saving \(language) Bible, \(percent) percent done"
-        }
         return "Save \(language) Bible on this device"
+    }
+}
+
+/// `CircularProgressIndicator(strokeWidth: 2, color: white, backgroundColor: white24)`.
+private struct BibleOfflineRing: View {
+    let fraction: Double?
+
+    @State private var rotating = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(ReadPalette.white24, lineWidth: 2)
+            if let fraction {
+                Circle()
+                    .trim(from: 0, to: CGFloat(min(max(fraction, 0.02), 1)))
+                    .stroke(ReadPalette.white, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            } else {
+                Circle()
+                    .trim(from: 0, to: 0.3)
+                    .stroke(ReadPalette.white, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(rotating ? 360 : 0))
+                    .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: rotating)
+                    .onAppear { rotating = true }
+            }
+        }
+        .padding(1)
     }
 }

@@ -1,67 +1,91 @@
 import SwiftUI
 
-/// T54 (Bible reader) -- ported from `table_chapter_sheet.dart`'s chapter
-/// grid: a fixed 6-column grid of chapter numbers for the current
-/// `BibleBook`, with the current chapter highlighted. Bare sheet content
-/// per `BookTableOfContentsSheet.swift`'s doc comment -- no chrome of its
-/// own, presented via `.appSheet(isPresented:)` from `ReaderView`.
+/// `TotalChaptersSheet` (`lib/sheets/book/table_chapter_sheet.dart`): drag
+/// handle, a back row ("‹" + the book name, bodyLarge white 70%) that returns
+/// to the table of contents, an 8pt gap, then a 6-column grid (8pt gaps,
+/// square cells, 8pt radius) of chapter numbers — #212121 tiles with white
+/// titleMedium w700 numbers, the chapter being read shown as a white tile with
+/// black text. Padded 8 all round. Like Flutter, the grid scrolls the current
+/// chapter into view when its row is the 7th or later.
 struct ChapterGridSheet: View {
     let book: BibleBook
+    /// Chapter currently open in the reader, only meaningful when
+    /// `currentBookNumber == book.bookNumber`.
     let currentChapter: Int
+    let currentBookNumber: Int?
+    let onBack: () -> Void
     let onSelect: (Int) -> Void
 
-    @Environment(\.appTheme) private var theme
-    @Environment(\.dismiss) private var dismiss
-
     private static let columnCount = 6
-    private static let cellSize: CGFloat = 44
-
-    /// Defensive against a book with a non-positive chapter count -- the
-    /// contract's own grounding notes `chapters` is nullable server-side
-    /// (mapped defensively, dropped via `compactMap` when missing), but
-    /// nothing guarantees a decoded value is `>= 1`, and `1...0` traps.
-    private var chapterRange: [Int] {
-        Array(1...max(book.chapters, 1))
-    }
 
     private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: Spacing.sm), count: Self.columnCount)
+        Array(repeating: GridItem(.flexible(), spacing: 8), count: Self.columnCount)
     }
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.md) {
-                Text(book.name)
-                    .typography(Typography.titleMedium)
-                    .foregroundStyle(theme.color(.textPrimary))
+    private var chapterRange: [Int] {
+        book.chapters > 0 ? Array(1...book.chapters) : []
+    }
 
-                LazyVGrid(columns: columns, spacing: Spacing.sm) {
-                    ForEach(chapterRange, id: \.self) { chapter in
-                        cell(for: chapter)
+    private var isCurrentBook: Bool { currentBookNumber == book.bookNumber }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ReadDragHandle()
+
+            Button(action: onBack) {
+                HStack(spacing: 0) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(ReadPalette.white)
+                        .frame(width: 24, height: 24)
+                    Text(book.name)
+                        .readText(Typography.bodyLarge, weight: .regular, color: ReadPalette.secondaryText)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Spacer().frame(height: Dimens.bottomPadding)
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 8) {
+                        ForEach(chapterRange, id: \.self) { chapter in
+                            cell(for: chapter)
+                                .id(chapter)
+                        }
+                    }
+                }
+                .onAppear {
+                    guard isCurrentBook, currentChapter > 0 else { return }
+                    let row = (currentChapter - 1) / Self.columnCount
+                    if row >= 6 {
+                        proxy.scrollTo(currentChapter, anchor: .top)
                     }
                 }
             }
-            .padding(Spacing.md)
         }
-        .frame(maxHeight: .infinity)
+        .padding(8)
     }
 
     private func cell(for chapter: Int) -> some View {
-        let isCurrent = chapter == currentChapter
+        let isCurrent = isCurrentBook && chapter == currentChapter
         return Button {
             onSelect(chapter)
-            dismiss()
         } label: {
             Text("\(chapter)")
-                .typography(Typography.bodyMedium)
-                .foregroundStyle(isCurrent ? theme.color(.textInverse) : theme.color(.textPrimary))
-                .frame(width: Self.cellSize, height: Self.cellSize)
-                .background {
-                    RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                        .fill(isCurrent ? theme.color(.textPrimary) : theme.color(.surfaceSecondary))
-                }
+                .readText(
+                    Typography.titleMedium,
+                    weight: .bold,
+                    color: isCurrent ? ReadPalette.black : ReadPalette.white
+                )
+                .frame(maxWidth: .infinity)
+                .aspectRatio(1, contentMode: .fit)
+                .background(
+                    RoundedRectangle(cornerRadius: Dimens.chapterNumberBoxRadius, style: .continuous)
+                        .fill(isCurrent ? ReadPalette.white : ReadPalette.chapterBox)
+                )
         }
         .buttonStyle(.plain)
-        .animation(MotionCurve.fast, value: isCurrent)
     }
 }

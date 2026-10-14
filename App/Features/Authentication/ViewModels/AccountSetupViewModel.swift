@@ -51,7 +51,8 @@ final class AccountSetupViewModel {
             state = .error(message: error.message)
         } catch {
             logger.warning("account setup save failed: \(error)")
-            state = .error(message: "Something went wrong. Please try again.")
+            // Dart only reports this to analytics (`trackError`); no toast.
+            state = .idle
         }
     }
 }

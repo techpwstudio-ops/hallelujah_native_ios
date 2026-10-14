@@ -1,63 +1,57 @@
 import SwiftUI
 
-/// A user/company playlist result row. 56pt square cover, matching the size
-/// rhythm the other two search rows share.
-///
-/// Subtitle is `ownerName`, with `visibility.capitalized` appended only for
-/// a user-owned playlist — matching `SearchPlaylistResult.visibility`'s own
-/// doc comment: a company playlist has no visibility concept, and its row
-/// must never render one even if a raw value happened to decode.
+/// Ports `UserPlaylistListItem` / `_CompanyPlaylistSearchRow`
+/// (`lib/widgets/playlists/*`): 52pt square cover radius 8, 12pt gap, 16/6
+/// padding, title `titleSmall` w500 (capitalised, "Unnamed Playlist"
+/// fallback), subtitle `"Playlist • <owner> • <Visibility>"` (company rows:
+/// `"Playlist • <app name>"`). Trailing: close button in recent searches,
+/// otherwise the `more_vert` content menu.
 struct SearchPlaylistRow: View {
     let playlist: SearchPlaylistResult
     var onRemove: (() -> Void)?
+    var onMore: (() -> Void)?
     let onTap: () -> Void
 
-    @Environment(\.appTheme) private var theme
-    static let coverSize: CGFloat = 56
+    static let coverSize: CGFloat = 52
 
     private var resolvedArtwork: URL? {
         ArtworkURLResolver().resolve(path: playlist.image, variant: .sm, allowedVariants: playlist.imageVariants)
     }
 
-    private var subtitle: String? {
-        guard let ownerName = playlist.ownerName else { return nil }
+    private var subtitle: String {
+        var parts: [String] = []
+        if let owner = playlist.ownerName, !owner.isEmpty { parts.append(owner) }
         if playlist.ownerType == .user, let visibility = playlist.visibility {
-            return "\(ownerName) · \(visibility.capitalized)"
+            parts.append(visibility.parityCapitalized)
         }
-        return ownerName
+        let joined = parts.joined(separator: parityDotSign)
+        return joined.isEmpty ? "Playlist" : "Playlist\(parityDotSign)\(joined)"
     }
 
     var body: some View {
-        // See `SearchSongRow.body`: `onTapGesture` + `contentShape`, not an
-        // outer `Button`, so the trailing remove control stays the row's
-        // only real `Button` instead of one nesting inside another.
-        HStack(spacing: Spacing.md) {
-            ArtworkView(url: resolvedArtwork, width: Self.coverSize, height: Self.coverSize)
+        HStack(spacing: Dimens.spacing12) {
+            ArtworkView(
+                url: resolvedArtwork,
+                width: Self.coverSize,
+                height: Self.coverSize,
+                cornerRadius: Dimens.cornerRadius
+            )
 
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(playlist.title ?? "Untitled")
-                    .typography(Typography.titleSmall)
-                    .foregroundStyle(theme.color(.textPrimary))
-                    .lineLimit(1)
-                if let subtitle {
-                    Text(subtitle)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.textSecondary))
-                        .lineLimit(1)
-                }
-            }
+            ParityRowText(
+                title: playlist.title.map { $0.parityCapitalized } ?? "Unnamed Playlist",
+                subtitle: subtitle
+            )
 
             Spacer(minLength: 0)
 
             if let onRemove {
-                Button(action: onRemove) {
-                    theme.icon(.close)
-                        .foregroundStyle(theme.color(.textTertiary))
-                }
-                .buttonStyle(.plain)
+                ParityCloseButton(action: onRemove)
+            } else if let onMore {
+                ParityMoreButton(action: onMore)
             }
         }
-        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, Dimens.screenPadding)
+        .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
     }

@@ -1,46 +1,44 @@
 import SwiftUI
 
-/// T58 — one tappable suggestion chip in the AI chat empty state (backed by
-/// `AISuggestionsViewModel`/`GET /ai/suggestions`). A small, roughly-160pt
-/// card: a subtle icon plus the suggestion's own text, calling `action` on
-/// tap so the call site decides what happens (typically: send this text as
-/// the first message in a new/current conversation).
-///
-/// `.tabAI` (`IconToken.swift`'s `"sparkles"` SF Symbol) doubles as the
-/// "subtle sparkle" glyph here — it's the closest existing token to a
-/// sparkle/star mark, and reusing it keeps this from adding a new case to an
-/// enum this task is expressly forbidden from touching.
+/// A tappable suggestion chip on the AI home screen. Ports `AiSuggestionChip`
+/// (`lib/views/ai/widgets/ai_suggestion_chip.dart`): 160pt wide, 10pt padding,
+/// `fillColor` card, radius 10, two gold stars above a 2-line body-small label.
 struct AISuggestionChip: View {
-    let suggestion: AISuggestion
+    let text: String
     let action: () -> Void
-
-    @Environment(\.appTheme) private var theme
-
-    private static let width: CGFloat = 160
+    /// Fixed height when hosted in the home row (Flutter's list stretches chips to its cross axis).
+    var height: CGFloat? = nil
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: Spacing.sm) {
-                theme.icon(.tabAI)
-                    .font(.system(size: 14))
-                    .foregroundStyle(theme.color(.brandPrimary))
-                Text(suggestion.text)
+            VStack(alignment: .leading, spacing: 6) {
+                ZStack(alignment: .topLeading) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AIColors.gold)
+                        .offset(x: 0, y: 0)
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(AIColors.gold)
+                        .offset(x: 10, y: 9)
+                }
+                .frame(width: 24, height: 18, alignment: .topLeading)
+
+                Text(text)
                     .typography(Typography.bodySmall)
-                    .foregroundStyle(theme.color(.textPrimary))
+                    .foregroundStyle(Color.white)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(3)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(Spacing.sm)
-            .frame(width: Self.width, alignment: .leading)
+            .padding(10)
+            .frame(width: 160, height: height, alignment: .topLeading)
+            .background {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(AIColors.fill)
+            }
         }
         .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                .fill(theme.color(.surfacePrimary))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                .strokeBorder(theme.color(.border), lineWidth: 1)
-        }
     }
 }

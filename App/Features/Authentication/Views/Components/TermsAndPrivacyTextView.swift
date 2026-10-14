@@ -13,7 +13,7 @@ struct TermsAndPrivacyTextView: View {
     var body: some View {
         Text(attributedText)
             .typography(Typography.bodySmall)
-            .foregroundStyle(.white.opacity(0.7))
+            .foregroundStyle(.white)
             .multilineTextAlignment(.center)
             .tint(.white)
     }
@@ -23,13 +23,13 @@ struct TermsAndPrivacyTextView: View {
 
         var terms = AttributedString("Terms of Service")
         terms.link = configuration.termsAndConditionsURL
-        terms.font = .system(size: Typography.bodySmall.size, weight: .bold)
+        terms.font = Font.custom(Typography.fontFamily, size: Typography.bodySmall.size).weight(.bold)
 
         let and = AttributedString(" and ")
 
         var privacy = AttributedString("Privacy Policy")
         privacy.link = configuration.privacyPolicyURL
-        privacy.font = .system(size: Typography.bodySmall.size, weight: .bold)
+        privacy.font = Font.custom(Typography.fontFamily, size: Typography.bodySmall.size).weight(.bold)
 
         let dot = AttributedString(".")
 

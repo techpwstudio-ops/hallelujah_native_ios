@@ -13,7 +13,6 @@ struct AIToolResultCard: View {
     @Environment(\.appTheme) private var theme
 
     private static let toolName = "getVerseOfDay"
-    private static let cardHeight: CGFloat = 200
 
     var body: some View {
         if toolResult.name == Self.toolName,
@@ -52,70 +51,98 @@ struct AIToolResultCard: View {
     /// Date+FlexibleISO8601.swift`) already covers the ISO 8601 case; a
     /// `date` that doesn't parse as one still renders — verbatim, rather than
     /// hiding an otherwise-valid card over a formatting miss.
+    /// Mirrors Dart's manual `_formatDate`: `Mon d, yyyy` in local time; null on parse failure.
     private static func formattedDate(_ raw: String?) -> String? {
         guard let raw, !raw.isEmpty else { return nil }
-        guard let date = Date.parseFlexibleISO8601(raw) else { return raw }
-        return date.formatted(date: .abbreviated, time: .omitted)
+        guard let date = Date.parseFlexibleISO8601(raw) else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: date)
     }
+
+    private static let cardRadius: CGFloat = 16
 
     private func verseOfDayCard(_ payload: VerseOfDayPayload) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            background(for: payload)
-
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.75)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            HStack(alignment: .top, spacing: Spacing.sm) {
-                RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                    .fill(theme.color(.brandPrimary))
-                    .frame(width: 4)
-
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    if let title = payload.title, !title.isEmpty {
-                        Text(title)
-                            .typography(Typography.labelMedium)
-                            .foregroundStyle(.white.opacity(0.8))
-                    }
-                    Text(payload.reference)
-                        .typography(Typography.titleSmall)
-                        .foregroundStyle(.white)
-                    Text(payload.verseText)
-                        .typography(Typography.bodyMedium)
-                        .foregroundStyle(.white.opacity(0.92))
-                        .lineLimit(4)
-                    if let dateText = Self.formattedDate(payload.date) {
-                        Text(dateText)
-                            .typography(Typography.labelSmall)
-                            .foregroundStyle(.white.opacity(0.65))
-                    }
+        let hasBackground = !(payload.backgroundImage ?? "").isEmpty
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "book.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AIColors.gold)
+                Text("Verse of the Day")
+                    .font(AIColors.font(11, .semibold))
+                    .tracking(0.8)
+                    .foregroundStyle(AIColors.gold)
+                if let dateText = Self.formattedDate(payload.date) {
+                    Spacer(minLength: 0)
+                    Text(dateText)
+                        .font(AIColors.font(10))
+                        .foregroundStyle(AIColors.white54)
                 }
             }
-            .padding(Spacing.md)
+
+            Text(payload.reference)
+                .font(AIColors.font(18, .bold))
+                .tracking(-0.3)
+                .foregroundStyle(Color.white)
+                .padding(.top, 10)
+
+            if let title = payload.title, !title.isEmpty {
+                Text(title)
+                    .font(AIColors.font(12, .medium))
+                    .foregroundStyle(AIColors.gold.opacity(0.85))
+                    .padding(.top, 2)
+            }
+
+            if !payload.verseText.isEmpty {
+                Rectangle()
+                    .fill(AIColors.white24)
+                    .frame(height: 0.5)
+                    .padding(.top, 10)
+                Text("\"\(payload.verseText)\"")
+                    .font(AIColors.font(14))
+                    .italic()
+                    .foregroundStyle(Color.white.opacity(0.88))
+                    .lineSpacing(14 * (1.6 - 1.15))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 10)
+            }
         }
-        .frame(height: Self.cardHeight)
-        .frame(maxWidth: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            ZStack(alignment: .leading) {
+                if hasBackground {
+                    background(for: payload)
+                }
+                LinearGradient(
+                    colors: hasBackground
+                        ? [Color.black.opacity(0.72), Color.black.opacity(0.60)]
+                        : [Color(red: 0x2A / 255, green: 0x1F / 255, blue: 0x0A / 255),
+                           Color(red: 0x1A / 255, green: 0x14 / 255, blue: 0x08 / 255)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                Rectangle()
+                    .fill(AIColors.gold)
+                    .frame(width: 3)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Self.cardRadius - 0.8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Self.cardRadius, style: .continuous)
+                .strokeBorder(AIColors.gold.opacity(0.4), lineWidth: 0.8)
+        }
+        .padding(.bottom, 10)
     }
 
-    /// `ArtworkView` (`DesignSystem/Components/Media/ArtworkView.swift`) is
-    /// this codebase's existing async-image component (see
-    /// `UserPlaylistDetailView.swift`'s header for the same
-    /// `GeometryReader`-for-actual-width usage this mirrors). Its own `url`
-    /// is an already-resolved `URL?`, not a CDN-relative path routed through
-    /// `ArtworkURLResolver` — `backgroundImage` here is a plain wire URL
-    /// string, not a variant-aware content asset — so it's turned into a
-    /// `URL` directly.
     @ViewBuilder
     private func background(for payload: VerseOfDayPayload) -> some View {
         if let backgroundImage = payload.backgroundImage, let url = URL(string: backgroundImage) {
             GeometryReader { proxy in
-                ArtworkView(url: url, width: proxy.size.width, height: Self.cardHeight, cornerRadius: 0, contentMode: .fill)
+                ArtworkView(url: url, width: proxy.size.width, height: proxy.size.height, cornerRadius: 0, contentMode: .fill)
             }
-        } else {
-            theme.color(.surfaceSecondary)
         }
     }
 }

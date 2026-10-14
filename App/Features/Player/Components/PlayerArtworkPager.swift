@@ -27,7 +27,9 @@ import SwiftUI
 struct PlayerArtworkPager: View {
     let queueController: QueueController
 
-    private static let cornerRadius: CGFloat = Radius.lg
+    /// `_Artwork` passes `radius: 0` and fills the full screen width — a
+    /// square for music, 16:9 for episodes, edge to edge with no inset.
+    private static let cornerRadius: CGFloat = 0
 
     private var songs: [Song] { queueController.queue?.songs ?? [] }
     private var currentSong: Song? { queueController.queue?.currentSong }
@@ -55,6 +57,7 @@ struct PlayerArtworkPager: View {
         // codebase to confirm against without a build; flag on the first
         // real one.
         .aspectRatio(currentSong?.displayAspectRatio ?? 1, contentMode: .fit)
+        .frame(maxWidth: .infinity)
     }
 
     private var selectionBinding: Binding<String?> {

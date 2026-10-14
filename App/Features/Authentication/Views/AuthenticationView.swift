@@ -47,6 +47,8 @@ struct AuthenticationView: View {
     @State private var isEmailMode = false
     @State private var otpContext: OTPContext?
     @State private var emailOTPContext: EmailOTPContext?
+    /// `KeyboardCubit` — the terms line drops out while the keyboard is up.
+    @State private var isKeyboardOpen = false
 
     @Environment(\.appTheme) private var theme
     @Environment(\.toastCenter) private var toastCenter
@@ -72,7 +74,7 @@ struct AuthenticationView: View {
 
                         Text(isEmailMode ? "Continue with Email" : "Continue with Mobile")
                             .typography(Typography.bodyMedium)
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(.white)
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
 
@@ -107,10 +109,18 @@ struct AuthenticationView: View {
             }
             .background(AuthColors.background.ignoresSafeArea())
             .safeAreaInset(edge: .bottom) {
-                TermsAndPrivacyTextView()
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.bottom, Spacing.md)
-                    .background(AuthColors.background)
+                if !isKeyboardOpen {
+                    TermsAndPrivacyTextView()
+                        .padding(.horizontal, Spacing.lg)
+                        .padding(.bottom, Spacing.md)
+                        .background(AuthColors.background)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                isKeyboardOpen = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                isKeyboardOpen = false
             }
             .navigationDestination(item: $otpContext) { context in
                 OTPView(
@@ -156,10 +166,8 @@ struct AuthenticationView: View {
 
             Spacer().frame(height: Spacing.sm)
 
-            // Dart renders this with Google Fonts "Russo One"; no bundled
-            // equivalent exists natively, so this falls back to the system
-            // font at the same size/weight, the same D11 substitution
-            // `Typography.swift` already documents for the rest of the app.
+            // Dart renders this with Google Fonts "Russo One" (needs the font
+            // bundled; until then this falls back to the app font).
             Text("HALLELUJAH")
                 .typography(Typography.titleLarge)
                 .fontWeight(.bold)
@@ -168,6 +176,7 @@ struct AuthenticationView: View {
 
             Spacer().frame(height: Spacing.md)
 
+            // Dart: Google Fonts "Poppins" w400, same fallback as above.
             Text("MUSIC, PODCAST AND THE WORD")
                 .typography(Typography.titleMedium)
                 .fontWeight(.regular)

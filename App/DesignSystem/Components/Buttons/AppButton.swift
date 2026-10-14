@@ -66,9 +66,8 @@ struct AppButton: View {
         Button(action: action) {
             Group {
                 if isLoading {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(labelColor)
+                    // `app_button.dart` shows a 24pt Material spinner.
+                    MaterialSpinner(color: labelColor, size: 24, lineWidth: 2.5)
                 } else {
                     HStack(spacing: Spacing.sm) {
                         if let leadingIcon {
@@ -98,23 +97,29 @@ struct AppButton: View {
         .animation(MotionCurve.fast, value: isDisabled)
     }
 
+    /// `Colors.grey.shade600`.
+    private static let disabledFill = Color(red: 0x75 / 255, green: 0x75 / 255, blue: 0x75 / 255)
+
     private var backgroundColor: Color {
         switch variant {
-        case .primary: isDisabled ? theme.color(.textTertiary).opacity(0.4) : theme.color(.textPrimary)
+        // `app_button.dart`: grey.shade600 when disabled, white otherwise.
+        case .primary: isDisabled ? Self.disabledFill : .white
         case .secondary, .ghost: .clear
         }
     }
 
     private var labelColor: Color {
         switch variant {
-        case .primary: isDisabled ? theme.color(.textTertiary) : theme.color(.textInverse)
-        case .secondary, .ghost: theme.color(.textSecondary)
+        // `app_button.dart`: white54 on the disabled fill, black on white;
+        // secondary/ghost labels are white70.
+        case .primary: isDisabled ? Color.white.opacity(0.54) : .black
+        case .secondary, .ghost: Color.white.opacity(0.7)
         }
     }
 
     private var borderColor: Color? {
         switch variant {
-        case .secondary: theme.color(.border)
+        case .secondary: Color.white.opacity(0.24)
         case .primary, .ghost: nil
         }
     }

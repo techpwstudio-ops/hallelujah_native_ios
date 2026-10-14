@@ -1,54 +1,68 @@
 import SwiftUI
 
-/// T54 (Bible reader) -- ported from `table_of_content_sheet.dart`'s book
-/// list: every `BibleBook` the reader can jump to, each row showing its
-/// canonical English name plus a chapter-count badge (mirrors Dart's own
-/// per-row chapter-count pill). Presented from `ReaderView` via
-/// `.appSheet(isPresented:)`, so -- same convention as
-/// `CountryPickerView.swift` -- this is bare content with no background or
-/// drag handle of its own; `AppSheetContainer` supplies both.
+/// `BookTableOfContent` (`lib/sheets/book/table_of_content_sheet.dart`):
+/// drag handle, a "Table of content" caption (bodyMedium, white 70%), then one
+/// 56pt row per book — title titleMedium w700 (white when it is the book being
+/// read, white 70% otherwise) with a 30pt white circle carrying the chapter
+/// count. Tapping a row hands the book to `onSelect`; Flutter opens that
+/// book's chapter grid (it does NOT switch the reader to the book yet). Like
+/// Flutter, the list jumps to the current book when it is the 7th or later.
 struct BookTableOfContentsSheet: View {
     let books: [BibleBook]
+    let currentBookNumber: Int?
     let onSelect: (BibleBook) -> Void
 
-    @Environment(\.appTheme) private var theme
-    @Environment(\.dismiss) private var dismiss
-
     var body: some View {
-        List(books) { book in
-            row(for: book)
+        VStack(alignment: .leading, spacing: 0) {
+            ReadDragHandle()
+
+            Text("Table of content")
+                .readText(Typography.bodyMedium, weight: .regular, color: ReadPalette.secondaryText)
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(books) { book in
+                            row(for: book)
+                                .id(book.bookNumber)
+                        }
+                    }
+                }
+                .onAppear { scrollToCurrentBook(proxy) }
+            }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .frame(maxHeight: .infinity)
+        .padding(.horizontal, Dimens.paddingMedium)
+    }
+
+    private func scrollToCurrentBook(_ proxy: ScrollViewProxy) {
+        guard let currentBookNumber,
+              let index = books.firstIndex(where: { $0.bookNumber == currentBookNumber }),
+              index >= 6 else { return }
+        proxy.scrollTo(currentBookNumber, anchor: .top)
     }
 
     private func row(for book: BibleBook) -> some View {
-        Button {
+        let isCurrent = book.bookNumber == currentBookNumber
+        return Button {
             onSelect(book)
-            dismiss()
         } label: {
-            HStack(spacing: Spacing.sm) {
+            HStack(spacing: 0) {
                 Text(book.name)
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(theme.color(.textPrimary))
-                Spacer()
-                chapterBadge(book.chapters)
+                    .readText(
+                        Typography.titleMedium,
+                        weight: .bold,
+                        color: isCurrent ? ReadPalette.white : ReadPalette.secondaryText
+                    )
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 16)
+                Text("\(book.chapters)")
+                    .readText(Typography.titleSmall, weight: .bold, color: ReadPalette.black)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(ReadPalette.white))
             }
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowBackground(Color.clear)
-    }
-
-    private func chapterBadge(_ chapters: Int) -> some View {
-        Text("\(chapters) chapters")
-            .typography(Typography.labelSmall)
-            .foregroundStyle(theme.color(.textSecondary))
-            .padding(.horizontal, Spacing.sm)
-            .padding(.vertical, Spacing.xs)
-            .background {
-                Capsule(style: .continuous)
-                    .fill(theme.color(.surfaceSecondary))
-            }
     }
 }

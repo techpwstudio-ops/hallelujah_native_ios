@@ -62,6 +62,8 @@ struct OTPField: View {
                 }
         }
         .contentShape(Rectangle())
+        // Pinput `autofocus: true` on the OTP screens.
+        .onAppear { isFocused = true }
         .onTapGesture { isFocused = true }
         .animation(MotionCurve.fast, value: code.count)
         .animation(MotionCurve.fast, value: hasError)

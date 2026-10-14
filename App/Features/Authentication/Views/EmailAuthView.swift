@@ -40,17 +40,17 @@ struct EmailAuthView: View {
             TextField(
                 "",
                 text: $email,
-                prompt: Text("you@example.com").foregroundStyle(AuthColors.hint)
+                prompt: Text("you@example.com").font(Typography.bodyMedium.font).foregroundStyle(AuthColors.hint)
             )
             .keyboardType(.emailAddress)
             .textContentType(.emailAddress)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
-            .typography(Typography.bodyMedium)
+            .typography(Typography.bodyLarge)
             .foregroundStyle(.white)
             .focused($isFieldFocused)
             .padding(.horizontal, Spacing.md)
-            .frame(height: Spacing.inputHeight)
+            .frame(height: AuthMetrics.textFieldHeight)
             .background {
                 RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
                     .fill(AuthColors.fill)

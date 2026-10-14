@@ -12,6 +12,8 @@ enum AuthColors {
     /// both `Colors.black`.
     static let background = Color.black
     /// `fillColor` (`Color(0xFF1D1D1D)`).
+    /// Dark theme `ColorScheme.error` (`Color(0xFFBA0319)`, `launch_app.dart`).
+    static let error = Color(red: 0xBA / 255, green: 0x03 / 255, blue: 0x19 / 255)
     static let fill = Color(red: 0x1D / 255, green: 0x1D / 255, blue: 0x1D / 255)
     /// `defaultPinTheme`'s `focusedPinTheme` border
     /// (`Color.fromRGBO(114, 178, 238, 1)`).
@@ -54,4 +56,11 @@ enum AuthColors {
         startPoint: .leading,
         endPoint: .trailing
     )
+}
+
+/// Auth-screen metrics with no shared token.
+enum AuthMetrics {
+    /// Material `TextField` default: 24pt line (bodyLarge 16 x 1.5) plus
+    /// 16pt content padding top and bottom.
+    static let textFieldHeight: CGFloat = 56
 }

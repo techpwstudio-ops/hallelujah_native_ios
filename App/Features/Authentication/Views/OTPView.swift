@@ -58,13 +58,14 @@ struct OTPView: View {
                     HStack(spacing: Spacing.sm) {
                         Text("We've sent a 6-digit code to \(maskedMobile)")
                             .typography(Typography.bodyMedium)
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(.white)
                             .multilineTextAlignment(.center)
                         Button {
                             viewModel.editPhoneNumber()
                             onEditPhoneNumber()
                         } label: {
                             theme.icon(.edit)
+                                .font(.system(size: 20))
                                 .foregroundStyle(.white)
                         }
                         .buttonStyle(.plain)
@@ -105,15 +106,15 @@ struct OTPView: View {
 
                     Spacer().frame(height: Spacing.xl)
 
-                    Text("Code expires in 10 minutes")
+                    Text("The code will expire in 10 minutes.")
                         .typography(Typography.bodySmall)
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
 
                     Spacer().frame(height: Spacing.xl)
 
                     AppButton(
-                        label: "Verify & Continue",
+                        label: "Verify OTP & Continue",
                         action: { Task { await viewModel.verifyOTP(code: code) } },
                         isLoading: viewModel.state == .loading,
                         enabled: code.count == Self.otpLength
@@ -128,7 +129,6 @@ struct OTPView: View {
                         guard countdown.canResend else { return }
                         Task {
                             await viewModel.sendOTP(rawPhoneNumber: mobile, isResend: true)
-                            countdown.start()
                         }
                     }
                 }

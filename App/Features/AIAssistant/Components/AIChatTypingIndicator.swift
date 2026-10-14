@@ -1,34 +1,57 @@
 import SwiftUI
 
-/// T58 — the "thinking" indicator shown inside an assistant bubble slot
-/// while a stream has started but no content has arrived yet
-/// (`AIMessage.isStreamingPlaceholder`: `isStreaming && content == nil`).
-/// Three dots, phase-offset opacity pulse — no attempt to match a specific
-/// reference timing/curve, per this task's own "no need to match exact
-/// timing or curves precisely" scope note.
+/// Animated three-dot indicator shown while the AI is generating a response.
+/// Ports `AiTypingIndicator` (`lib/views/ai/widgets/ai_typing_indicator.dart`):
+/// 900ms loop, each dot offset by 0.33 phase, opacity `0.3 + 0.7 * wave`.
 struct AIChatTypingIndicator: View {
-    @Environment(\.appTheme) private var theme
-    @State private var isAnimating = false
-
-    private static let dotCount = 3
-    private static let dotSize: CGFloat = 6
+    private static let period: TimeInterval = 0.9
 
     var body: some View {
-        HStack(spacing: Spacing.xs) {
-            ForEach(0..<Self.dotCount, id: \.self) { index in
-                Circle()
-                    .fill(theme.color(.textSecondary))
-                    .frame(width: Self.dotSize, height: Self.dotSize)
-                    .opacity(isAnimating ? 1 : 0.3)
-                    .animation(
-                        Animation.easeInOut(duration: 0.6)
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(index) * 0.15),
-                        value: isAnimating
-                    )
+        TimelineView(.animation) { timeline in
+            let base = timeline.date.timeIntervalSinceReferenceDate
+                .truncatingRemainder(dividingBy: Self.period) / Self.period
+            HStack(spacing: 0) {
+                ForEach(0..<3, id: \.self) { index in
+                    let phase = (base + Double(index) * 0.33).truncatingRemainder(dividingBy: 1.0)
+                    let wave = 1 - abs(2 * phase - 1)
+                    let opacity = min(max(0.3 + 0.7 * wave, 0), 1)
+                    Circle()
+                        .fill(Color.white.opacity(opacity))
+                        .frame(width: 6, height: 6)
+                        .padding(.horizontal, 2)
+                }
             }
         }
-        .padding(.vertical, Spacing.xs)
-        .onAppear { isAnimating = true }
+    }
+}
+
+/// The logo + typing bubble shown while the AI is streaming and no tokens have
+/// arrived yet. Ports `AiThinkingBubble`.
+struct AIChatThinkingBubble: View {
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            Image("AppLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 28, height: 28)
+                .clipShape(Circle())
+
+            AIChatTypingIndicator()
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background {
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 16,
+                        bottomLeadingRadius: 4,
+                        bottomTrailingRadius: 16,
+                        topTrailingRadius: 16,
+                        style: .continuous
+                    )
+                    .fill(AIColors.fill)
+                }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
     }
 }

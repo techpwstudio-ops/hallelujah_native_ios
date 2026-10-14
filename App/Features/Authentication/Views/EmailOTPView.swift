@@ -65,13 +65,14 @@ struct EmailOTPView: View {
                     HStack(spacing: Spacing.sm) {
                         Text("We've sent a 6-digit code to \(email)")
                             .typography(Typography.bodyMedium)
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(.white)
                             .multilineTextAlignment(.center)
                         Button {
                             viewModel.editEmail()
                             onEditEmail()
                         } label: {
                             theme.icon(.edit)
+                                .font(.system(size: 20))
                                 .foregroundStyle(.white)
                         }
                         .buttonStyle(.plain)
@@ -114,7 +115,7 @@ struct EmailOTPView: View {
 
                     Text("The code will expire in 10 minutes.")
                         .typography(Typography.bodySmall)
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
 
                     Spacer().frame(height: Spacing.xl)
@@ -135,7 +136,6 @@ struct EmailOTPView: View {
                         guard countdown.canResend else { return }
                         Task {
                             await viewModel.sendOTP(rawEmail: email, isResend: true)
-                            countdown.start()
                         }
                     }
                 }
