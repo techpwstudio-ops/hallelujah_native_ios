@@ -354,27 +354,27 @@ natively — it is already Swift and is the best available spec.
   lifecycle alongside the SwiftUI app lifecycle.
   *Done:* app appears and launches in the CarPlay simulator.
 
-- [~] **T49 — Tab bar and tabs**
+- [x] **T49 — Tab bar and tabs** — _UNVERIFIED: not compiled/run, verify locally_
   `CPTabBarTemplate` with **Home, Library, Recents, Search**, each lazily loaded with a
   loading template while data arrives.
   *Done:* all four tabs populate; no blocking main-thread work on connect.
 
-- [~] **T50 — List templates and artwork**
+- [x] **T50 — List templates and artwork** — _UNVERIFIED: not compiled/run, verify locally_
   `CPListTemplate` / `CPListSection` / `CPListItem` / `CPListImageRowItem`, circular
   artwork, disk-cached and correctly sized images, the 3-image row cards used on Home.
   *Done:* artwork renders from cache without a network round-trip on every scroll.
 
-- [~] **T51 — Pushed templates**
+- [x] **T51 — Pushed templates** — _UNVERIFIED: not compiled/run, verify locally_
   Liked Songs, Downloads, all playlists, playlist songs, company playlists, creator
   songs, home "see all", search results — one function per `push*` in the Dart/Swift original.
   *Done:* every push target from the existing delegate exists and plays.
 
-- [~] **T52 — Now Playing and handoff**
+- [x] **T52 — Now Playing and handoff** — _UNVERIFIED: not compiled/run, verify locally_
   `CPNowPlayingTemplate`, now-playing indicator on list rows, progress updates, remote
   commands, and state shared with the phone UI in both directions.
   *Done:* start on phone → continue in car → control from car, with no duplicate players.
 
-- [~] **T53 — CarPlay QA**
+- [x] **T53 — CarPlay QA** — _UNVERIFIED: not compiled/run, verify locally_
   Auth-required guards (`pushGuarded`), offline behaviour, template-depth limit (5),
   list item count limits, connect while playing / while logged out.
   *Done:* QA matrix in `Docs/CARPLAY.md` fully passed.
@@ -431,7 +431,7 @@ natively — it is already Swift and is the best available spec.
   Tip products and tip sheet.
   *Done:* tip purchase completes.
 
-- [~] **T65 — Premium gating**
+- [x] **T65 — Premium gating** — _UNVERIFIED: not compiled/run, verify locally_
   One gating rule set applied across player, downloads, AI, and ads.
   *Done:* a single source of truth decides every gate; no scattered `isPremium` checks.
 
@@ -878,3 +878,4 @@ needs no testability); `GHallelujahTests` runs under Development only.
 | 2026-10-14 | T49–T52 | Built native CarPlay content end to end in `App/Platform/CarPlay/`: `CarPlayModels.swift` (`CarPlayRow`/`CarPlayRowGroup`/`CarPlayRail` value types), `CarPlayContentProvider.swift` (all fetching via the existing repositories — Home rails from `HomeRepository`, Recents from the `recent-all` section, Search tab = Browse Genres, Liked Songs, Downloads rebuilt from `DownloadTask` snapshots, company + user playlists, creator/genre/playlist songs), `CarPlayArtworkLoader.swift` (memory via `ArtworkImageCache` + `Caches/CarPlayArtwork` disk tier, bearer header for proxy URLs), `CarPlayController.swift` (4-tab `CPTabBarTemplate`, `CPListImageRowItem` rails with iOS 26/17.4/legacy tiers, every `push*` target, single `push` choke point with depth-5 + overlapping-push guard, now-playing row indicator, Now Playing heart button with optimistic toggle, live refresh of Liked Songs on favourite change) and a slimmed `CarPlaySceneDelegate.swift`. No remote-command code: `NowPlayingCoordinator` already owns `MPRemoteCommandCenter`. String Catalog: placeholder keys replaced by `carplay.*`. **Status `[~]`, not ticked: written without a Swift toolchain, never compiled or run** — needs a real build, CarPlay-simulator pass, and an Instruments pass. Known gaps: Siri `INPlayMediaIntent` (no SiriIntents extension natively), recent *song* cards resolve by title search (no song-by-id endpoint), Downloads/Playlists don't live-refresh, no unit tests yet, auth-required guard is a simple signed-in check on connect (T53). |
 | 2026-10-14 | T65 | Added `PremiumGate` (`Core/Security/PremiumGate.swift`, registered in `AppComposition`) as the single premium decision point, porting every `shouldBlockPremiumAccess` call site in the Flutter app: ads (`AdsRepository` now asks `PremiumGate.showsAds`, replacing its inline `isActive` check), downloads (`FullPlayerView.startDownload` redirects free listeners to the plans screen, as `song_menu_sheet.dart` does), and the Audio Quality settings row (hidden for free listeners, as `settings_screen.dart` does). The Flutter app has NO premium check on AI chat/voice, so none was added. **Gap found: the sleep timer is premium-gated in Flutter but doesn't exist natively at all** (`FullPlayerView` header: `SleepTimerBadge` out of scope) — not in the roadmap; `PremiumFeature.sleepTimer` is ready for whoever builds it. Status `[~]`: uncompiled, no unit test yet (T75). |
 | 2026-10-14 | T53 | Guards implemented inside T49–T52's `CarPlayController.push` (template-depth limit 5, overlapping-push guard, signed-out message, 100-row cap). `Docs/CARPLAY.md` holds the QA matrix — every row is ☐ not-yet-run; the "fully passed" Done criterion is NOT met and needs a Mac + CarPlay simulator. |
+| 2026-10-14 | POLICY | Per user direction: tasks are ticked `[x]` once written, even when not compiled or run, and tagged **UNVERIFIED** in the roadmap. UNVERIFIED means "written without a Swift toolchain; run the local build, tests, simulator/CarPlay pass and Instruments before trusting". T49–T53 and T65 are ticked on this basis; T53's QA matrix (`Docs/CARPLAY.md`) is still all not-yet-run. |
