@@ -120,6 +120,10 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Hallelujah needs permission to save images to your photo library. For example, when you tap "Save Image" on a song, verse or AI answer share card, the picture is saved to your Photos so you can post or send it later.</string>
 
+	<!-- Profile photo: "take a photo" source (`ProfileImagePicking`). -->
+	<key>NSCameraUsageDescription</key>
+	<string>Hallelujah needs the camera so you can take a profile photo.</string>
+
 	<!-- T68 — the three live chat-share targets (`ShareSheetView`'s
 	     WhatsApp/Telegram/Twitter row). `ios/Runner/Info.plist` also lists
 	     fbapi/fb-messenger-api/fbauth2/fbshareextension/instagram/fb for its

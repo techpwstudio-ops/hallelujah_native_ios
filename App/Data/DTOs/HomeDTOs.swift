@@ -168,9 +168,12 @@ enum HomeSectionContentDecoder {
         }
 
         switch viewType {
-        case "trending", "songs", "listSongs":
+        // `recommended` and `episodes` are plain song rails (`car_play_service.dart`'s
+        // `_flatSongViewTypes`; `home_section_builder.dart`'s builders).
+        case "trending", "songs", "listSongs", "recommended", "episodes":
             return .songs(paginate(decodeRows(rows, as: SongDTO.self).map { $0.toDomain() }))
-        case "creators":
+        // `podcasts` renders a creator row with a see-all-artists target.
+        case "creators", "podcasts":
             return .creators(paginate(decodeRows(rows, as: CreatorDTO.self).map { $0.toDomain() }))
         case "companyPlaylists", "aiPlaylist", "singleCompanyPlaylist", "similarPlaylist":
             return .playlists(paginate(decodeRows(rows, as: CompanyPlaylistDTO.self).map { $0.toDomain() }))

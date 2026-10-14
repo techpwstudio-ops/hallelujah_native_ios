@@ -138,10 +138,25 @@ private struct TabRootView: View {
 private struct AppRouteDestinationView: View {
     let route: AppRoute
 
+    @ViewBuilder
     var body: some View {
-        content
-            .navigationTitle(navigationTitle)
-            .navigationBarTitleDisplayMode(.inline)
+        if screenSetsOwnTitle {
+            content
+        } else {
+            content
+                .navigationTitle(navigationTitle)
+                .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    /// D12: the screens ported to the Flutter look draw their own app bar /
+    /// title, so the shell must not add a second one. Only the screens still
+    /// using generic chrome (or the placeholder) get the shell's title.
+    private var screenSetsOwnTitle: Bool {
+        switch route {
+        case .storageSettings, .contentLanguage, .creatorGrid, .cropCompressImage: false
+        default: true
+        }
     }
 
     /// T40/T42/T43/T44/T46 — the cases with a real screen to dispatch to;
@@ -155,6 +170,15 @@ private struct AppRouteDestinationView: View {
             StorageSettingsView()
         case .contentSearch:
             ContentSearchView()
+        case let .seeAllSongs(type, _, image, imageVariants, _, uniqueIDWithType, label, _, dataID):
+            SeeAllSongsView(
+                type: type, image: image, imageVariants: imageVariants,
+                uniqueID: uniqueIDWithType ?? dataID, label: label
+            )
+        case let .seeAllArtists(type, title, dataID, _):
+            SeeAllArtistsView(type: type, title: title, uiId: dataID)
+        case .recentSongs:
+            RecentSongsView(type: .all)
         case let .creatorSongs(creatorID, userPlaylistID):
             CreatorProfileView(creatorID: creatorID, userPlaylistID: userPlaylistID)
         case .episodes:
