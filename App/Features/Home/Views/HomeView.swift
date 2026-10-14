@@ -98,6 +98,8 @@ struct HomeView: View {
         .coordinateSpace(name: Self.scrollSpace)
         .background(HomeColors.background.ignoresSafeArea())
         .refreshable {
+            // A new feed session: rail ads are forgotten (`RailAdStore.reset`).
+            RailAdStore.shared.reset()
             await model.refresh()
         }
         .task(id: selected) {
@@ -119,6 +121,11 @@ struct HomeView: View {
             // thing in the feed (`HomeV2ListSongsSliver`).
             ForEach(placeholders.filter { $0.viewType != "listSongs" }) { placeholder in
                 HomeSectionRailView(placeholder: placeholder, viewModel: model)
+                // An ad banner renders right after its anchor rail
+                // (`_kHomeAdBannerSpots`); a slot with no ad collapses to nothing.
+                if let spot = HomeAdBannerSpot.spot(forAnchorKey: placeholder.key) {
+                    HomeAdBannerSlot(spot: spot)
+                }
             }
             ForEach(placeholders.filter { $0.viewType == "listSongs" }) { placeholder in
                 HomeSectionRailView(placeholder: placeholder, viewModel: model)

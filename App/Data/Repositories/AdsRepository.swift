@@ -199,6 +199,76 @@ final class AdsRepository {
             _ = try? await client.send(.post("/ads/track/click"), body: try? JSONSerialization.data(withJSONObject: ["token": token]))
         }
     }
+
+    // MARK: - Player image takeover (`player_image_*` placements)
+
+    /// `timeline`/`rememberTimeline`/`pacingEveryN` (Dart) — what each placement
+    /// reported this session, saved so the first song of a launch is timed
+    /// before any response could have come back.
+    private var timelines: [String: AdTimeline] = [:]
+    private var pacingByPlacement: [String: Int] = [:]
+    private var confirmedImpressionTokens: Set<String> = []
+
+    /// Whether this listener can be shown an ad at all right now — the gates
+    /// `serve` passes first.
+    func canServe() async -> Bool {
+        guard RemoteSettings.current.adsEnabled else { return false }
+        return await premiumGate.showsAds
+    }
+
+    /// How much longer a no-fill keeps `placement` quiet (narrowed to
+    /// `assetType` exactly as `serve` keys it), in seconds; 0 when free to ask.
+    func backoffRemaining(placement: String, assetType: String? = nil) -> TimeInterval {
+        let key = assetType.map { "\(placement):\($0)" } ?? placement
+        guard let notBefore = retryNotBefore[key] else { return 0 }
+        return max(0, notBefore.timeIntervalSinceNow)
+    }
+
+    /// `trackImpression`, but once per served ad: the same creative moving from
+    /// the mini player's strip onto the full player's cover mid-showing is not
+    /// counted twice (Dart's `trackImpression` dedupes by token).
+    func trackImpressionOnce(_ token: String) {
+        guard confirmedImpressionTokens.insert(token).inserted else { return }
+        trackImpression(token)
+    }
+
+    func pacingEveryN(forPlacement placement: String) -> Int? {
+        if let live = pacingByPlacement[placement] { return live }
+        let saved = UserDefaults.standard.integer(forKey: "ads_pacing_everyN:\(placement)")
+        return saved > 0 ? saved : nil
+    }
+
+    func rememberPacingEveryN(forPlacement placement: String, _ everyN: Int?) {
+        guard let everyN, everyN > 0, pacingByPlacement[placement] != everyN else { return }
+        pacingByPlacement[placement] = everyN
+        UserDefaults.standard.set(everyN, forKey: "ads_pacing_everyN:\(placement)")
+    }
+
+    /// The Intro / Ad / Gap timeline of the player takeover on `placement`: this
+    /// session's response, else the copy an earlier launch saved, else the
+    /// built-in numbers the backend seeds.
+    func timeline(forPlacement placement: String) -> AdTimeline {
+        if let live = timelines[placement] { return live }
+        let defaults = UserDefaults.standard
+        func saved(_ field: String) -> Int? {
+            defaults.object(forKey: "ads_timeline_\(field):\(placement)") as? Int
+        }
+        return AdTimeline.resolve(introSeconds: saved("intro"), displaySeconds: saved("display"), gapSeconds: saved("gap"))
+    }
+
+    func rememberTimeline(forPlacement placement: String, load: AdLoad) {
+        let timeline = AdTimeline.resolve(
+            introSeconds: load.introSeconds,
+            displaySeconds: load.displaySeconds,
+            gapSeconds: load.gapSeconds
+        )
+        guard timelines[placement] != timeline else { return }
+        timelines[placement] = timeline
+        let defaults = UserDefaults.standard
+        defaults.set(timeline.introSeconds, forKey: "ads_timeline_intro:\(placement)")
+        defaults.set(timeline.displaySeconds, forKey: "ads_timeline_display:\(placement)")
+        defaults.set(timeline.gapSeconds, forKey: "ads_timeline_gap:\(placement)")
+    }
 }
 
 /// `ads/ad_reaction.dart` — a listener's thumb on an ad. Wire values are the

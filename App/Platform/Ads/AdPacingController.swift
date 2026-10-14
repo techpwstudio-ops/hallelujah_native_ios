@@ -28,11 +28,11 @@ import Observation
 /// already starts buffering immediately on construction, so there's no
 /// equivalent latency to hide behind a second phase.
 ///
-/// Also NOT ported: `lingerAfterDismiss`'s companion-banner handoff
-/// (`_endAdBreak`'s `companionAd`/`showCompanionBanner` branch) — there is no
-/// native host surface for a lingering banner outside the full player (the
-/// mini player / dashboard banner spot Dart uses doesn't exist in this
-/// rewrite), so a break always ends cleanly with nothing left behind.
+/// `lingerAfterDismiss` (`_endAdBreak`'s `companionAd`/`showCompanionBanner`
+/// branch) is ported: a creative that asked to linger and has a companion
+/// picture leaves `companionAd` up with `showCompanionBanner` true when its
+/// break ends, which `AdCompanionBanner` draws over the full player until the
+/// listener closes it (`dismissCompanion()`).
 @MainActor
 @Observable
 final class AdPacingController {
@@ -45,6 +45,11 @@ final class AdPacingController {
     private(set) var adTotalDuration: TimeInterval = 0
     private(set) var isAdPaused = false
     private(set) var adSkipUnlocksAt: Date?
+
+    /// `PlayerBlocState.companionAd` / `showCompanionBanner` — the ad left
+    /// behind by a break whose creative had `lingerAfterDismiss`.
+    private(set) var companionAd: AdCreative?
+    private(set) var showCompanionBanner = false
 
     /// Not `private` — `AdBreakView` reads this directly to feed AVKit's
     /// `VideoPlayer(player:)` for a `reel_video` creative's visible surface;
@@ -79,6 +84,30 @@ final class AdPacingController {
             guard let self else { return }
             Task { @MainActor in await self.maybeStartAdBreak() }
         }
+    }
+
+    /// An audio ad break, or the companion banner it leaves behind — the
+    /// condition `PlayerAdCubit._adIsUp` holds the image takeover off on.
+    var isAdUp: Bool {
+        isAdBreak || (showCompanionBanner && companionAd?.companionImageUrl != nil)
+    }
+
+    /// `_onDismissCompanionAd` (`DismissCompanionAdEvent`).
+    func dismissCompanion() {
+        guard showCompanionBanner || companionAd != nil else { return }
+        showCompanionBanner = false
+        companionAd = nil
+    }
+
+    /// `dismissAdBreakIfSkippable` (`ad_break_dismiss.dart`): the ⋮ menu's
+    /// "Close ad" on the player surfaces ends the break only if the creative's
+    /// own skip lock has already opened — it is not a way around
+    /// `skipAfterSec`. Returns whether the break was actually ended.
+    @discardableResult
+    func dismissIfSkippable() -> Bool {
+        guard isAdBreak, canSkip else { return false }
+        skip()
+        return true
     }
 
     var canSkip: Bool {
@@ -208,10 +237,13 @@ final class AdPacingController {
         }
     }
 
-    /// `_endAdBreak` (`bloc.dart:2574`), minus the companion-banner handoff —
-    /// see this file's own doc comment on why.
+    /// `_endAdBreak` (`bloc.dart:2574`), including the companion-banner handoff.
     private func endAdBreak() {
+        let ended = currentAd
         stopAdPlayback()
+        let linger = ended?.lingerAfterDismiss == true && ended?.companionImageUrl != nil
+        companionAd = linger ? ended : nil
+        showCompanionBanner = linger
         isAdBreak = false
         currentAd = nil
         adPosition = 0
@@ -252,6 +284,13 @@ final class AdPacingController {
     /// follows that existing convention instead of introducing a new one.
     func openAction(coordinator: AppNavigationCoordinator) {
         guard let ad = currentAd else { return }
+        openAction(for: ad, coordinator: coordinator)
+    }
+
+    /// `openAdAction(ad)` for any ad, not just the break's — the companion
+    /// banner, the strip and the card open an ad that is no longer (or never
+    /// was) `currentAd`.
+    func openAction(for ad: AdCreative, coordinator: AppNavigationCoordinator) {
 
         if let action = ad.action {
             if action.type == "subscription" {

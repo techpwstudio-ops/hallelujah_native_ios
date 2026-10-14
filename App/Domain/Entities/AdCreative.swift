@@ -51,6 +51,9 @@ struct AdCreative {
     /// `kind == 'company'`: the company's own promo — free, never billed, and
     /// its token can't name a paid creative (no reactions/feedback to send).
     var isCompany: Bool = false
+    /// 16:9 picture the same campaign carries when it also has an image
+    /// creative booked (`AdCreative.wideImageUrl`). Same "already a URL" rule.
+    var wideImageUrl: String?
 
     static func fromJSON(_ json: [String: Any]) -> AdCreative? {
         guard let adId = json["adId"] as? String,
@@ -82,6 +85,7 @@ struct AdCreative {
             action: (json["action"] as? [String: Any]).map(AdAction.fromJSON)
         )
         creative.isCompany = (json["kind"] as? String) == "company"
+        creative.wideImageUrl = json["wideImageUrl"] as? String
         return creative
     }
 }
@@ -108,8 +112,19 @@ struct AdLoad: Sendable, Equatable {
     /// Organic items to show between ads for a pacing-style placement (e.g.
     /// the player ad-break). Nil where pacing doesn't apply.
     let pacingEveryN: Int?
+    /// The audio player image takeover's Intro / Ad / Gap seconds
+    /// (`player_image_*` placements only); nil elsewhere or when the
+    /// dashboard field is blank — read through `AdTimeline.resolve`.
+    var introSeconds: Int?
+    var displaySeconds: Int?
+    var gapSeconds: Int?
 
     static func fromJSON(_ json: [String: Any]) -> AdLoad {
-        AdLoad(pacingEveryN: json["pacingEveryN"] as? Int)
+        AdLoad(
+            pacingEveryN: json["pacingEveryN"] as? Int,
+            introSeconds: json["introSeconds"] as? Int,
+            displaySeconds: json["displaySeconds"] as? Int,
+            gapSeconds: json["gapSeconds"] as? Int
+        )
     }
 }

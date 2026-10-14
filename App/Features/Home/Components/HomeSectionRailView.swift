@@ -126,8 +126,17 @@ struct HomeSectionRailView: View {
                     onSeeAll: { openSeeAllSongs(section, songs: songs) }
                 ) {
                     HomeRailScroll {
-                        ForEach(songs) { song in
-                            HomeSongCardView(song: song, songs: songs, uiId: section.id, isEpisode: isEpisode)
+                        HomeAdRailItems(layout: adLayout(section, count: songs.count)) { index in
+                            HomeSongCardView(song: songs[index], songs: songs, uiId: section.id, isEpisode: isEpisode)
+                        } ad: { slotId in
+                            // The episode card is a picture with its title laid
+                            // over it, and so is this: the rail's full height,
+                            // as a square.
+                            HomeRailAdSlot(
+                                slotId: slotId,
+                                size: isEpisode ? HomeMetrics.railHeight : HomeMetrics.coverSize,
+                                variant: isEpisode ? .overlay : .card
+                            )
                         }
                     }
                 }
@@ -146,8 +155,10 @@ struct HomeSectionRailView: View {
                 onSeeAll: { openSeeAllArtists(section) }
             ) {
                 HomeRailScroll {
-                    ForEach(creators) { creator in
-                        HomePodcastCardView(creator: creator)
+                    HomeAdRailItems(layout: adLayout(section, count: creators.count)) { index in
+                        HomePodcastCardView(creator: creators[index])
+                    } ad: { slotId in
+                        HomeRailAdSlot(slotId: slotId, size: HomeMetrics.coverSize)
                     }
                 }
             }
@@ -158,8 +169,19 @@ struct HomeSectionRailView: View {
                 onSeeAll: { openSeeAllArtists(section) }
             ) {
                 HomeRailScroll(height: Dimens.creatorRowHeight) {
-                    ForEach(creators) { creator in
-                        HomeCreatorCardView(creator: creator)
+                    HomeAdRailItems(layout: adLayout(section, count: creators.count)) { index in
+                        HomeCreatorCardView(creator: creators[index])
+                    } ad: { slotId in
+                        // Avatar-sized, with the name line under it — but a
+                        // rounded square, not the avatar's circle.
+                        HomeRailAdSlot(
+                            slotId: slotId,
+                            size: HomeCreatorCardView.avatarSize,
+                            variant: .avatar,
+                            radius: Dimens.cornerRadiusMedium,
+                            trailingGap: Dimens.horizontalGapMedium,
+                            captionGap: HomeMetrics.creatorAvatarToNameGap
+                        )
                     }
                     Color.clear.frame(width: Dimens.horizontalGapMedium)
                 }
@@ -185,21 +207,33 @@ struct HomeSectionRailView: View {
                 }
             case "similarPlaylist":
                 HomeSectionContainer(layout: .bleed) {
-                    HomeSimilarPlaylistView(playlists: playlists)
+                    HomeSimilarPlaylistView(
+                        playlists: playlists,
+                        adRailId: HomeRailAds.adRailId(sectionId: section.id, viewType: section.viewType)
+                    )
                 }
             case "playlists":
                 HomeSectionContainer(layout: .horizontalRow, title: section.title) {
                     HomeRailScroll {
-                        ForEach(playlists) { playlist in
-                            HomePlaylistCardView(playlist: playlist, style: .album)
+                        HomeAdRailItems(layout: adLayout(section, count: playlists.count)) { index in
+                            HomePlaylistCardView(playlist: playlists[index], style: .album)
+                        } ad: { slotId in
+                            HomeRailAdSlot(slotId: slotId, size: HomeMetrics.coverSize)
                         }
                     }
                 }
             default:
                 HomeSectionContainer(layout: .horizontalRow, title: section.title) {
                     HomeRailScroll {
-                        ForEach(playlists) { playlist in
-                            HomePlaylistCardView(playlist: playlist, style: .company)
+                        HomeAdRailItems(layout: adLayout(section, count: playlists.count)) { index in
+                            HomePlaylistCardView(playlist: playlists[index], style: .company)
+                        } ad: { slotId in
+                            HomeRailAdSlot(
+                                slotId: slotId,
+                                size: HomeMetrics.coverSize,
+                                radius: Dimens.cornerRadius,
+                                trailingGap: HomeMetrics.cardSpacing
+                            )
                         }
                     }
                 }
@@ -225,6 +259,17 @@ struct HomeSectionRailView: View {
                 }
             }
         }
+    }
+
+    // MARK: Ads
+
+    /// How a rail of `count` organic items is laid out with its square ads
+    /// (`RailAdStore.layoutFor`). "Continue Your Journey" carries none.
+    private func adLayout(_ section: ContentSection, count: Int) -> RailAdLayout {
+        RailAdStore.shared.layoutFor(
+            HomeRailAds.adRailId(sectionId: section.id, viewType: section.viewType),
+            count
+        )
     }
 
     // MARK: See all

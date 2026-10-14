@@ -225,6 +225,8 @@ struct HomeTopWeeklyPlaylistCardView: View {
 /// both sides, the rail on the left only.
 struct HomeSimilarPlaylistView: View {
     let playlists: [Playlist]
+    /// What this rail's square ads are filed under (`RailAdStore`); nil for none.
+    var adRailId: String?
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
 
@@ -235,8 +237,15 @@ struct HomeSimilarPlaylistView: View {
                     .padding(.horizontal, Dimens.sectionPaddingH)
                 Color.clear.frame(height: Dimens.horizontalSpacing)
                 HomeRailScroll(height: HomeMetrics.similarRailHeight) {
-                    ForEach(playlists) { playlist in
-                        HomePlaylistCardView(playlist: playlist, style: .similar)
+                    HomeAdRailItems(layout: RailAdStore.shared.layoutFor(adRailId, playlists.count)) { index in
+                        HomePlaylistCardView(playlist: playlists[index], style: .similar)
+                    } ad: { slotId in
+                        HomeRailAdSlot(
+                            slotId: slotId,
+                            size: HomeMetrics.similarCoverSize,
+                            radius: Dimens.cornerRadius,
+                            trailingGap: HomeMetrics.cardSpacing
+                        )
                     }
                 }
                 .padding(.leading, Dimens.sectionPaddingH)
