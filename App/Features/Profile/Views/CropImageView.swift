@@ -114,7 +114,7 @@ struct CropImageView: View {
     }
 
     private func cropSide(in size: CGSize) -> CGFloat {
-        max(40, min(size.width - 24, size.height - 8) - 56)
+        max(40, min(size.width, size.height) - 56)
     }
 
     private var cropArea: some View {

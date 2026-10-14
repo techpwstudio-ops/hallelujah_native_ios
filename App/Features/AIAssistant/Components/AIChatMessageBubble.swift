@@ -22,7 +22,6 @@ struct AIChatMessageBubble: View {
             case .assistant:
                 if message.isStreaming && (message.content ?? "").isEmpty && !message.isError {
                     AIChatThinkingBubble()
-                        .padding(.horizontal, -Dimens.screenPadding + 0)
                 } else {
                     AssistantBubble(message: message, onRetry: onRetry, copy: copy)
                 }

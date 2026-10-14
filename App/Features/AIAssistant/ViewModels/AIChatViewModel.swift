@@ -163,6 +163,23 @@ final class AIChatViewModel {
         streamTask?.cancel()
     }
 
+    /// Whether the errored message can be retried: nothing in flight and a
+    /// re-sendable user message behind it. Ports `AiChatState.canRetryAt`.
+    func canRetry(messageID: String) -> Bool {
+        if isBusy { return false }
+        guard let index = messages.firstIndex(where: { $0.id == messageID }) else { return false }
+        let message = messages[index]
+        guard message.isError else { return false }
+        let source: AIMessage?
+        if message.role == .user {
+            source = message
+        } else {
+            source = index + 1 < messages.count ? messages[index + 1] : nil
+        }
+        guard let source else { return false }
+        return source.content != nil || !source.attachments.isEmpty
+    }
+
     // MARK: - Send (non-streaming)
 
     private func sendFull(payload: AISendPayload) async {

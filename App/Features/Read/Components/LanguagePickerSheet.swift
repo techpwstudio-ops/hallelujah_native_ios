@@ -1,75 +1,130 @@
 import SwiftUI
 
-/// T54 (Bible reader), extended by T55 -- ported from
-/// `book_page_language_sheet.dart`'s language list. T55 adds the search
-/// field and per-row offline-download button the T54 doc comment originally
-/// deferred here; both were confirmed as this file's own scope, not
-/// `BibleSearchSheet`'s (that sheet searches verse/book content within the
-/// current language, this one searches the language list itself). Bare
-/// sheet content per `BookTableOfContentsSheet.swift`'s doc comment.
+/// `BookPageLanguageSheet` (`lib/sheets/book/book_page_language_sheet.dart`):
+/// drag handle, a "Search language" field (#1D1D1D fill, 8pt radius, 20pt
+/// search glyph, clear button once typing) and one titleMedium w500 row per
+/// language with the offline-download control trailing. Tapping the row
+/// switches the reader to that language. Empty states copy Flutter: "No
+/// languages available" / "No languages downloaded for offline reading yet"
+/// (offline) / `No language matches "<query>"`.
 struct LanguagePickerSheet: View {
     let languages: [BibleLanguage]
     let currentLanguage: String
     let onSelect: (String) -> Void
 
-    @Environment(\.appTheme) private var theme
-    @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
+    @State private var isOnline: Bool
+    @State private var service: BibleOfflineDownloadService = DependencyContainer.current.resolve()
+    @FocusState private var isSearchFocused: Bool
 
-    private var filteredLanguages: [BibleLanguage] {
-        guard !searchText.isEmpty else { return languages }
-        return languages.filter { $0.language.localizedCaseInsensitiveContains(searchText) }
+    init(languages: [BibleLanguage], currentLanguage: String, onSelect: @escaping (String) -> Void) {
+        self.languages = languages
+        self.currentLanguage = currentLanguage
+        self.onSelect = onSelect
+        let reachability: any ReachabilityMonitoring = DependencyContainer.current.resolve()
+        _isOnline = State(initialValue: reachability.isOnline)
+    }
+
+    /// Offline, a language can't be fetched on demand, so only ones already
+    /// fully downloaded are offered.
+    private var available: [BibleLanguage] {
+        isOnline ? languages : languages.filter { service.isLanguageDownloaded($0.language) }
+    }
+
+    private var filtered: [BibleLanguage] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return available }
+        return available.filter { $0.language.lowercased().contains(query) }
     }
 
     var body: some View {
-        VStack(spacing: Spacing.sm) {
-            SearchTextField(
-                text: $searchText,
-                placeholder: "Search languages",
-                onClear: { searchText = "" }
-            )
-            .padding(.horizontal, Spacing.md)
-            .padding(.top, Spacing.md)
+        VStack(spacing: 0) {
+            ReadDragHandle()
 
-            List(filteredLanguages) { language in
-                row(for: language)
+            if available.isEmpty {
+                ReadEmptyText(
+                    text: isOnline
+                        ? "No languages available"
+                        : "No languages downloaded for offline reading yet"
+                )
+                .frame(maxHeight: .infinity)
+            } else {
+                searchField
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
+
+                if filtered.isEmpty {
+                    ReadEmptyText(text: "No language matches \"\(searchText.trimmingCharacters(in: .whitespacesAndNewlines))\"")
+                        .frame(maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(filtered) { language in
+                                row(for: language)
+                            }
+                        }
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                }
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
         }
-        .frame(maxHeight: .infinity)
     }
 
-    /// A plain tap-gesture row, not a `Button`, so the trailing
-    /// `BibleOfflineDownloadButton`'s own tap/long-press gestures get their
-    /// own independent hit target -- same reasoning as
-    /// `BibleSearchSheet.verseCard`: nesting a `Button` (or a gesture-driven
-    /// control) inside another `Button`'s label doesn't route taps
-    /// independently in SwiftUI, but two nested plain gesture areas do, the
-    /// innermost one winning within its own bounds.
-    private func row(for language: BibleLanguage) -> some View {
-        let isSelected = language.language == currentLanguage
-        return HStack(spacing: Spacing.sm) {
-            Text(language.language)
-                .typography(Typography.bodyMedium)
-                .foregroundStyle(theme.color(.textPrimary))
-            Spacer()
-            if isSelected {
-                // No IconToken case for a bare checkmark glyph (checked
-                // IconToken.swift first, per the contract's hard rule) --
-                // raw SF Symbol, same as the existing selected-state
-                // checkmarks in AddSongsToPlaylistRow/LanguageSelectionViews.
-                Image(systemName: "checkmark")
-                    .foregroundStyle(theme.color(.brandPrimary))
+    private var searchField: some View {
+        HStack(spacing: 0) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 20))
+                .foregroundStyle(ReadPalette.white60)
+                .frame(width: 48)
+            TextField(
+                "",
+                text: $searchText,
+                prompt: Text("Search language").foregroundColor(ReadPalette.hint)
+            )
+            .typography(Typography.bodyLarge)
+            .foregroundStyle(ReadPalette.white)
+            .tint(ReadPalette.white)
+            .submitLabel(.search)
+            .focused($isSearchFocused)
+            .autocorrectionDisabled()
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 18))
+                        .foregroundStyle(ReadPalette.white60)
+                        .frame(width: 48, height: 48)
+                }
+                .buttonStyle(.plain)
             }
-            BibleOfflineDownloadButton(language: language.language, size: 20)
         }
+        .frame(minHeight: 48)
+        .background(
+            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                .fill(ReadPalette.fill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                .strokeBorder(isSearchFocused ? ReadPalette.white24 : Color.clear, lineWidth: 1)
+        )
+    }
+
+    private func row(for language: BibleLanguage) -> some View {
+        HStack(spacing: 16) {
+            Text(language.language)
+                .readText(Typography.titleMedium, weight: .medium)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+            if !language.language.isEmpty {
+                BibleOfflineDownloadButton(language: language.language)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 56)
         .contentShape(Rectangle())
         .onTapGesture {
             onSelect(language.language)
-            dismiss()
         }
-        .listRowBackground(Color.clear)
-        .animation(MotionCurve.fast, value: isSelected)
     }
 }
