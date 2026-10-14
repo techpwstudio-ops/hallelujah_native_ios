@@ -43,6 +43,22 @@ final class RemoteCreatorRepository: CreatorRepository {
         return decoded.toDomain()
     }
 
+    func fetchAllCreators(page: Int) async throws -> Paginated<Creator> {
+        let response = try await client.send(.allCreators(page: page))
+        guard response.statusCode == 200 else {
+            throw CreatorRepositoryError.unexpectedStatus(response.statusCode)
+        }
+        return try JSONDecoder().decode(FavoriteCreatorsResponseDTO.self, from: response.data).toDomain()
+    }
+
+    func setFollowedCreators(ids: [String], replacingExisting: Bool) async throws {
+        let body = try JSONEncoder().encode(FollowCreatorsRequest(detach: replacingExisting, ids: ids))
+        let response = try await client.send(.followCreators, body: body)
+        guard response.statusCode == 200 else {
+            throw CreatorRepositoryError.unexpectedStatus(response.statusCode)
+        }
+    }
+
     @discardableResult
     func follow(creatorId: String) async throws -> Creator {
         let body = try JSONEncoder().encode(FollowCreatorsRequest(detach: false, ids: [creatorId]))

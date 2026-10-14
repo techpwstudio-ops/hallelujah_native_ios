@@ -10,3 +10,11 @@ extension Endpoint {
         .post("/library/items/\(type.apiName)/\(id)/toggle")
     }
 }
+
+extension Endpoint {
+    /// `getCreatorsApi` (`end_points.dart:168`) — `GET /creators?page=N`, the
+    /// full creator catalogue `CreatorGridPage` paginates through.
+    static func allCreators(page: Int) -> Endpoint {
+        .get("/creators?page=\(page)")
+    }
+}

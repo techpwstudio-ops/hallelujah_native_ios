@@ -152,7 +152,7 @@ private struct AppRouteDestinationView: View {
     /// using generic chrome (or the placeholder) get the shell's title.
     private var screenSetsOwnTitle: Bool {
         switch route {
-        case .storageSettings, .contentLanguage, .creatorGrid, .cropCompressImage: false
+        case .storageSettings, .cropCompressImage: false
         default: true
         }
     }
@@ -210,6 +210,8 @@ private struct AppRouteDestinationView: View {
             ))
         case let .favouriteSongs(type, label, _):
             FavouriteSongsView(type: type, label: label)
+        case let .creatorGrid(title, songType):
+            CreatorGridView(title: title, songType: songType)
         case let .favouriteArtists(songType):
             FavouriteArtistsView(songType: songType)
         case let .createPlaylist(userPlaylistID, _, songID):
@@ -228,6 +230,8 @@ private struct AppRouteDestinationView: View {
             FeedbackView()
         case .deleteAccount:
             AccountDeletionView()
+        case let .contentLanguage(label, canPop):
+            ContentLanguageView(label: label, canPop: canPop)
         case .profile:
             ProfileView()
         case .settings:
@@ -293,8 +297,7 @@ private struct FullScreenDestinationView: View {
     }
 
     /// T35/T59 — `.player` and `.aiAudioConversation` now render their real
-    /// screens; `.aiVoiceOverlay` is still pending its own future task and
-    /// keeps the original placeholder.
+    /// screens; `.aiVoiceOverlay` maps onto the same voice screen.
     @ViewBuilder
     private var destinationRoot: some View {
         switch destination {
@@ -304,11 +307,9 @@ private struct FullScreenDestinationView: View {
         case let .aiAudioConversation(conversationID):
             VoiceConversationScreen(conversationID: conversationID)
         case .aiVoiceOverlay:
-            EmptyStateView(
-                title: destination.placeholderTitle,
-                actionTitle: "Dismiss",
-                action: { coordinator.dismissFullScreen() }
-            )
+            // The legacy second voice system (`AiVoiceOverlayPage`) has no
+            // native counterpart; the streaming voice screen replaces it.
+            VoiceConversationScreen(conversationID: nil)
         }
     }
 

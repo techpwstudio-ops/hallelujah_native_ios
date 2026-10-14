@@ -23,4 +23,13 @@ protocol CreatorRepository: Sendable {
     func follow(creatorId: String) async throws -> Creator
     @discardableResult
     func unfollow(creatorId: String) async throws -> Creator
+
+    /// `CreatorsBloc._load` (`getCreatorsApi`) — every creator, for the
+    /// "Choose artists you like." grid.
+    func fetchAllCreators(page: Int) async throws -> Paginated<Creator>
+
+    /// `FavouriteBloc.attachCreators(ids, sync: true)` — `detach: true` makes
+    /// the server replace the followed set with exactly `ids` (the grid's
+    /// "Done" button); `detach: false` only adds.
+    func setFollowedCreators(ids: [String], replacingExisting: Bool) async throws
 }
