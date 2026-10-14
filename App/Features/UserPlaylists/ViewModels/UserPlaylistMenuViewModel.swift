@@ -3,9 +3,9 @@ import Observation
 
 /// Data side of `showUserPlaylistMenu` (`lib/sheets/custom_playlist.dart`).
 /// Decides what the row's "more" sheet offers (owner-only rows) and performs
-/// "Add to queue" for the whole playlist. Share / visibility toggle /
-/// follow-unfollow need endpoints `UserPlaylistRepository` does not expose
-/// yet, so those rows are not offered.
+/// "Add to queue" for the whole playlist. Also hosts the share,
+/// public/private toggle and add-to/remove-from-library rows through
+/// `actions`.
 @MainActor
 @Observable
 final class UserPlaylistMenuViewModel {
@@ -13,6 +13,8 @@ final class UserPlaylistMenuViewModel {
     let title: String
     private(set) var isOwner = false
     private(set) var isBusy = false
+    let actions: UserPlaylistActionsViewModel
+    private(set) var isLoaded = false
 
     private let repository: any UserPlaylistRepository
     private let currentUserStore: CurrentUserStore
@@ -25,11 +27,15 @@ final class UserPlaylistMenuViewModel {
         repository = container.resolve()
         currentUserStore = container.resolve()
         queueController = container.resolve()
+        actions = UserPlaylistActionsViewModel(playlistID: playlistID, container: container)
     }
 
     func load() async {
+        defer { isLoaded = true }
         guard let playlist = try? await repository.fetchPlaylist(id: playlistID) else { return }
         isOwner = playlist.isOwned(by: await currentUserStore.user?.id)
+        actions.setVisibility(playlist.visibility)
+        if !isOwner { await actions.loadFollowState() }
     }
 
     /// `AddSourceToQueueEvent(QueueSource(userPlaylist, id, title))`.

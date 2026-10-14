@@ -34,6 +34,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>remote-notification</string>
 	</array>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
@@ -121,6 +122,16 @@
 	<string>Hallelujah needs permission to save images to your photo library. For example, when you tap "Save Image" on a song, verse or AI answer share card, the picture is saved to your Photos so you can post or send it later.</string>
 
 	<!-- Profile photo: "take a photo" source (`ProfileImagePicking`). -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Hallelujah uses Face ID to confirm it is really you before a sensitive account action. For example, when you request permanent deletion of your account, Face ID verifies your identity so no one else can delete your account and listening history.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Hallelujah needs microphone access so you can speak instead of type. For example, you can hold the microphone button in AI Chat and ask "play worship songs in Telugu" out loud, or tap the microphone in Search and say the song, artist or playlist you are looking for.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Hallelujah needs access to your photo library so you can pick an existing image from it. For example, you can choose a photo from your library to set as your profile picture, or attach an image to a message in AI Chat.</string>
+	<key>NSSiriUsageDescription</key>
+	<string>Hallelujah uses Siri so you can say "Hey Siri, play [song] in Hallelujah" from CarPlay or your phone to start playing a song by voice.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Hallelujah uses speech recognition to turn what you say into text, so the in-app AI assistant can answer your spoken questions and so you can search for songs, artists and playlists by voice.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Hallelujah needs the camera so you can take a profile photo.</string>
 
@@ -134,6 +145,8 @@
 		<string>whatsapp</string>
 		<string>tg</string>
 		<string>twitter</string>
+		<string>instagram</string>
+		<string>fb</string>
 	</array>
 
 	<!-- App configuration: xcconfig -> here -> AppConfiguration (App/Core/Configuration). -->

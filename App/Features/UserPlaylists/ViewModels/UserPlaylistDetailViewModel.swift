@@ -25,6 +25,8 @@ final class UserPlaylistDetailViewModel {
     private(set) var state: LoadState = .loading
     private(set) var isLoadingMore = false
     private(set) var isOwner = false
+    /// Follow state + share link for the action row (non-owner Follow button, Share).
+    let actions: UserPlaylistActionsViewModel?
 
     private let repository: any UserPlaylistRepository
     private let currentUserStore: CurrentUserStore
@@ -35,6 +37,7 @@ final class UserPlaylistDetailViewModel {
         self.playlistID = playlistID
         repository = container.resolve()
         currentUserStore = container.resolve()
+        actions = playlistID.map { UserPlaylistActionsViewModel(playlistID: $0, container: container) }
     }
 
     func loadIfNeeded() async {
@@ -111,6 +114,8 @@ final class UserPlaylistDetailViewModel {
             do {
                 let result = try await repository.fetchSongs(playlistID: playlistID, page: page)
                 isOwner = result.playlist.isOwned(by: await currentUserStore.user?.id)
+                actions?.setVisibility(result.playlist.visibility)
+                if !isOwner { await actions?.loadFollowState() }
                 state = result.songs.items.isEmpty
                     ? .empty(playlist: result.playlist)
                     : .loaded(playlist: result.playlist, songs: result.songs)

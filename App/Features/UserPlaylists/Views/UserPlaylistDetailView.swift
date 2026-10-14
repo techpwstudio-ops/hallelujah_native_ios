@@ -9,17 +9,20 @@ import SwiftUI
 /// The info block and the first 8 rows ease in (fade + slide, staggered over
 /// 750ms like `_entranceController`). Empty states: "Playlist not found",
 /// spinner, "No songs yet".
+/// Non-owners get the Follow button (`FollowButton`: add-circle / green
+/// check-circle, 30pt, unfollow leaves the page); everyone gets Share.
 ///
-/// Not ported (no repository support): the owner's name line, the non-owner
-/// Follow button and the Share button.
+/// Not ported (no repository support): the owner's name line.
 struct UserPlaylistDetailView: View {
     @State private var viewModel: UserPlaylistDetailViewModel
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
     @State private var showAddSongs = false
     @State private var menuTarget: UserPlaylistMenuTarget?
+    @State private var shareItem: PlaylistShareItem?
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
+    @Environment(\.toastCenter) private var toastCenter
 
     private static let staggerCount = 8
 
@@ -68,7 +71,16 @@ struct UserPlaylistDetailView: View {
             }
         }
         .task { await viewModel.loadIfNeeded() }
-        .userPlaylistMenu(target: $menuTarget) { coordinator.pop() }
+        .userPlaylistMenu(
+            target: $menuTarget,
+            onDeleted: { coordinator.pop() },
+            onChanged: { Task { await viewModel.refresh() } },
+            onUnfollowed: { coordinator.pop() }
+        )
+        .sheet(item: $shareItem) { item in
+            PlaylistActivitySheet(url: item.url)
+                .presentationDetents([.medium, .large])
+        }
         .sheet(isPresented: $showAddSongs, onDismiss: { Task { await viewModel.refresh() } }) {
             if let playlist {
                 AddSongsToPlaylistView(playlistID: playlist.id)
@@ -131,6 +143,18 @@ struct UserPlaylistDetailView: View {
                         showAddSongs = true
                     }
                 }
+                if !viewModel.isOwner, let actions = viewModel.actions {
+                    followButton(actions: actions)
+                }
+                ParityIconButton(systemName: "square.and.arrow.up", size: 22, tooltip: "Share", hitSize: 40) {
+                    Task {
+                        if let url = await viewModel.actions?.makeShareURL() {
+                            shareItem = PlaylistShareItem(url: url)
+                        } else {
+                            toastCenter.show("Could not create a share link")
+                        }
+                    }
+                }
                 Spacer(minLength: 0)
                 ParityShuffleButton(isOn: queueController.isShuffled) {
                     Task { await queueController.toggleShuffle() }
@@ -145,6 +169,34 @@ struct UserPlaylistDetailView: View {
         .padding(.leading, Dimens.screenPaddingAll * 2)
         .padding(.trailing, Dimens.screenPaddingAll * 2)
         .padding(.top, 6)
+    }
+
+    /// `FollowButton`: `Icons.add_circle_outline` / green `Icons.check_circle`,
+    /// size 30. Following has no confirmation here (the menu row confirms);
+    /// unfollowing from the page closes it, like Dart.
+    private func followButton(actions: UserPlaylistActionsViewModel) -> some View {
+        Button {
+            Task {
+                switch await actions.toggleFollow() {
+                case .followed(let message):
+                    toastCenter.show(message)
+                case .unfollowed(let message):
+                    toastCenter.show(message)
+                    coordinator.pop()
+                case .failed(let message):
+                    toastCenter.show(message)
+                }
+            }
+        } label: {
+            Image(systemName: actions.isFollowing ? "checkmark.circle.fill" : "plus.circle")
+                .font(.system(size: 30))
+                .foregroundStyle(actions.isFollowing ? Color.green : Color.white)
+                .frame(width: 40, height: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(actions.isBusy)
+        .accessibilityLabel(actions.isFollowing ? "Remove from library" : "Add to library")
     }
 
     private func visibilityLine(for playlist: UserPlaylist) -> String {

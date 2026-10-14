@@ -58,4 +58,12 @@ struct EndpointTests {
         #expect(Endpoint.cancelSubscription.path == "/premium/subscription/cancel")
         #expect(Endpoint.cancelSubscription.method == .get)
     }
+
+    @Test func userPlaylistFollowAndVisibilityEndpoints() {
+        #expect(Endpoint.toggleFollowUserPlaylist(id: "p1").path == "/library/user-playlist/p1/follow")
+        #expect(Endpoint.toggleFollowUserPlaylist(id: "p1").method == .get)
+        #expect(Endpoint.toggleUserPlaylistVisibility(id: "p1").path == "/library/user-playlist/p1/visibility")
+        #expect(Endpoint.toggleUserPlaylistVisibility(id: "p1").method == .get)
+        #expect(Endpoint.userPlaylistShare(id: "p1").path == "/library/user-playlist/p1/share")
+    }
 }
