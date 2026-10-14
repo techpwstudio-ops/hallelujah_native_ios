@@ -8,7 +8,7 @@ import SwiftUI
 /// header treatment this doesn't attempt to reproduce.
 struct PlaylistDetailView: View {
     @State private var viewModel: PlaylistDetailViewModel
-    @State private var isSharePresented = false
+    @State private var menuTarget: ContentMenuTarget?
 
     @Environment(\.appTheme) private var theme
 
@@ -38,14 +38,7 @@ struct PlaylistDetailView: View {
         .task {
             await viewModel.loadIfNeeded()
         }
-        .appSheet(isPresented: $isSharePresented) {
-            ShareSheetView(
-                target: .companyPlaylist(id: viewModel.playlist.id),
-                title: viewModel.playlist.title,
-                subtitle: nil,
-                artworkURL: resolvedArtwork
-            )
-        }
+        .contentMenu(target: $menuTarget)
     }
 
     private var header: some View {
@@ -59,9 +52,7 @@ struct PlaylistDetailView: View {
                     .typography(Typography.bodySmall)
                     .foregroundStyle(theme.color(.textSecondary))
             }
-            if viewModel.playlist.owner == .company {
-                shareButton
-            }
+            actions
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, Spacing.md)
@@ -71,18 +62,24 @@ struct PlaylistDetailView: View {
     /// bare (non-company) creator-playlist share route (`Endpoint+Share.swift`'s
     /// own doc comment), and `UserPlaylistDetailView`'s own Share affordance
     /// is T45's already-made scope cut.
-    private var shareButton: some View {
-        Button {
-            isSharePresented = true
-        } label: {
-            HStack(spacing: Spacing.sm) {
-                theme.icon(.share)
-                Text("Share")
-                    .typography(Typography.labelLarge)
+    /// Save to library (`AddToLibraryButton`) and the container menu
+    /// (`showContentMenu`: queue, share, library) — the share button that
+    /// used to live here is now one of that menu's rows.
+    private var actions: some View {
+        HStack(spacing: Spacing.lg) {
+            AddToLibraryButton(
+                type: viewModel.playlist.libraryItemType,
+                itemID: viewModel.playlist.id,
+                title: viewModel.playlist.title
+            )
+            Button { menuTarget = .playlist(viewModel.playlist) } label: {
+                theme.icon(.more)
+                    .font(.system(size: 22))
+                    .foregroundStyle(theme.color(.textPrimary))
             }
-            .foregroundStyle(theme.color(.textSecondary))
+            .buttonStyle(.plain)
+            .accessibilityLabel("More")
         }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder

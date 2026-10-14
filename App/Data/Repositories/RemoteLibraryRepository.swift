@@ -28,4 +28,21 @@ final class RemoteLibraryRepository: LibraryRepository {
         let decoded = try JSONDecoder().decode(LibraryItemsResponseDTO.self, from: response.data)
         return decoded.toDomain()
     }
+
+    func fetchSavedKeys() async throws -> Set<String> {
+        let response = try await client.send(.libraryItemIDs)
+        guard response.statusCode == 200 else {
+            throw LibraryRepositoryError.unexpectedStatus(response.statusCode)
+        }
+        return Set(try JSONDecoder().decode(LibraryItemIDsResponseDTO.self, from: response.data).data)
+    }
+
+    func toggleSaved(type: LibraryItemType, id: String) async throws -> Bool {
+        let response = try await client.send(.toggleLibraryItem(type: type, id: id), body: Data("{}".utf8))
+        guard response.statusCode == 200 else {
+            throw LibraryRepositoryError.unexpectedStatus(response.statusCode)
+        }
+        let decoded = try JSONDecoder().decode(LibraryToggleResponseDTO.self, from: response.data)
+        return decoded.data?.inLibrary == true
+    }
 }

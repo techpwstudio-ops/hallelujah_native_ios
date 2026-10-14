@@ -104,16 +104,27 @@ final class QueueController {
     /// queued yet, the song simply starts playing.
     @discardableResult
     func addToQueue(_ song: Song, source: QueueAttribution) async -> Bool {
+        await addToQueue([song], source: source) > 0
+    }
+
+    /// `AddSourceToQueueEvent` — appends every song not already queued, in
+    /// order, and returns how many were added. With nothing queued yet the
+    /// songs start playing from the first.
+    @discardableResult
+    func addToQueue(_ songs: [Song], source: QueueAttribution) async -> Int {
         guard var current = queue else {
-            await play(songs: [song], startIndex: 0, source: source)
-            return true
+            guard !songs.isEmpty else { return 0 }
+            await play(songs: songs, startIndex: 0, source: source)
+            return songs.count
         }
-        guard !current.songs.contains(where: { $0.id == song.id }) else { return false }
-        current.songs.append(song)
-        unshuffledSongs?.append(song)
+        let queued = Set(current.songs.map(\.id))
+        let fresh = songs.filter { !queued.contains($0.id) }
+        guard !fresh.isEmpty else { return 0 }
+        current.songs += fresh
+        unshuffledSongs? += fresh
         queue = current
         await engine.adoptQueue(current.songs, currentIndex: current.currentIndex)
-        return true
+        return fresh.count
     }
 
     /// `StopPlayerEvent` — drops the queue and tears playback down, leaving

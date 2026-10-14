@@ -181,3 +181,17 @@ private func sanitized(_ value: String?) -> String? {
     if lower == "null" || lower == "undefined" { return nil }
     return trimmed
 }
+
+/// `GET /library/items/ids` — `{ data: ["creatorPlaylist:<id>", …] }`.
+struct LibraryItemIDsResponseDTO: Decodable, Sendable {
+    let data: [String]
+}
+
+/// `POST /library/items/:type/:id/toggle` — `{ data: { inLibrary } }`.
+struct LibraryToggleResponseDTO: Decodable, Sendable {
+    struct Payload: Decodable, Sendable {
+        let inLibrary: Bool?
+    }
+
+    let data: Payload?
+}

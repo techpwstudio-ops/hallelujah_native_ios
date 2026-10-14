@@ -61,6 +61,12 @@ enum AppComposition {
         // actor, not an independent copy.
         let membershipStore = MembershipStore(keyValueStore: UserDefaultsKeyValueStore())
         container.register(MembershipStore.self) { membershipStore }
+        // Saved library items — one shared instance so every save button in
+        // the app flips together (and so sign-out below can clear it).
+        let librarySavedStore = LibrarySavedStore(
+            repository: RemoteLibraryRepository(client: HTTPClient(configuration: configuration, authProvider: session))
+        )
+        container.register(LibrarySavedStore.self) { librarySavedStore }
         // T65 — the one premium gate every feature check goes through.
         container.register(PremiumGate.self) { PremiumGate(membershipStore: membershipStore) }
         // T26 — the one place anything reacts to a session ending, for
@@ -119,6 +125,8 @@ enum AppComposition {
                 // reference to `RemoteAuthRepository.logout()` (refresh-
                 // token expiry) must not leave a stale membership cached.
                 Task { await membershipStore.clear() }
+                // A signed-out user's saved-library set must not carry over.
+                Task { @MainActor in librarySavedStore.clear() }
                 // T26 — tells `RootView` to fall back to the sign-in flow
                 // from wherever it currently is, matching `session.dart`'s
                 // `NavigationService.offAll(AuthenticationPage.routeName)`.
