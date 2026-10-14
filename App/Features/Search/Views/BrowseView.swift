@@ -85,7 +85,7 @@ struct BrowseView: View {
 /// constraints win over the widget's literal `188`), inset 8pt each side. The
 /// image fills the card (radius 8); the name bar sits bottom-left over it:
 /// black 60%, 4pt padding, bottom corners radius 8, `titleMedium`, one line.
-private struct GenreGridCard: View {
+struct GenreGridCard: View {
     let genre: Genre
     let action: () -> Void
 
