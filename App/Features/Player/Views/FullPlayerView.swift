@@ -77,7 +77,7 @@ struct FullPlayerView: View {
     @State private var isSharePresented = false
     @State private var isTipSheetPresented = false
     @State private var isSleepTimerSheetPresented = false
-    @State private var isSongMenuPresented = false
+    @State private var menuSong: Song?
 
     private var song: Song? { engine.currentSong }
 
@@ -127,14 +127,8 @@ struct FullPlayerView: View {
                 )
             }
         }
-        .appSheet(isPresented: $isSongMenuPresented, detents: [.large]) {
-            if let song {
-                SongMenuSheet(song: song) { handleSongMenuOutcome($0) }
-            }
-        }
-        .appSheet(isPresented: $isSleepTimerSheetPresented) {
-            SleepTimerSheet(controller: sleepTimer) { isSleepTimerSheetPresented = false }
-        }
+        .songMenu(song: $menuSong, leavesPlayer: true)
+        .sleepTimerSheet(isPresented: $isSleepTimerSheetPresented)
         // T65 follow-up — the timer pauses playback itself (it usually fires
         // with the phone locked); the screen's only job is to leave and say so.
         .onChange(of: sleepTimer.firedCount) {
@@ -269,7 +263,7 @@ struct FullPlayerView: View {
     @ViewBuilder
     private var moreButton: some View {
         if song != nil {
-            Button { isSongMenuPresented = true } label: {
+            Button { menuSong = song } label: {
                 theme.icon(.more)
                     .font(.system(size: 20))
                     .foregroundStyle(theme.color(.textPrimary))
@@ -278,44 +272,6 @@ struct FullPlayerView: View {
             .accessibilityLabel("More")
         }
     }
-
-    /// Routes a `SongMenuSheet` result: toasts, closing the sheet, and the
-    /// navigation each action implies (Dart's `NavigationService.back()` /
-    /// `popPlayerScreens`).
-    private func handleSongMenuOutcome(_ outcome: SongMenuOutcome) {
-        switch outcome {
-        case .notice(let text):
-            toastCenter.show(text)
-            return
-        case .message(let text):
-            toastCenter.show(text)
-        case .dismiss:
-            break
-        case .openQueue:
-            coordinator.pushInPlayer(.queue)
-        case .openSleepTimer:
-            Task {
-                try? await Task.sleep(for: Self.sheetHandoffDelay)
-                isSleepTimerSheetPresented = true
-            }
-        case .requiresPremium:
-            coordinator.dismissFullScreen()
-            coordinator.push(.subscriptionPlans)
-        case .stopped:
-            coordinator.dismissFullScreen()
-        case .reported:
-            toastCenter.show("Report sent")
-            coordinator.dismissFullScreen()
-        case .goToArtist(let creatorID):
-            coordinator.dismissFullScreen()
-            coordinator.push(.creatorSongs(creatorID: creatorID, userPlaylistID: nil))
-        }
-        isSongMenuPresented = false
-    }
-
-    /// Lets one sheet finish dismissing before the next presents; SwiftUI
-    /// drops a sheet presented while another is mid-dismissal.
-    private static let sheetHandoffDelay: Duration = .milliseconds(400)
 
     private var actionRow: some View {
         HStack(spacing: Spacing.xl) {

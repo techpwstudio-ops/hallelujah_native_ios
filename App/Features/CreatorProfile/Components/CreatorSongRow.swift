@@ -12,6 +12,7 @@ import SwiftUI
 /// `PlaylistDetailView`) too, which is a real regression for a no-op tap.
 struct CreatorSongRow: View {
     let song: Song
+    var userPlaylistID: String?
     var onTap: () -> Void = {}
 
     @Environment(\.appTheme) private var theme
@@ -43,6 +44,7 @@ struct CreatorSongRow: View {
                 }
             }
             Spacer(minLength: 0)
+            SongMenuButton(song: song, userPlaylistID: userPlaylistID)
         }
         .padding(.vertical, Spacing.xs)
         .contentShape(Rectangle())

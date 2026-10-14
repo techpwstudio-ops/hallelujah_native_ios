@@ -60,6 +60,8 @@ struct SearchSongRow: View {
                         .foregroundStyle(theme.color(.textTertiary))
                 }
                 .buttonStyle(.plain)
+            } else {
+                SongMenuButton(song: song)
             }
         }
         .padding(.vertical, Spacing.xs)
