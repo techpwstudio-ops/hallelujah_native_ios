@@ -23,10 +23,9 @@ final class SplashViewModel {
     private(set) var destination: LaunchDestination?
     private(set) var availableUpdate: AppStoreVersionInfo?
 
-    /// Matches `_minSplashDuration` — the branded logo animation must play in
-    /// full every time the app opens from a killed state, regardless of how
-    /// fast the session check below resolves.
-    private static let minimumDuration: Duration = .seconds(2)
+    /// Matches `_minSplashDuration` (`Duration(seconds: 0)`) — no artificial
+    /// hold; navigation happens as soon as the session check resolves.
+    private static let minimumDuration: Duration = .seconds(0)
     /// Matches `_resolveDestination`'s `.timeout(const Duration(seconds: 6))`
     /// around `refreshIfNeeded()` — a slow network can never hold the splash
     /// past this.

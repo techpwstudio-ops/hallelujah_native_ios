@@ -19,7 +19,10 @@ struct TypographyToken: Sendable {
         self.tracking = tracking
     }
 
-    var font: Font { .system(size: size, weight: weight) }
+    /// D12: the Flutter app pins "Helvetica Neue" on iOS (`lib/theme/text.dart`
+    /// `fontFamily`), so the native app renders the same face. It scales with
+    /// Dynamic Type relative to the body style, as the system font did.
+    var font: Font { .custom(Typography.fontFamily, size: size, relativeTo: .body).weight(weight) }
     var lineSpacing: CGFloat { size * (lineHeightMultiple - 1) }
 }
 
@@ -34,6 +37,9 @@ struct TypographyToken: Sendable {
 /// splash and auth screens, not the whole app), and San Francisco is what
 /// Dynamic Type, SF Symbols, and every system control already assume.
 enum Typography {
+    /// PostScript family name shipped with iOS.
+    static let fontFamily = "HelveticaNeue"
+
     static let displayLarge = TypographyToken(size: 32, weight: .bold, lineHeightMultiple: 1.2)
     static let headlineLarge = TypographyToken(size: 28, weight: .bold, lineHeightMultiple: 1.3)
     static let headlineMedium = TypographyToken(size: 24, weight: .semibold, lineHeightMultiple: 1.3)

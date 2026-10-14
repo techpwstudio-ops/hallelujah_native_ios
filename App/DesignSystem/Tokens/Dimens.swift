@@ -1,0 +1,104 @@
+import CoreGraphics
+
+/// `lib/dimens/dimens.dart` mirrored 1:1 (D12: exact parity with the Flutter
+/// app). Flutter screens spell many of their paddings and sizes through these
+/// names (`Dimens.spacing12`, `Dimens.listItemThumbnailSizeMd`, …); keeping the
+/// names identical makes a screen port a line-by-line comparison. Prefer
+/// `Spacing`/`Radius` where a value exists there, and these for everything else.
+enum Dimens {
+    static let borderWidth: CGFloat = 1.0
+    static let topPadding: CGFloat = 8.0
+    static let paddingSmall: CGFloat = 8.0
+    static let paddingMedium: CGFloat = 12.0
+    static let paddingLarge: CGFloat = 16.0
+    static let paddingExtraLarge: CGFloat = 24.0
+    static let bottomPadding: CGFloat = 8.0
+    static let screenPaddingAll: CGFloat = 8.0
+    static let screenPaddingLeft: CGFloat = 8.0
+    static let screenPaddingRight: CGFloat = 8.0
+    static let dragHandlerHeight: CGFloat = 2.0
+    static let dragHandlerWidth: CGFloat = 80.0
+    static let chapterNumberBoxRadius: CGFloat = 8.0
+    static let cornerRadius: CGFloat = 8.0
+    static let cornerRadiusSmall: CGFloat = 4.0
+    static let cornerRadiusMedium: CGFloat = 12.0
+    static let cornerRadiusLarge: CGFloat = 16.0
+    static let verticalSpacing: CGFloat = 12.0
+    static let dividerSpacing: CGFloat = 24.0
+    static let horizontalSpacing: CGFloat = 16.0
+    static let leadingSpacing: CGFloat = 8.0
+    static let spacing2: CGFloat = 2.0
+    static let spacing4: CGFloat = 4.0
+    static let spacing6: CGFloat = 6.0
+    static let spacing8: CGFloat = 8.0
+    static let spacing12: CGFloat = 12.0
+    static let spacing16: CGFloat = 16.0
+    static let spacing20: CGFloat = 20.0
+    static let spacing24: CGFloat = 24.0
+    static let spacing28: CGFloat = 28.0
+    static let spacing32: CGFloat = 32.0
+    static let spacing40: CGFloat = 40.0
+    static let spacing48: CGFloat = 48.0
+    static let spacing60: CGFloat = 60.0
+    static let userThumbnailSize: CGFloat = 36.0
+    static let profileImageSize: CGFloat = 28.0
+    static let logoSize: CGFloat = 30.0
+    static let listItemThumbnailSizeSm: CGFloat = 48.0
+    static let listItemThumbnailSizeMd: CGFloat = 56.0
+    static let companyThumbnailSizeMd: CGFloat = 72.0
+    static let screenPadding: CGFloat = 16.0
+    static let borderRadius: CGFloat = 8.0
+    static let borderRadiusLarge: CGFloat = 12.0
+    static let borderRadiusExtraLarge: CGFloat = 18.0
+    static let iconSize: CGFloat = 24.0
+    static let iconSizeSmall: CGFloat = 16.0
+    static let buttonHeight: CGFloat = 52.0
+    static let verticalSpacingMedium: CGFloat = 16.0
+    static let verticalSpacingLarge: CGFloat = 24.0
+    static let premiumButtonHeight: CGFloat = 28.0
+    static let navigationButtonHeight: CGFloat = 35.0
+    static let horizontalListHeight: CGFloat = 120.0
+    static let creatorRowHeight: CGFloat = 120.0
+    static let bottomSpacerHeight: CGFloat = 100.0
+    static let borderRadiusSmall2: CGFloat = 2.0
+    static let borderRadiusTiny: CGFloat = 4.0
+    static let premiumButtonBorderPadding: CGFloat = 1.5
+    static let horizontalGapSmall: CGFloat = 4.0
+    static let horizontalGapMedium: CGFloat = 8.0
+    static let horizontalGapLarge: CGFloat = 12.0
+    static let cornerRadiusELarge: CGFloat = 48.0
+    static let sectionPaddingH: CGFloat = 16.0
+    static let sectionHeaderGap: CGFloat = 12.0
+    static let sectionGap: CGFloat = 8.0
+    static let verseCardDesignWidth: CGFloat = 300.0
+    static let verseCardCanvasWidth: CGFloat = 360.0
+    static let verseCardCanvasHeight: CGFloat = 640.0
+    static let verseCardExportPixelRatio: CGFloat = 3.0
+    static let verseCardPreviewRadius: CGFloat = 16.0
+    static let verseCardPaddingH: CGFloat = 24.0
+    static let verseCardPaddingTop: CGFloat = 28.0
+    static let verseCardPaddingBottom: CGFloat = 24.0
+    static let verseCardAccentWidth: CGFloat = 20.0
+    static let verseCardAccentHeight: CGFloat = 2.0
+    static let verseCardAccentGap: CGFloat = 16.0
+    static let verseCardReferenceGap: CGFloat = 14.0
+    static let verseCardLogoSize: CGFloat = 24.0
+    static let verseCardFontSizeFewWords: CGFloat = 34.0
+    static let verseCardFontSizeTypical: CGFloat = 21.0
+    static let verseCardFontSizeLong: CGFloat = 17.0
+    static let verseCardFewWords: CGFloat = 6
+    static let verseCardTypicalMinWords: CGFloat = 15
+    static let verseCardTypicalMaxWords: CGFloat = 30
+    static let verseCardLongWords: CGFloat = 45
+    static let verseCardFontSizeMin: CGFloat = 11.0
+    static let verseCardReferenceFontSize: CGFloat = 10.0
+    static let verseCardBrandFontSize: CGFloat = 10.5
+    static let verseCardDomainFontSize: CGFloat = 9.5
+    static let verseSharePhotoSheetTitleFontSize: CGFloat = 22.0
+    static let verseShareSwatchSize: CGFloat = 44.0
+    static let verseSharePrimaryMinHeight: CGFloat = 52.0
+    static let verseShareSecondaryMinHeight: CGFloat = 48.0
+    static let homeAdBannerAspectRatio: CGFloat = 4.0 / 1.0
+    static let homeAdBannerSecondaryAspectRatio: CGFloat = 16.0 / 9.0
+    static let verseCardDesignHeight: CGFloat = verseCardDesignWidth * 16.0 / 9.0
+}
