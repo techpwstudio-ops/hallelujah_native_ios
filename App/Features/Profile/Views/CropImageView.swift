@@ -176,9 +176,9 @@ struct CropImageView: View {
     }
 
     private func zoomGesture(image: UIImage, width: CGFloat, height: CGFloat) -> some Gesture {
-        MagnificationGesture()
+        MagnifyGesture()
             .onChanged { value in
-                scale = min(max(committedScale * value, 1), 8)
+                scale = min(max(committedScale * value.magnification, 1), 8)
                 offset = clamp(offset, image: image, width: width, height: height, scale: scale)
             }
             .onEnded { _ in
