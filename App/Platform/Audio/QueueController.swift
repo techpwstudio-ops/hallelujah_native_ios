@@ -95,6 +95,35 @@ final class QueueController {
         await engine.play(queue: ordered, startAt: index)
     }
 
+    // MARK: - Editing the queue
+
+    /// `AddToQueueEvent` (`bloc.dart`) — appends `song` after the existing
+    /// entries and keeps what is playing untouched. Returns `false` (and does
+    /// nothing) when the song is already queued, which the caller reports by
+    /// opening the queue instead, as `showQueueSheet` does. With nothing
+    /// queued yet, the song simply starts playing.
+    @discardableResult
+    func addToQueue(_ song: Song, source: QueueAttribution) async -> Bool {
+        guard var current = queue else {
+            await play(songs: [song], startIndex: 0, source: source)
+            return true
+        }
+        guard !current.songs.contains(where: { $0.id == song.id }) else { return false }
+        current.songs.append(song)
+        unshuffledSongs?.append(song)
+        queue = current
+        await engine.adoptQueue(current.songs, currentIndex: current.currentIndex)
+        return true
+    }
+
+    /// `StopPlayerEvent` — drops the queue and tears playback down, leaving
+    /// the app as if nothing had been played this session.
+    func clear() {
+        queue = nil
+        unshuffledSongs = nil
+        engine.stop()
+    }
+
     // MARK: - Shuffle
 
     /// Physically reorders `queue.songs` with the current song pinned

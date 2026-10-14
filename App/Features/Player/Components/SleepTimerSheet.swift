@@ -10,19 +10,18 @@ struct SleepTimerSheet: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
-        AppSheetContainer {
-            VStack(alignment: .leading, spacing: Spacing.md) {
-                header
-                ForEach(SleepTimerController.options, id: \.self) { minutes in
-                    optionRow(minutes)
-                }
-                if controller.isActive {
-                    cancelRow
-                }
+        // `.appSheet` already wraps this in `AppSheetContainer`.
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            header
+            ForEach(SleepTimerController.options, id: \.self) { minutes in
+                optionRow(minutes)
             }
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.md)
+            if controller.isActive {
+                cancelRow
+            }
         }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.md)
     }
 
     private var header: some View {

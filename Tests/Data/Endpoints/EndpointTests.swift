@@ -35,6 +35,13 @@ struct EndpointTests {
         #expect(Endpoint.logout.method == .get)
     }
 
+    @Test func singleSongEndpoints() {
+        #expect(Endpoint.songDetail(id: "s1").path == "/song/s1")
+        #expect(Endpoint.songDetail(id: "s1").method == .get)
+        #expect(Endpoint.reportSong(id: "s1").path == "/song/s1/report")
+        #expect(Endpoint.reportSong(id: "s1").method == .post)
+    }
+
     @Test func helpersSetVerbAndBase() {
         #expect(Endpoint.get("/x").method == .get)
         #expect(Endpoint.post("/x").method == .post)

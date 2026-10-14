@@ -210,6 +210,7 @@ struct LyricsTranscriptDTO: Decodable, Sendable {
 struct SongCreditDTO: Decodable, Sendable {
     let role: String?
     let name: String?
+    let category: String?
 }
 
 struct SongDTO: Decodable, Sendable {
@@ -336,7 +337,9 @@ extension SongDTO {
                 }
             },
             songCredits: songCredits.map { rows in
-                rows.map { SongCredit(role: sanitized($0.role), name: sanitized($0.name)) }
+                rows.map {
+                    SongCredit(role: sanitized($0.role), name: sanitized($0.name), category: sanitized($0.category))
+                }
             },
             isFavorited: !(favoritedBy ?? []).isEmpty
         )

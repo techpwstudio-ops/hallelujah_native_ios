@@ -59,3 +59,9 @@ extension Paginated {
         Paginated(items: items, page: page, perPage: nil, total: nil, totalPages: hasMore ? page + 1 : page, hasMore: hasMore)
     }
 }
+
+extension SongCredit {
+    static func fixture(role: String? = "Producer", name: String? = "Jane", category: String? = nil) -> SongCredit {
+        SongCredit(role: role, name: name, category: category)
+    }
+}

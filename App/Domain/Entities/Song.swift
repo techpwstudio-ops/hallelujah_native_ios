@@ -27,6 +27,9 @@ struct LyricsTranscript: Sendable, Equatable, Identifiable {
 struct SongCredit: Sendable, Equatable {
     let role: String?
     let name: String?
+    /// Grouping heading for the credits sheet (`SongCredit.category`,
+    /// `SongRepositoryModel.dart`); absent on older rows.
+    let category: String?
 }
 
 /// One row of `songPrimaryArtists`. List view: `{ name }` only. Detail view

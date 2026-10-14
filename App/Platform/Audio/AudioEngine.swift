@@ -189,6 +189,23 @@ final class AudioEngine {
         startKeepAlive()
     }
 
+    /// `StopPlayerEvent` — unlike `pause()`, forgets the song entirely so
+    /// every observer (Now Playing, mini player, CarPlay) sees "nothing is
+    /// playing" rather than a paused track.
+    func stop() {
+        persistPlaybackPosition()
+        player.pause()
+        player.removeAllItems()
+        itemSongIDs.removeAll()
+        logicalQueue = []
+        logicalIndex = 0
+        currentSong = nil
+        currentPosition = 0
+        currentItemDuration = nil
+        status = .idle
+        stopKeepAlive()
+    }
+
     // Deliberately no bare `skipToNext()`/`skipToPrevious()` primitives here
     // (T31 originally had simple index±1 ones) — `QueueController` (T33)
     // is now the only correct way to navigate a queue, since it alone

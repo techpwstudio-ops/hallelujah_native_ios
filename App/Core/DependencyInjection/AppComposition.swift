@@ -193,6 +193,10 @@ enum AppComposition {
         container.register((any FavouriteRepository).self) {
             RemoteFavouriteRepository(client: HTTPClient(configuration: configuration, authProvider: session))
         }
+        // Song menu — same "no shared state to capture" reasoning as above.
+        container.register((any SongRepository).self) {
+            RemoteSongRepository(client: HTTPClient(configuration: configuration, authProvider: session))
+        }
         // T45 — same "no shared state to capture" reasoning as the
         // repositories above.
         container.register((any UserPlaylistRepository).self) {
