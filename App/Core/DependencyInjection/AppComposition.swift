@@ -321,6 +321,9 @@ enum AppComposition {
             membershipStore: membershipStore
         )
         container.register(AdsRepository.self) { adsRepository }
+        // The sleep timer outlives the player screen, so it is one shared instance too.
+        let sleepTimerController = SleepTimerController(engine: audioEngine)
+        container.register(SleepTimerController.self) { sleepTimerController }
         let adPacingController = AdPacingController(adsRepository: adsRepository, engine: audioEngine)
         container.register(AdPacingController.self) { adPacingController }
 

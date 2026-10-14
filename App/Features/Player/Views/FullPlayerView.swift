@@ -72,9 +72,11 @@ struct FullPlayerView: View {
     @State private var keyValueStore: any KeyValueStoring = DependencyContainer.current.resolve()
     @State private var tipPurchaseManager: TipPurchaseManager = DependencyContainer.current.resolve()
     @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
+    @State private var sleepTimer: SleepTimerController = DependencyContainer.current.resolve()
     @State private var isRemoveDownloadConfirmationPresented = false
     @State private var isSharePresented = false
     @State private var isTipSheetPresented = false
+    @State private var isSleepTimerSheetPresented = false
 
     private var song: Song? { engine.currentSong }
 
@@ -124,6 +126,15 @@ struct FullPlayerView: View {
                 )
             }
         }
+        .appSheet(isPresented: $isSleepTimerSheetPresented) {
+            SleepTimerSheet(controller: sleepTimer) { isSleepTimerSheetPresented = false }
+        }
+        // T65 follow-up — the timer pauses playback itself (it usually fires
+        // with the phone locked); the screen's only job is to leave and say so.
+        .onChange(of: sleepTimer.firedCount) {
+            coordinator.dismissFullScreen()
+            toastCenter.show("Sleep timer ended. Time to rest")
+        }
         .appSheet(isPresented: $isTipSheetPresented) {
             if let song {
                 TipDonationSheet(artistName: song.creator?.name ?? song.primaryArtists) { amount, note in
@@ -153,6 +164,8 @@ struct FullPlayerView: View {
                 .padding(.horizontal, Spacing.md)
 
                 actionRow
+
+                SleepTimerBadge(controller: sleepTimer)
 
                 if let song {
                     PlayerLyricsPreviewCard(song: song, currentPosition: engine.currentPosition) {
@@ -257,6 +270,8 @@ struct FullPlayerView: View {
 
             Spacer()
 
+            sleepTimerButton
+
             downloadButton
 
             shareButton
@@ -312,6 +327,27 @@ struct FullPlayerView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// Premium-only (`song_menu_sheet.dart`): free listeners are sent to the
+    /// plans screen instead of the sheet.
+    private var sleepTimerButton: some View {
+        Button {
+            Task {
+                if await premiumGate.allows(.sleepTimer) {
+                    isSleepTimerSheetPresented = true
+                } else {
+                    coordinator.dismissFullScreen()
+                    coordinator.push(.subscriptionPlans)
+                }
+            }
+        } label: {
+            Image(systemName: sleepTimer.isActive ? "moon.zzz.fill" : "moon.zzz")
+                .font(.system(size: 20))
+                .foregroundStyle(sleepTimer.isActive ? theme.color(.brandPrimary) : theme.color(.textPrimary))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Sleep timer")
     }
 
     @ViewBuilder
