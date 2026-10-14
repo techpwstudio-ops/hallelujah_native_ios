@@ -41,7 +41,7 @@ struct HomeSongCardView: View {
                 episodeCard
             } else {
                 HomeSquareCard(
-                    url: HomeArt.url(song.image, song.imageVariants, .md),
+                    url: HomeArt.url(song.displayImage, song.displayImageVariants, .md),
                     title: song.title ?? ""
                 )
             }
@@ -60,7 +60,7 @@ struct HomeSongCardView: View {
     private var episodeCard: some View {
         ZStack(alignment: .bottom) {
             ArtworkView(
-                url: HomeArt.url(song.image, song.imageVariants, .md),
+                url: HomeArt.url(song.displayImage, song.displayImageVariants, .md),
                 width: HomeMetrics.episodeCardWidth,
                 height: HomeMetrics.episodeCardHeight,
                 cornerRadius: 0

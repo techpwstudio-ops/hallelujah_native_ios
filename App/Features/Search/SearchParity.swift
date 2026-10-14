@@ -288,3 +288,62 @@ func parityDateText(_ date: Date?) -> String {
     formatter.dateFormat = "dd/MM/yyyy"
     return formatter.string(from: date)
 }
+
+/// Material `Checkbox` with the app theme (`checkboxTheme` white fill):
+/// 18pt box, radius 2; checked = white with a black tick, unchecked = a 2pt
+/// white 70% outline; inside the 48pt minimum tap target.
+struct ParityCheckbox: View {
+    let isChecked: Bool
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(isChecked ? Color.white : Color.clear)
+                .frame(width: 18, height: 18)
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .stroke(isChecked ? Color.white : ParityColor.white70, lineWidth: 2)
+                .frame(width: 18, height: 18)
+            if isChecked {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Color.black)
+            }
+        }
+        .frame(width: 48, height: 48)
+        .contentShape(Rectangle())
+    }
+}
+
+/// `ContinueToAddPlaylist` / `_CompactContinueButton`: a pill with "Continue"
+/// + arrow, `#1D1D1D` fill, gold (`#FFE7A3`) 1pt border with a soft glow when
+/// active, `#282828` / white24 border when disabled; text `labelLarge` w600
+/// in `#FFC857` (white60 when disabled).
+struct ParityContinueButton: View {
+    var isDisabled = false
+    let action: () -> Void
+
+    private static let gold = Color(red: 1.0, green: 0xC8 / 255, blue: 0x57 / 255)
+    private static let goldBorder = Color(red: 1.0, green: 0xE7 / 255, blue: 0xA3 / 255)
+    private static let label = TypographyToken(size: 14, weight: .semibold, lineHeightMultiple: 1, tracking: 0.1)
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text("Continue")
+                    .typography(Self.label)
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .foregroundStyle(isDisabled ? ParityColor.white60 : Self.gold)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                Capsule().fill(isDisabled ? ParityColor.darkFill : ParityColor.fill)
+                    .shadow(color: isDisabled ? Color.clear : Self.goldBorder.opacity(0.2), radius: 4, x: 0, y: 2)
+            )
+            .overlay(Capsule().stroke(isDisabled ? Color.white.opacity(0.24) : Self.goldBorder, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+    }
+}

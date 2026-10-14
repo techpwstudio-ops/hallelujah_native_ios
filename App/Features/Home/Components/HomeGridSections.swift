@@ -47,7 +47,7 @@ struct HomeRecommendationGridView: View {
     private func card(_ song: Song) -> some View {
         HStack(spacing: HomeMetrics.recommendationCoverToTitleGap) {
             ArtworkView(
-                url: HomeArt.url(song.image, song.imageVariants, .sm),
+                url: HomeArt.url(song.displayImage, song.displayImageVariants, .sm),
                 width: HomeMetrics.recommendationCover,
                 height: HomeMetrics.recommendationCover,
                 cornerRadius: Dimens.cornerRadiusSmall
@@ -306,7 +306,7 @@ struct HomeListSongCardView: View {
                     GeometryReader { proxy in
                         ZStack {
                             ArtworkView(
-                                url: HomeArt.url(song.image, song.imageVariants, .md),
+                                url: HomeArt.url(song.displayImage, song.displayImageVariants, .md),
                                 width: proxy.size.width,
                                 height: proxy.size.height,
                                 cornerRadius: 0

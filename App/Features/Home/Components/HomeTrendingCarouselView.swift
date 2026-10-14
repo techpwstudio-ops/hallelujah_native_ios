@@ -89,7 +89,7 @@ struct HomeTrendingCarouselView: View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
                 ArtworkView(
-                    url: HomeArt.url(song.image, song.imageVariants, .md),
+                    url: HomeArt.url(song.displayImage, song.displayImageVariants, .md),
                     width: cardWidth,
                     height: imageHeight,
                     cornerRadius: Dimens.cornerRadius

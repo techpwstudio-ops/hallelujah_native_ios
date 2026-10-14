@@ -12,12 +12,16 @@ import SwiftUI
 struct SubscriptionPlansView: View {
     @State private var viewModel = SubscriptionPlansViewModel()
     @Environment(\.openURL) private var openURL
+    @State private var showSuccessSheet = false
 
     var body: some View {
         content
             .parityScaffold()
             .parityNavTitle { PlansAppBarTitle() }
             .task { await viewModel.load() }
+            .parityFitSheet(isPresented: $showSuccessSheet, dismissible: false) {
+                SubscribedSuccessSheet { showSuccessSheet = false }
+            }
     }
 
     @ViewBuilder
@@ -133,7 +137,12 @@ struct SubscriptionPlansView: View {
                         ) {
                             switch viewModel.primaryAction {
                             case .purchase:
-                                Task { await viewModel.purchaseSelectedPlan() }
+                                Task {
+                                    let wasPremium = viewModel.isPremiumUser
+                                    await viewModel.purchaseSelectedPlan()
+                                    // `showSubscribedSuccessSheet()` once the purchase lands.
+                                    if !wasPremium && viewModel.isPremiumUser { showSuccessSheet = true }
+                                }
                             case let .openManageSubscriptions(url):
                                 openURL(url)
                             case .disabled:

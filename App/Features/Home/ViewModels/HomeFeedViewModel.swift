@@ -31,6 +31,9 @@ final class HomeFeedViewModel {
     /// in flight — lets `HomeView` show a subtle "showing saved content"
     /// affordance instead of a bare skeleton.
     private(set) var loadedFromCache = false
+    /// `HomeV2FeedState.error` — set only when the layout failed AND there is
+    /// nothing on screen; drives the centred message + Retry page.
+    private(set) var layoutError: String?
 
     let contentType: HomeContentType
     private let repository: any HomeRepository
@@ -107,18 +110,39 @@ final class HomeFeedViewModel {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        do {
-            let layout = try await repository.fetchLayout(type: contentType, withSections: Self.firstPaintSections)
-            guard thisGeneration == generation else { return }
-            loadedFromCache = false
-            apply(layout: layout, generation: thisGeneration)
-            runPrefetchSweep(startingAt: Self.firstPaintSections, generation: thisGeneration)
-        } catch {
-            logger.warning("home layout fetch failed: \(error)")
-            // Whatever was already on screen (cache-applied above in
-            // `loadIfNeeded()`, or a previous refresh's content) stays put;
-            // a true cold start with no cache and no network just stays on
-            // placeholders.
+        layoutError = nil
+
+        // The layout is the whole feed, so it gets the same one-retry budget a
+        // single rail does (`home_v2_repository.dart`'s two-attempt loop)
+        // rather than an error page for one dropped request.
+        var lastError: Error?
+        for attempt in 0..<2 {
+            if attempt > 0 {
+                try? await Task.sleep(for: Self.degradedRetryDelay)
+                guard thisGeneration == generation else { return }
+            }
+            do {
+                let layout = try await repository.fetchLayout(type: contentType, withSections: Self.firstPaintSections)
+                guard thisGeneration == generation else { return }
+                loadedFromCache = false
+                apply(layout: layout, generation: thisGeneration)
+                runPrefetchSweep(startingAt: Self.firstPaintSections, generation: thisGeneration)
+                return
+            } catch {
+                lastError = error
+            }
+        }
+
+        logger.warning("home layout fetch failed: \(String(describing: lastError))")
+        // Whatever was already on screen (cache-applied above in
+        // `loadIfNeeded()`, or a previous refresh's content) stays put; only a
+        // truly empty feed surfaces the error page (`_failLayout`).
+        if placeholders.isEmpty {
+            if let urlError = lastError as? URLError, urlError.code == .notConnectedToInternet {
+                layoutError = "No internet connection"
+            } else {
+                layoutError = "Failed to load home"
+            }
         }
     }
 
@@ -277,7 +301,17 @@ final class HomeFeedViewModel {
                         railStates[uiId] = .failed
                     } else {
                         railStates[uiId] = .degraded
-                        scheduleDegradedRetry(uiId: uiId, generation: generation)
+                        // Not `scheduleDegradedRetry`: this fetch still owns
+                        // `inFlight[uiId]` (cleared by its own `defer`), which
+                        // that helper treats as "a request is already running"
+                        // and would silently skip the retry.
+                        if retriedRails.insert(uiId).inserted {
+                            Task {
+                                try? await Task.sleep(for: Self.degradedRetryDelay)
+                                guard generation == self.generation else { return }
+                                await self.fetchSectionAndApply(uiId: uiId, page: 1, generation: generation)
+                            }
+                        }
                     }
                 }
                 // A degraded page-2+ fetch just leaves page 1's content on

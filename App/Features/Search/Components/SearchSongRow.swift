@@ -10,6 +10,8 @@ struct SearchSongRow: View {
     let song: Song
     var isPlaying: Bool = false
     var onRemove: (() -> Void)?
+    /// `AddToPlaylistCheckBox` — non-nil shows the picker checkbox.
+    var isChecked: Bool?
     let onTap: () -> Void
 
     static let thumbnailSize: CGFloat = 52
@@ -54,7 +56,9 @@ struct SearchSongRow: View {
 
             Spacer(minLength: 0)
 
-            if let onRemove {
+            if let isChecked {
+                ParityCheckbox(isChecked: isChecked)
+            } else if let onRemove {
                 ParityCloseButton(action: onRemove)
             }
         }

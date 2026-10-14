@@ -1,50 +1,40 @@
 import SwiftUI
 
-/// Ports `LibraryListItem`'s row rendering (`lib/widgets/playlists/
-/// library_list_item.dart`) for the merged list's non-`userPlaylist` rows —
-/// `_SavedItemRow`: a 56×56 thumbnail, title, and a subtitle of
-/// `"Album"`/`"Season"` (creator-owned only) or `"Playlist"` (company-owned,
-/// or a creator-owned entry that's neither), joined with `" • "` + creator
-/// name when one is present.
+/// Ports `LibraryListItem` (`lib/widgets/playlists/library_list_item.dart`):
+/// `_SavedItemRow` for saved albums/seasons/company playlists and
+/// `UserPlaylistListItem` for the user's own playlists. 56pt thumbnail
+/// (radius 8, `sm`), 12pt gap, 8/6 padding, title `titleSmall` w500 white,
+/// subtitle `bodySmall` white60 (3pt gap), trailing `more_vert` (32pt, 20pt
+/// glyph); a long press opens the same menu.
 ///
-/// `userPlaylist` rows get a lighter-weight subtitle here rather than
-/// porting Dart's separate `UserPlaylistListItem` (its own menu/visibility-
-/// badge widget) — that's T45 territory (User playlists CRUD), which this
-/// task doesn't build; tapping still navigates to `AppRoute
-/// .userPlaylistSongs`, a placeholder destination until then.
-///
-/// Long-press "⋮" content menu (share/library/add-to-queue) is a deliberate
-/// scope cut, same reasoning as `GenreSongsView`'s own doc comment: it needs
-/// `QueueSourceService`-equivalent infrastructure this app doesn't have
-/// anywhere yet.
+/// Subtitles: `"Album"`/`"Season"` (+ ` • creator`) for creator-owned,
+/// `"Playlist"` for company-owned, and `"Playlist"` for the user's own (Dart
+/// appends owner name and visibility; `LibraryEntry.userPlaylist` does not
+/// carry them).
 struct LibraryEntryRow: View {
     let entry: LibraryEntry
+    var onMore: () -> Void = {}
     let action: () -> Void
-
-    @Environment(\.appTheme) private var theme
 
     private static let thumbnailSize: CGFloat = 56
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: Spacing.md) {
-                ArtworkView(url: resolvedArtwork, width: Self.thumbnailSize, height: Self.thumbnailSize)
-
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text(title)
-                        .typography(Typography.titleSmall)
-                        .foregroundStyle(theme.color(.textPrimary))
-                        .lineLimit(1)
-                    Text(subtitle)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.textSecondary))
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.vertical, Spacing.xs)
+        HStack(spacing: Dimens.spacing12) {
+            ArtworkView(
+                url: resolvedArtwork,
+                width: Self.thumbnailSize,
+                height: Self.thumbnailSize,
+                cornerRadius: Dimens.cornerRadius
+            )
+            ParityRowText(title: title, subtitle: subtitle)
+            Spacer(minLength: 0)
+            ParityMoreButton(action: onMore)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, Dimens.screenPaddingLeft)
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
+        .onLongPressGesture(perform: onMore)
     }
 
     private var resolvedArtwork: URL? {
@@ -59,36 +49,25 @@ struct LibraryEntryRow: View {
     private var title: String {
         switch entry {
         case let .playlist(playlist):
-            return playlist.title.isEmpty ? "Untitled Playlist" : playlist.title
+            return playlist.title
         case let .userPlaylist(_, title, _, _, _, _):
-            return title.isEmpty ? "Untitled Playlist" : title
+            return title.isEmpty ? "Unnamed Playlist" : title.parityCapitalized
         }
     }
 
     private var subtitle: String {
         switch entry {
         case let .playlist(playlist):
-            let kind = self.kind(for: playlist)
-            if case let .creator(_, name) = playlist.owner, let name, !name.isEmpty {
-                return "\(kind) • \(name)"
+            switch playlist.owner {
+            case .company:
+                return "Playlist"
+            case let .creator(_, name):
+                let kind = playlist.isSeason ? "Season" : "Album"
+                if let name, !name.isEmpty { return "\(kind)\(parityDotSign)\(name)" }
+                return kind
             }
-            return kind
-        case let .userPlaylist(_, _, _, _, songsCount, _):
-            guard let songsCount else { return "Playlist" }
-            return "\(songsCount) Songs"
-        }
-    }
-
-    /// Creator-owned is always "Album" or "Season" — `Playlist.isSeason`/
-    /// `.isAlbum` are a strict binary complement of each other (T43; see
-    /// `Playlist.swift`'s doc comment), matching `_SavedItemRow._resolve()`'s
-    /// own `isSeason ? 'Season' : 'Album'`, never a third "neither" case.
-    private func kind(for playlist: Playlist) -> String {
-        switch playlist.owner {
-        case .company:
+        case .userPlaylist:
             return "Playlist"
-        case .creator:
-            return playlist.isSeason ? "Season" : "Album"
         }
     }
 }

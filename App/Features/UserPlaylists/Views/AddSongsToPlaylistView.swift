@@ -1,16 +1,22 @@
 import SwiftUI
 
-/// T45's "add songs" sheet, per the cross-agent CONTRACT: presented as a
-/// plain `.sheet` from `UserPlaylistDetailView`, not `.appSheet`
-/// (`AppSheetContainer` has no toolbar slot) — so this view owns its own
-/// `NavigationStack` for the title bar and Cancel action, the way any sheet
-/// needing chrome beyond glass + drag handle has to. No completion callback
-/// or binding: it dismisses itself via `\.dismiss`, and the parent reloads
-/// on `.sheet`'s own `onDismiss` instead.
+/// The native answer to `ContentSearchPage`'s `isSelect` mode for songs
+/// (`content_search_page.dart` + `AddToPlaylistCheckBox` +
+/// `ContinueToAddPlaylist`), presented as a full-height sheet by
+/// `UserPlaylistDetailView` and dismissing itself via `\.dismiss`.
+///
+/// Looks like that page: a 200pt `#282828 -> #1C1C1C -> black` gradient behind
+/// the 52pt `#333333` search bar (back arrow, "What do you want to listen
+/// to?"), result rows with a trailing checkbox, shimmer while searching, the
+/// "No results found / Try searching with a different keyword" empty state
+/// (also shown for an empty field in select mode) and a bottom-right
+/// "Continue" pill once something is selected. A row tap toggles its
+/// checkbox (Dart's row tap plays the song instead — there is no player to
+/// open from inside a sheet).
 struct AddSongsToPlaylistView: View {
     @State private var viewModel: AddSongsToPlaylistViewModel
+    @FocusState private var isFieldFocused: Bool
 
-    @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
 
     init(playlistID: String) {
@@ -18,70 +24,121 @@ struct AddSongsToPlaylistView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        ZStack(alignment: .top) {
+            Color.black.ignoresSafeArea()
+            LinearGradient(
+                colors: [ParityColor.darkFill, ParityColor.darkSurface, Color.black],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 200)
+            .ignoresSafeArea(edges: .top)
+
             VStack(spacing: 0) {
-                SearchTextField(
-                    text: Binding(
-                        get: { viewModel.searchFieldText },
-                        set: { viewModel.queryChanged($0) }
-                    ),
-                    placeholder: "Search songs",
-                    onClear: { viewModel.queryChanged("") }
-                )
-                .padding(.horizontal, Spacing.md)
-                .padding(.top, Spacing.sm)
-
+                searchBar
                 content
-
-                AppButton(
-                    label: "Add (\(viewModel.selectedSongIDs.count) selected)",
-                    action: {
-                        Task {
-                            await viewModel.submit()
-                            dismiss()
-                        }
-                    },
-                    isLoading: viewModel.isSubmitting,
-                    enabled: !viewModel.selectedSongIDs.isEmpty
-                )
-                .padding(Spacing.md)
-            }
-            .background(theme.color(.backgroundPrimary))
-            .navigationTitle("Add Songs")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
             }
         }
+        .overlay(alignment: .bottomTrailing) {
+            if !viewModel.selectedSongIDs.isEmpty {
+                ParityContinueButton(isDisabled: viewModel.isSubmitting) {
+                    Task {
+                        await viewModel.submit()
+                        dismiss()
+                    }
+                }
+                .padding(.trailing, 16)
+                .padding(.bottom, 32)
+            }
+        }
+        .onAppear { isFieldFocused = true }
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 0) {
+            Spacer().frame(width: Dimens.paddingMedium)
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back")
+            Spacer().frame(width: Dimens.paddingMedium)
+
+            TextField(
+                "",
+                text: Binding(
+                    get: { viewModel.searchFieldText },
+                    set: { viewModel.queryChanged($0) }
+                ),
+                prompt: Text("What do you want to listen to?").foregroundColor(ParityColor.grey)
+            )
+            .typography(Typography.bodyMedium)
+            .foregroundStyle(Color.white)
+            .tint(ParityColor.white70)
+            .focused($isFieldFocused)
+            .submitLabel(.search)
+            .autocorrectionDisabled()
+
+            if !viewModel.searchFieldText.isEmpty {
+                Button { viewModel.queryChanged("") } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 20))
+                        .foregroundStyle(ParityColor.white60)
+                        .frame(width: 48, height: 48)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+            Spacer().frame(width: Dimens.spacing4)
+        }
+        .frame(height: Dimens.buttonHeight)
+        .background(
+            RoundedRectangle(cornerRadius: Dimens.cornerRadiusSmall + 2, style: .continuous)
+                .fill(ParityColor.searchBar)
+                .shadow(color: Color.black.opacity(0.3), radius: Dimens.spacing8 / 2, x: 0, y: 2)
+        )
+        .padding(.leading, Dimens.screenPadding)
+        .padding(.trailing, Dimens.screenPadding)
+        .padding(.top, Dimens.spacing8)
+        .padding(.bottom, Dimens.paddingMedium)
     }
 
     @ViewBuilder
     private var content: some View {
-        let trimmed = viewModel.searchFieldText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            EmptyStateView(icon: .search, title: "Search for songs to add")
-                .frame(maxHeight: .infinity)
+        if viewModel.searchFieldText.isEmpty {
+            ParityEmptyState(
+                systemImage: "magnifyingglass",
+                title: "No results found",
+                message: "Try searching with a different keyword"
+            )
         } else if viewModel.isSearching {
-            LoadingStateView()
-                .frame(maxHeight: .infinity)
+            ScrollView { ParityShimmerList() }
+                .scrollDisabled(true)
         } else if viewModel.songs.isEmpty {
-            EmptyStateView(title: "No songs found")
-                .frame(maxHeight: .infinity)
+            ParityEmptyState(
+                systemImage: "magnifyingglass",
+                title: "No results found",
+                message: "Try searching with a different keyword"
+            )
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    Spacer().frame(height: Dimens.spacing8)
                     ForEach(viewModel.songs) { song in
-                        AddSongsToPlaylistRow(
+                        SearchSongRow(
                             song: song,
-                            isSelected: viewModel.selectedSongIDs.contains(song.id),
-                            onToggle: { viewModel.toggleSelection(songID: song.id) }
+                            isChecked: viewModel.selectedSongIDs.contains(song.id),
+                            onTap: { viewModel.toggleSelection(songID: song.id) }
                         )
-                        .padding(.horizontal, Spacing.md)
+                        .padding(.horizontal, Dimens.screenPadding)
+                        .padding(.vertical, Dimens.spacing4)
                     }
+                    Color.clear.frame(height: 96)
                 }
-                .padding(.vertical, Spacing.sm)
             }
             .scrollDismissesKeyboard(.immediately)
         }

@@ -40,6 +40,13 @@ final class FavouriteArtistsViewModel {
         await loadMoreCreators()
     }
 
+    /// Pull-to-refresh (`FavouriteCreatorsLoadEvent(refresh: true)`).
+    func refresh() async {
+        guard !page.isLoading else { return }
+        page = FavouriteArtistsPage()
+        await loadMoreCreators()
+    }
+
     func loadMoreCreatorsIfNeeded(currentItem: Creator) async {
         guard let index = page.items.firstIndex(where: { $0.id == currentItem.id }) else { return }
         guard index >= page.items.count - 3 else { return }

@@ -1,56 +1,69 @@
 import SwiftUI
 
 /// Ports `HelpSupportDashboardScreen` (`lib/views/support/dashboard.dart`):
-/// Dart embeds FAQ/Feedback/Delete Account as three segmented sub-pages on
-/// one screen. `AppRoute` already carries a separate case per destination
-/// here (`.faqs`/`.feedback`/`.deleteAccount`), so this is just the
-/// navigable list that pushes into them — no state beyond the tab index to
-/// port, matching Dart's own screen having none either.
+/// one screen with a 40pt segmented control (FAQ / Feedback / Delete Account)
+/// above an animated page area. `AppRoute.faqs` / `.feedback` /
+/// `.deleteAccount` open this same screen on the matching tab.
 struct HelpView: View {
-    @Environment(AppNavigationCoordinator.self) private var coordinator
-    @Environment(\.appTheme) private var theme
+    @State private var selectedIndex: Int
 
-    var body: some View {
-        List {
-            row(title: "FAQ", icon: Image(systemName: "questionmark.circle")) {
-                coordinator.push(.faqs)
-            }
+    private static let titles = ["FAQ", "Feedback", "Delete Account"]
 
-            row(title: "Feedback", icon: theme.icon(.mail)) {
-                coordinator.push(.feedback)
-            }
-
-            // Dart's three tabs don't visually distinguish this one; a red,
-            // weightier row here is a small, justified native improvement
-            // (not a behavior change) surfacing it as the distinct,
-            // consequential action it is.
-            row(title: "Delete Account", icon: theme.icon(.trash), tint: theme.color(.statusError)) {
-                coordinator.push(.deleteAccount)
-            }
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(theme.color(.backgroundPrimary))
-        .navigationTitle("Help & Support")
+    init(initialIndex: Int = 0) {
+        _selectedIndex = State(initialValue: initialIndex)
     }
 
-    private func row(title: String, icon: Image, tint: Color? = nil, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: Spacing.md) {
-                icon
-                    .font(.system(size: 18))
-                    .foregroundStyle(tint ?? theme.color(.textPrimary))
-                Text(title)
-                    .typography(Typography.titleSmall)
-                    .foregroundStyle(tint ?? theme.color(.textPrimary))
-                Spacer(minLength: 0)
-                theme.icon(.chevronForward)
-                    .font(.system(size: 12))
-                    .foregroundStyle(theme.color(.textSecondary))
-            }
-            .padding(.vertical, Spacing.xs)
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 10)
+            segments
+            Spacer().frame(height: 16)
+            page
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .id(selectedIndex)
+                .transition(.opacity)
         }
-        .buttonStyle(.plain)
-        .listRowBackground(Color.clear)
+        .animation(.easeInOut(duration: 0.25), value: selectedIndex)
+        .parityScaffold()
+        .parityNavTitle("Help & Support")
+    }
+
+    private var segments: some View {
+        HStack(spacing: 0) {
+            ForEach(Self.titles.indices, id: \.self) { index in
+                let isSelected = selectedIndex == index
+                Button {
+                    selectedIndex = index
+                } label: {
+                    Text(Self.titles[index])
+                        .font(AccountParity.font(12, .medium))
+                        .tracking(0.1)
+                        .foregroundStyle(isSelected ? AccountParity.black : AccountParity.white)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(isSelected ? AccountParity.white : Color.clear)
+                        )
+                        .padding(3)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .animation(.easeInOut(duration: 0.2), value: isSelected)
+            }
+        }
+        .frame(height: 40)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.06))
+        )
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private var page: some View {
+        switch selectedIndex {
+        case 0: FAQContentView()
+        case 1: FeedbackContentView()
+        default: DeleteAccountContentView()
+        }
     }
 }

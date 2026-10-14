@@ -187,14 +187,12 @@ struct SettingsView: View {
             isDownloadOverWifiOnly = keyValueStore.bool(forKey: Self.downloadOverWifiOnlyKey)
             isVerseOfDayHidden = VerseOfDayLocalStore(keyValueStore: keyValueStore).isHiddenToday
         }
-        .confirmationDialog("Audio Quality", isPresented: $isAudioQualityPickerPresented, titleVisibility: .visible) {
-            ForEach(AudioQuality.allCases, id: \.rawValue) { quality in
-                Button(quality.settingsLabel) {
-                    audioQualitySelector.setUserSelectedQuality(quality)
-                    selectedAudioQuality = quality
-                }
+        .parityFitSheet(isPresented: $isAudioQualityPickerPresented) {
+            AudioQualitySheet(selected: selectedAudioQuality) { quality in
+                audioQualitySelector.setUserSelectedQuality(quality)
+                selectedAudioQuality = quality
+                isAudioQualityPickerPresented = false
             }
-            Button("Cancel", role: .cancel) {}
         }
         .parityConfirmationDialog(
             isPresented: $isLogoutConfirmationPresented,

@@ -1,66 +1,65 @@
 import SwiftUI
 
 /// Ports `FavouriteArtistPage` (`lib/views/library/grid_artists_favorite.dart`):
-/// a paginated grid of already-followed creators — see
-/// `FavouriteArtistsViewModel`'s own doc comment for why there's no
-/// checkbox/multi-select and no "+" add-creators action here.
-///
-/// Grid cells DO tap through, to `.creatorSongs`: a direct read of
-/// `CreatorGridItem`'s own `onTap` (`lib/widgets/creator/
-/// creator_grid_item.dart:77-94`) shows `showCheckBox: false` (how this
-/// screen's own `grid_artists_favorite.dart:137-141` always builds its
-/// cells) only disables the multi-select checkbox behavior, not navigation —
-/// the non-checkbox branch still calls
-/// `NavigationService.to(CreatorSongsPage.routeName, arguments: {'creator_id': ...})`.
-/// A prior pass here wrongly assumed "no tap-through" by checking for
-/// `CreatorProfileView` call sites, the wrong destination; `.creatorSongs`
-/// already has an established native push pattern
-/// (`ContentSearchView.openCreator`), reused here. `.creatorSongs`'s own
-/// destination screen is still a placeholder in `AppShellView` — that gap is
-/// pre-existing and out of T44's scope, same as it is for
-/// `ContentSearchView`'s own creator taps.
+/// app bar "Favourite Artist" with a trailing "+" (opens `CreatorGridPage`),
+/// a `CreatorGridItem` grid (max 100pt cells, 12pt spacing, 0.75 aspect;
+/// 16pt side / 8pt top padding), pull-to-refresh, a spinner while the first
+/// page loads and "No favourite artists." when empty. Cells open the artist
+/// page (`CreatorSongsPage`).
 struct FavouriteArtistsView: View {
     @State private var viewModel: FavouriteArtistsViewModel
-    @Environment(\.appTheme) private var theme
     @Environment(AppNavigationCoordinator.self) private var coordinator
 
-    private static let gridColumns = [GridItem(.flexible(), spacing: Spacing.md), GridItem(.flexible())]
+    private let songType: String
 
     init(songType: String) {
+        self.songType = songType
         _viewModel = State(initialValue: FavouriteArtistsViewModel(songType: songType))
     }
 
     var body: some View {
-        ScrollView {
-            grid
-                .padding(.horizontal, Spacing.md)
-                .padding(.vertical, Spacing.md)
-        }
-        .background(theme.color(.backgroundPrimary))
-        .task { await viewModel.onAppear() }
+        content
+            .background(Color.black)
+            .navigationTitle("Favourite Artist")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        coordinator.push(.creatorGrid(title: "Favourite Artist", songType: songType))
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add artists")
+                }
+            }
+            .task { await viewModel.onAppear() }
     }
 
-    private var grid: some View {
-        LazyVGrid(columns: Self.gridColumns, spacing: Spacing.md) {
-            ForEach(viewModel.creators) { creator in
-                Button {
-                    coordinator.push(.creatorSongs(creatorID: creator.id, userPlaylistID: nil))
-                } label: {
-                    HomeCreatorCardView(creator: creator)
-                        .frame(maxWidth: .infinity)
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.creators.isEmpty {
+            if viewModel.isLoadingCreators || !viewModel.hasLoadedOnce {
+                ParitySpinner(fills: true)
+                    .frame(maxHeight: .infinity)
+            } else {
+                ParityEmptyText(text: "No favourite artists.")
+                    .frame(maxHeight: .infinity)
+            }
+        } else {
+            ScrollView {
+                CreatorMaxExtentGrid(items: viewModel.creators) { creator in
+                    CreatorGridCell(creator: creator) {
+                        coordinator.push(.creatorSongs(creatorID: creator.creatorId, userPlaylistID: nil))
+                    }
+                    .task { await viewModel.loadMoreCreatorsIfNeeded(currentItem: creator) }
                 }
-                .buttonStyle(.plain)
-                .task { await viewModel.loadMoreCreatorsIfNeeded(currentItem: creator) }
+                .padding(.horizontal, Dimens.screenPaddingAll * 2)
+                .padding(.top, Dimens.screenPaddingAll)
+                if viewModel.isLoadingCreators {
+                    ParitySpinner()
+                }
+                Color.clear.frame(height: 168)
             }
-        }
-        .overlay(alignment: .bottom) {
-            if viewModel.isLoadingCreators {
-                LoadingStateView()
-                    .frame(maxWidth: .infinity, minHeight: 60)
-            } else if viewModel.hasLoadedOnce, viewModel.creators.isEmpty {
-                EmptyStateView(title: "No favourite artists yet")
-                    .frame(maxWidth: .infinity, minHeight: 160)
-            }
+            .refreshable { await viewModel.refresh() }
         }
     }
 }

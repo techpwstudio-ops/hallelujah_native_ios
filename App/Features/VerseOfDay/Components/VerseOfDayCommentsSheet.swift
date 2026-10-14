@@ -1,41 +1,47 @@
 import SwiftUI
 
-/// T56 — ports `VerseOfDayCommentsPage` (`verse_of_day_comments_sheet.dart`):
-/// a "Comments" header, a paginated newest-first list (empty state "You are
-/// first to comment" when nobody has yet), and a bottom composer. Bare sheet
-/// content per `LanguagePickerSheet.swift`'s doc comment — `.appSheet`
-/// supplies the drag handle and glass chrome.
-///
-/// Scope cut from Dart's own sheet: no `showVerseOfDayUi` param — that flag
-/// only fires from `book_page_menu_sheet.dart`'s reader-menu entry point
-/// (out of T56's scope), never from `VerseOfDayUi`'s own comment tap, which
-/// is this file's only call site (`VerseOfDayCardView.swift`).
+/// `showVerseOfDayComments` / `VerseOfDayCommentsPage`
+/// (`lib/sheets/book/verse_of_day_comments_sheet.dart`): drag handle, a list
+/// (24pt side padding, 32pt between rows) whose first row is — optionally the
+/// verse card (`showsVerseOfDay`, 16pt above/below), the "Comments" caption
+/// (bodyLarge, white 70%), a 12pt gap and "You are first to comment" when
+/// empty — followed by the comments; a divider; and the composer.
 struct VerseOfDayCommentsSheet: View {
     let verseOfDayId: String
+    var showsVerseOfDay = false
 
     @State private var viewModel: VerseOfDayCommentsViewModel
 
-    init(verseOfDayId: String) {
+    init(verseOfDayId: String, showsVerseOfDay: Bool = false) {
         self.verseOfDayId = verseOfDayId
+        self.showsVerseOfDay = showsVerseOfDay
         _viewModel = State(initialValue: VerseOfDayCommentsViewModel(verseOfDayId: verseOfDayId))
     }
 
-    @Environment(\.appTheme) private var theme
-
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: Spacing.xl) {
-                    Text("Comments")
-                        .typography(Typography.bodyLarge)
-                        .foregroundStyle(theme.color(.textSecondary))
-                        .padding(.top, Spacing.md)
+            ReadDragHandle()
 
-                    if viewModel.isLoadingComments, !viewModel.hasLoadedOnce {
-                        LoadingStateView()
-                    } else if viewModel.hasLoadedOnce, viewModel.comments.isEmpty {
-                        EmptyStateView(title: "You are first to comment")
-                    } else {
+            if viewModel.isLoadingComments, !viewModel.hasLoadedOnce {
+                ReadSpinner()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 32) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            if showsVerseOfDay {
+                                VerseOfDayCardView()
+                                    .padding(.vertical, 16)
+                            }
+                            Text("Comments")
+                                .readText(Typography.bodyLarge, weight: .regular, color: ReadPalette.secondaryText)
+                            Spacer().frame(height: 12)
+                            if viewModel.hasLoadedOnce, viewModel.comments.isEmpty {
+                                ReadEmptyText(text: "You are first to comment")
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                         ForEach(viewModel.comments) { comment in
                             VerseOfDayCommentRow(
                                 comment: comment,
@@ -46,23 +52,25 @@ struct VerseOfDayCommentsSheet: View {
                             }
                         }
                         if viewModel.isLoadingComments {
-                            LoadingStateView()
+                            ReadSpinner()
+                                .frame(maxWidth: .infinity)
                         }
                     }
+                    .padding(.horizontal, 24)
                 }
-                .padding(.horizontal, Spacing.lg)
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollDismissesKeyboard(.interactively)
 
-            Divider()
-                .overlay(theme.color(.border))
+            Rectangle()
+                .fill(ReadPalette.divider)
+                .frame(height: 1)
+                .padding(.vertical, 8)
 
             VerseOfDayCommentInputBar(
                 isAddingComment: viewModel.isAddingComment,
                 onSend: { content in Task { await viewModel.postComment(content: content) } }
             )
-            .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.md)
+            .padding(.top, Dimens.screenPaddingAll)
         }
         .task {
             await viewModel.onAppear()
@@ -70,142 +78,161 @@ struct VerseOfDayCommentsSheet: View {
     }
 }
 
-/// One comment row. Ports `VerseOfDayCommentItem`/`_LikeRow`
-/// (`verse_comment_item.dart`): username + relative time-ago on top,
-/// content below, a heart-and-count like row beneath. `RelativeDateTimeFormatter`
-/// stands in for Dart's own `Formater.timeAgo` — same native-API-over-1:1-port
-/// precedent `VerseOfDayCardViewModel`'s own doc comment already established.
+/// `Formater.timeAgo`: "just now", "N min", "N hour(s)", "N day(s)",
+/// "N month(s)", "N year(s)".
+private func verseOfDayTimeAgo(_ date: Date?) -> String {
+    guard let date else { return "" }
+    let seconds = Int(Date().timeIntervalSince(date))
+    let minutes = seconds / 60
+    let hours = minutes / 60
+    let days = hours / 24
+    if seconds < 60 { return "just now" }
+    if minutes < 60 { return "\(minutes) min" }
+    if hours < 24 { return "\(hours) hour\(hours > 1 ? "s" : "")" }
+    if days < 30 { return "\(days) day\(days > 1 ? "s" : "")" }
+    if days < 365 {
+        let months = days / 30
+        return "\(months) month\(months > 1 ? "s" : "")"
+    }
+    let years = days / 365
+    return "\(years) year\(years > 1 ? "s" : "")"
+}
+
+/// `VerseOfDayCommentItem`: name (bodyLarge w600, "Anonymous" fallback) and
+/// time-ago (bodySmall, 60%) on one row, 6pt, the comment (bodyMedium,
+/// height 1.4), 10pt, then the like row (20pt heart in white 60% + count).
 private struct VerseOfDayCommentRow: View {
     let comment: VerseOfDayComment
     let onToggleLike: () -> Void
 
-    @Environment(\.appTheme) private var theme
-
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter
-    }()
-
-    private var timeAgo: String? {
-        guard let createdAt = comment.createdAt else { return nil }
-        return Self.relativeFormatter.localizedString(for: createdAt, relativeTo: Date())
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            HStack {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) {
                 Text(comment.userName ?? "Anonymous")
-                    .typography(Typography.bodyLarge)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(theme.color(.textPrimary))
-                Spacer(minLength: Spacing.sm)
-                if let timeAgo {
-                    Text(timeAgo)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.textSecondary))
-                }
+                    .readText(Typography.bodyLarge, weight: .semibold)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(verseOfDayTimeAgo(comment.createdAt))
+                    .readText(Typography.bodySmall, color: ReadPalette.white60)
             }
+            Spacer().frame(height: 6)
             Text(comment.content)
-                .typography(Typography.bodyMedium)
-                .foregroundStyle(theme.color(.textPrimary))
-
+                .readText(Typography.bodyMedium)
+                .lineSpacing(14 * 0.2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer().frame(height: 10)
             Button(action: onToggleLike) {
-                HStack(spacing: Spacing.xs) {
-                    theme.icon(comment.isLiked ? .favoriteFilled : .favorite)
-                        .font(.system(size: 16))
-                    if comment.likes > 0 {
-                        Text("\(comment.likes)")
-                            .typography(Typography.bodySmall)
-                            .contentTransition(.numericText())
-                    }
+                HStack(spacing: 0) {
+                    VerseOfDayHeartIcon(isLiked: comment.isLiked, size: 20, color: ReadPalette.white60)
+                        .scaleEffect(comment.isLiked ? 1.2 : 1.0)
+                        .animation(.easeOut(duration: 0.18), value: comment.isLiked)
+                    VerseOfDayAnimatedCount(count: comment.likes, color: ReadPalette.white60)
                 }
-                .foregroundStyle(comment.isLiked ? theme.color(.statusError) : theme.color(.textSecondary))
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .animation(MotionCurve.fast, value: comment.likes)
         }
     }
 }
 
-/// The composer at the sheet's bottom. Ports `VerseOfDayCommentInput`
-/// (`verse_comment_input.dart`): a 2-5 line growing text field capped at 200
-/// characters, an emoji row that appends to it, and a trailing send action —
-/// reusing `AppButton` for that last part rather than hand-building Dart's
-/// own bespoke 64x32 pill, since `AppButton` already covers every state
-/// (disabled while empty, spinner while `isAddingComment`) this needs.
+/// `VerseOfDayCommentInput`: borderless 2–5 line field (200 chars, hint "Type
+/// your comment here"), then the emoji strip and a 64x32 "Send" button.
 private struct VerseOfDayCommentInputBar: View {
     let isAddingComment: Bool
     let onSend: (String) -> Void
 
     @State private var text = ""
-    @Environment(\.appTheme) private var theme
 
     private static let maxLength = 200
 
-    private var trimmedText: String {
-        text.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
+    private var canSend: Bool { !text.isEmpty && !isAddingComment }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            TextField("Type your comment here", text: $text, axis: .vertical)
-                .typography(Typography.bodyMedium)
-                .foregroundStyle(theme.color(.textPrimary))
-                .lineLimit(2...5)
-                .onChange(of: text) { _, newValue in
-                    if newValue.count > Self.maxLength {
-                        text = String(newValue.prefix(Self.maxLength))
-                    }
+        VStack(alignment: .leading, spacing: 0) {
+            TextField(
+                "",
+                text: $text,
+                prompt: Text("Type your comment here")
+                    .font(.custom(Typography.fontFamily, size: 12, relativeTo: .body).weight(.medium))
+                    .foregroundColor(ReadPalette.hint),
+                axis: .vertical
+            )
+            .typography(Typography.bodyLarge)
+            .foregroundStyle(ReadPalette.white)
+            .lineLimit(2...5)
+            .frame(minHeight: 48, alignment: .topLeading)
+            .onChange(of: text) { _, newValue in
+                if newValue.count > Self.maxLength {
+                    text = String(newValue.prefix(Self.maxLength))
                 }
+            }
 
-            HStack(spacing: Spacing.md) {
+            HStack(spacing: 0) {
                 VerseOfDayEmojiReactionBar { emoji in
                     text += emoji
                 }
-                Spacer(minLength: 0)
-                AppButton(
-                    label: "Send",
-                    action: handleSend,
-                    isLoading: isAddingComment,
-                    enabled: !trimmedText.isEmpty && !isAddingComment,
-                    width: 88
-                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer().frame(width: Dimens.horizontalSpacing)
+                sendButton
             }
         }
+        .padding(.horizontal, 24)
+    }
+
+    private var sendButton: some View {
+        Button(action: handleSend) {
+            Group {
+                if isAddingComment {
+                    ReadSpinner(size: 24)
+                        .padding(8)
+                } else {
+                    Text("Send")
+                        .readText(Typography.labelMedium, weight: .semibold)
+                }
+            }
+            .frame(width: 64, height: 32)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(ReadPalette.commentInputBorder)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSend)
+        .opacity(canSend ? 1 : 0.7)
     }
 
     private func handleSend() {
-        guard !trimmedText.isEmpty, !isAddingComment else { return }
-        let content = trimmedText
+        guard canSend else { return }
+        let content = text
         text = ""
         onSend(content)
     }
 }
 
-/// A fixed row of tappable emoji that append themselves to the comment
-/// field. Ports `VerseReactionBar` (`verse_reaction_bar.dart`) at this
-/// file's only call site's actual usage: `reactions` is always passed empty
-/// there, so the per-emoji count Dart's own widget supports never renders in
-/// practice — omitted here rather than porting dead functionality.
+/// `VerseReactionBar`: six emoji (titleMedium, 12/6 padding, 8pt apart) in a
+/// 42pt-high strip.
 private struct VerseOfDayEmojiReactionBar: View {
     let onReact: (String) -> Void
 
-    private static let emojis = ["🙏", "❤️", "🔥", "🙌", "✨", "📖"]
+    private static let emojis = ["\u{1F64F}", "\u{2764}\u{FE0F}", "\u{1F525}", "\u{1F64C}", "\u{2728}", "\u{1F4D6}"]
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.sm) {
+            HStack(spacing: 8) {
                 ForEach(Self.emojis, id: \.self) { emoji in
                     Button {
                         onReact(emoji)
                     } label: {
                         Text(emoji)
-                            .font(.title3)
+                            .typography(Typography.titleMedium)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
+        .frame(height: 42)
     }
 }

@@ -27,9 +27,12 @@ struct VerseOfDayCardView: View {
     }
 }
 
-/// Split from `VerseOfDayCardView` so every sheet/gesture closure below
-/// captures a plain, already-unwrapped `verse: VerseOfDay` — no repeated
-/// `viewModel.verse!`/optional-binding noise at each call site.
+/// `VerseOfDayUi` (`lib/widgets/verse_of_day/verse_of_day_ui.dart`): the
+/// artwork at 80% opacity under a black 50/10/50% gradient (12pt radius),
+/// 16pt padding around: the "VERSE OF THE DAY" label, the quoted verse (tap
+/// jumps the reader to it), the right-aligned "Book . ch . v" line, then the
+/// like / comments / share / history action bar. Long-press opens the
+/// options sheet.
 private struct VerseOfDayCardContentView: View {
     let verse: VerseOfDay
     let viewModel: VerseOfDayCardViewModel
@@ -39,8 +42,8 @@ private struct VerseOfDayCardContentView: View {
     @State private var showAskEmetSheet = false
     @State private var showCommentsSheet = false
     @State private var showHistorySheet = false
+    @State private var pendingAfterOptions: (() -> Void)?
 
-    @Environment(\.appTheme) private var theme
     @Environment(AppNavigationCoordinator.self) private var coordinator
 
     private var backgroundURL: URL? {
@@ -48,84 +51,185 @@ private struct VerseOfDayCardContentView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            VerseOfDayBackgroundImageView(url: backgroundURL)
-                .opacity(0.8)
-            VerseOfDayScrimOverlay()
-
-            VStack(alignment: .leading, spacing: Spacing.sm) {
-                Text("VERSE OF THE DAY")
-                    .typography(Typography.labelSmall)
-                    .foregroundStyle(theme.color(.textInverse).opacity(0.8))
-
-                Button(action: navigateToReader) {
-                    Text(verse.verseText ?? "")
-                        .typography(Typography.titleMedium)
-                        .foregroundStyle(theme.color(.textInverse))
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .disabled(verse.bookNumber == nil || verse.chapterNumber == nil)
-
-                if let reference = verse.reference {
-                    Text(reference)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.textInverse).opacity(0.8))
-                }
-
-                VerseOfDayActionBar(
-                    verse: verse,
-                    isTogglingLike: viewModel.isTogglingLike,
-                    shareURL: viewModel.shareURL,
-                    onLikeTap: { Task { await viewModel.toggleLike() } },
-                    onCommentTap: { showCommentsSheet = true },
-                    onHistoryTap: { showHistorySheet = true }
-                )
-            }
-            .padding(Spacing.md)
+        VStack(alignment: .leading, spacing: 0) {
+            VerseOfDayContentBlock(verse: verse, onVerseTap: navigateToReader)
+            Spacer().frame(height: 6)
+            VerseOfDayMetaText(verse: verse)
+            Spacer().frame(height: 14)
+            VerseOfDayActionBar(
+                verse: verse,
+                isTogglingLike: viewModel.isTogglingLike,
+                shareURL: viewModel.shareURL,
+                onLikeTap: { Task { await viewModel.toggleLike() } },
+                onCommentTap: { showCommentsSheet = true },
+                onHistoryTap: { showHistorySheet = true }
+            )
         }
-        .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+        .padding(Dimens.paddingLarge)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            ZStack {
+                VerseOfDayBackgroundImageView(url: backgroundURL)
+                    .opacity(0.8)
+                VerseOfDayScrimOverlay()
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous))
+        )
         .contentShape(Rectangle())
         .onLongPressGesture {
             showOptionsSheet = true
         }
-        .appSheet(isPresented: $showOptionsSheet) {
+        .readSheet(
+            isPresented: $showOptionsSheet,
+            onDismiss: {
+                guard let action = pendingAfterOptions else { return }
+                pendingAfterOptions = nil
+                action()
+            },
+            detents: [.height(200)]
+        ) {
             VerseOfDayOptionsSheet(
                 verse: verse,
                 onHide: { viewModel.hideForToday() },
-                onAskEmet: { showAskEmetSheet = true }
+                onAskEmet: { pendingAfterOptions = { showAskEmetSheet = true } },
+                onClose: { showOptionsSheet = false }
             )
         }
         .sheet(isPresented: $showAskEmetSheet) {
             AIVerseInsightDialogView(target: .fromVerseOfDay(verse))
         }
-        .appSheet(isPresented: $showCommentsSheet) {
-            VerseOfDayCommentsSheet(verseOfDayId: verse.id)
+        .readSheet(isPresented: $showCommentsSheet, detents: [.fraction(0.65), .fraction(0.95)]) {
+            VerseOfDayCommentsSheet(verseOfDayId: verse.id, showsVerseOfDay: false)
         }
-        .appSheet(isPresented: $showHistorySheet) {
+        .readSheet(isPresented: $showHistorySheet, detents: [.fraction(0.65), .fraction(0.95)]) {
             VerseOfDayHistorySheet()
         }
     }
 
-    /// `DashboardNavigateTo(4)` + the reader's own book/chapter navigation
-    /// (`_VerseOfDaySection`'s verse tap) — switches to the Read tab and
-    /// hands it a pending target the same way a push notification/deep link
-    /// does (`ReaderNavigationStore`, shared via DI with both of those).
     private func navigateToReader() {
         guard let bookNumber = verse.bookNumber, let chapterNumber = verse.chapterNumber else { return }
         coordinator.selectedTab = .read
-        navigationStore.pendingTarget = ReaderNavigationStore.Target(bookNumber: bookNumber, chapterNumber: chapterNumber)
+        navigationStore.pendingTarget = ReaderNavigationStore.Target(
+            bookNumber: bookNumber,
+            chapterNumber: chapterNumber,
+            verseNumber: verse.verseNumber
+        )
     }
 }
 
-/// The like/comment/share/history row. Ports `VerseOfDayActionBar`
-/// (`verse_action_bar.dart`)'s four slots. Plain integer counts, no
-/// `Formater.formatNumber` abbreviation — same "no native equivalent exists"
-/// precedent `CreatorPlaylistRow`'s own doc comment already established —
-/// with `.contentTransition(.numericText())` (iOS 16+, well under this
-/// project's iOS 17 deployment target) standing in for Dart's own
-/// `AnimatedCount`/`AnimatedSwitcher` widget rather than hand-porting it.
+/// `VerseOfDayContentUi`: "VERSE OF THE DAY" (labelSmall), a 12pt gap, then
+/// the verse between bold-italic quotation marks (text bodyLarge w700).
+struct VerseOfDayContentBlock: View {
+    let verse: VerseOfDay
+    let onVerseTap: () -> Void
+
+    private var comma: Text {
+        Text("\"")
+            .font(.custom(Typography.fontFamily, size: 24, relativeTo: .body).weight(.bold).italic())
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Verse of the day".uppercased())
+                .typography(Typography.labelSmall)
+                .foregroundStyle(ReadPalette.white)
+            Spacer().frame(height: Dimens.verticalSpacing)
+            Button(action: onVerseTap) {
+                (comma
+                    + Text(" \(verse.verseText ?? "") ")
+                        .font(.custom(Typography.fontFamily, size: 16, relativeTo: .body).weight(.bold))
+                    + comma)
+                    .lineSpacing(16 * 0.5)
+                    .foregroundStyle(ReadPalette.white)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+/// `VerseOfDayMetaUi`: "Book . chapter . verse", bodySmall w700, right aligned.
+struct VerseOfDayMetaText: View {
+    let verse: VerseOfDay
+
+    private var text: String {
+        let chapter = verse.chapterNumber.map(String.init) ?? ""
+        let number = verse.verseNumber.map(String.init) ?? ""
+        return "\(verse.bookName ?? "") . \(chapter) . \(number)"
+    }
+
+    var body: some View {
+        Text(text)
+            .readText(Typography.bodySmall, weight: .bold)
+            .multilineTextAlignment(.trailing)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+}
+
+/// `AnimatedCount`: collapses to nothing at zero, compact number ("1.2K"),
+/// slides/fades when it changes.
+struct VerseOfDayAnimatedCount: View {
+    let count: Int
+    var color: Color = ReadPalette.white
+
+    private var formatted: String {
+        count.formatted(.number.notation(.compactName))
+    }
+
+    private var width: CGFloat {
+        if count <= 0 { return 0 }
+        if formatted.count <= 2 { return 24 }
+        if formatted.count <= 4 { return 32 }
+        return 40
+    }
+
+    var body: some View {
+        Text(formatted)
+            .readText(Typography.bodySmall, weight: .regular, color: color)
+            .contentTransition(.numericText())
+            .lineLimit(1)
+            .frame(width: width, alignment: .leading)
+            .opacity(count > 0 ? 1 : 0)
+            .animation(.easeInOut(duration: 0.2), value: count)
+    }
+}
+
+/// `FavoriteIcon`: outline heart, or a red heart in a thin `redAccent` rim.
+struct VerseOfDayHeartIcon: View {
+    let isLiked: Bool
+    var isLoading = false
+    var size: CGFloat = 22
+    var color: Color = ReadPalette.white
+
+    var body: some View {
+        Group {
+            if isLoading {
+                ReadSpinner(size: size - 4, color: ReadPalette.white)
+                    .frame(width: size, height: size)
+            } else if isLiked {
+                ZStack {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: size))
+                        .foregroundStyle(Color(readRGB: 0xFF5252))
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: size - 1))
+                        .foregroundStyle(Color(readRGB: 0xBA0319))
+                }
+                .frame(width: size, height: size)
+            } else {
+                Image(systemName: "heart")
+                    .font(.system(size: size))
+                    .foregroundStyle(color)
+                    .frame(width: size, height: size)
+            }
+        }
+    }
+}
+
+/// `VerseOfDayActionBar`: four equal slots, icon left-aligned in each (22pt,
+/// 8pt vertical tap padding), a 6pt gap to the count where there is one.
 private struct VerseOfDayActionBar: View {
     let verse: VerseOfDay
     let isTogglingLike: Bool
@@ -134,99 +238,83 @@ private struct VerseOfDayActionBar: View {
     let onCommentTap: () -> Void
     let onHistoryTap: () -> Void
 
-    @Environment(\.appTheme) private var theme
+    private static let iconSize: CGFloat = 22
 
     var body: some View {
-        HStack(spacing: Spacing.lg) {
-            Button(action: onLikeTap) {
-                counted(
-                    icon: verse.isLiked ? .favoriteFilled : .favorite,
-                    count: verse.likes,
-                    tint: verse.isLiked ? theme.color(.statusError) : theme.color(.textInverse)
-                )
+        HStack(spacing: 0) {
+            slot(onTap: onLikeTap) {
+                HStack(spacing: 6) {
+                    VerseOfDayHeartIcon(isLiked: verse.isLiked, isLoading: isTogglingLike, size: Self.iconSize)
+                    if verse.likes > 0 {
+                        VerseOfDayAnimatedCount(count: verse.likes)
+                    }
+                }
             }
-            .buttonStyle(.plain)
-            .disabled(isTogglingLike)
-
-            Button(action: onCommentTap) {
-                counted(icon: .comment, count: verse.comments, tint: theme.color(.textInverse))
+            slot(onTap: onCommentTap) {
+                HStack(spacing: 6) {
+                    Image(systemName: IconToken.comment.systemName)
+                        .font(.system(size: Self.iconSize))
+                        .foregroundStyle(ReadPalette.white)
+                        .frame(width: Self.iconSize, height: Self.iconSize)
+                    if verse.comments > 0 {
+                        VerseOfDayAnimatedCount(count: verse.comments)
+                    }
+                }
             }
-            .buttonStyle(.plain)
-
-            shareButton
-
-            Button(action: onHistoryTap) {
-                theme.icon(.history)
-                    .foregroundStyle(theme.color(.textInverse))
+            shareSlot
+            slot(onTap: onHistoryTap) {
+                Image(systemName: IconToken.history.systemName)
+                    .font(.system(size: Self.iconSize))
+                    .foregroundStyle(ReadPalette.white)
+                    .frame(width: Self.iconSize, height: Self.iconSize)
             }
-            .buttonStyle(.plain)
-
-            Spacer(minLength: 0)
         }
-        .animation(MotionCurve.fast, value: verse.likes)
-        .animation(MotionCurve.fast, value: verse.comments)
     }
 
-    private func counted(icon: IconToken, count: Int, tint: Color) -> some View {
-        HStack(spacing: Spacing.xs) {
-            theme.icon(icon)
-            Text("\(count)")
-                .typography(Typography.labelMedium)
-                .contentTransition(.numericText())
+    private func slot<Content: View>(onTap: @escaping () -> Void, @ViewBuilder content: () -> Content) -> some View {
+        Button(action: onTap) {
+            content()
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
         }
-        .foregroundStyle(tint)
+        .buttonStyle(.plain)
     }
 
-    /// `shareURL` is only `nil` until `VerseOfDayCardViewModel.refresh()`
-    /// resolves it — `ShareLink(item:)` needs its item ready synchronously
-    /// at tap time (see that view model's own doc comment), so this renders
-    /// the same glyph+count either way and only becomes a real `ShareLink`
-    /// once the URL is in hand, rather than the row reflowing when it
-    /// arrives.
     @ViewBuilder
-    private var shareButton: some View {
-        let label = counted(icon: .share, count: verse.shares, tint: theme.color(.textInverse))
+    private var shareSlot: some View {
+        let icon = Image(systemName: IconToken.share.systemName)
+            .font(.system(size: Self.iconSize))
+            .foregroundStyle(ReadPalette.white)
+            .frame(width: Self.iconSize, height: Self.iconSize)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         if let shareURL {
-            ShareLink(item: shareURL) { label }
+            ShareLink(item: shareURL) { icon }
+                .buttonStyle(.plain)
         } else {
-            label.opacity(0.5)
+            icon.opacity(0.5)
         }
     }
 }
 
-/// The dark top/middle/bottom gradient every verse-of-day background image
-/// sits under, so on-image text stays legible regardless of the photo
-/// beneath it. Mirrors `verse_bg_widget.dart`'s `ColorTheme.dark.withOpacity(
-/// 0.5/0.1/0.5)` top-to-bottom gradient, built from the `overlayScrim` color
-/// set (`Assets.xcassets` — a token purpose-built for exactly this, with no
-/// other call site yet) rather than a raw `Color.black.opacity(...)` literal.
-/// Not `private`: `VerseOfDayHistorySheet`'s own past-verse rows reuse it.
+/// The artwork scrim: black at 50% / 10% / 50%, top to bottom (12pt radius).
 struct VerseOfDayScrimOverlay: View {
-    @Environment(\.appTheme) private var theme
-
     var body: some View {
         LinearGradient(
             stops: [
-                .init(color: theme.color(.overlayScrim).opacity(0.5), location: 0),
-                .init(color: theme.color(.overlayScrim).opacity(0.1), location: 0.5),
-                .init(color: theme.color(.overlayScrim).opacity(0.5), location: 1),
+                .init(color: Color.black.opacity(0.5), location: 0),
+                .init(color: Color.black.opacity(0.1), location: 0.5),
+                .init(color: Color.black.opacity(0.5), location: 1),
             ],
             startPoint: .top,
             endPoint: .bottom
         )
+        .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous))
     }
 }
 
-/// The verse-of-day card's background photo. A `GeometryReader`-sized sister
-/// to `ArtworkView` (see that file's own doc comment on why raw `AsyncImage`
-/// is avoided here too — same `ArtworkImageCache` downsampling call), built
-/// as its own type instead of reusing `ArtworkView` directly for one reason:
-/// `ArtworkView` takes fixed `width`/`height`, but this card has no fixed
-/// aspect ratio (`VerseOfDayCardView`'s own doc comment) — its box is
-/// whatever height the foreground content naturally produces, known only at
-/// layout time, which is exactly what `GeometryReader` provides and a fixed
-/// pair of stored properties can't. Not `private`: `VerseOfDayHistorySheet`'s
-/// own past-verse rows reuse it too.
 struct VerseOfDayBackgroundImageView: View {
     let url: URL?
 
@@ -248,7 +336,7 @@ struct VerseOfDayBackgroundImageView: View {
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .clipped()
                 } else {
-                    theme.color(.surfaceSecondary)
+                    ReadPalette.fill
                 }
             }
             .task(id: LoadKey(url: url, size: proxy.size)) {
@@ -257,7 +345,6 @@ struct VerseOfDayBackgroundImageView: View {
         }
     }
 
-    @Environment(\.appTheme) private var theme
 
     private func load(maxPixelSize: CGFloat) async {
         guard let url, maxPixelSize.isFinite, maxPixelSize > 0 else {

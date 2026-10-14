@@ -1,200 +1,120 @@
 import SwiftUI
 
-/// Ports `DeleteAccountPage` (`lib/views/support/delete_account.dart`): a
-/// reason dropdown (with a required free-text field for "Other"), then a
-/// three-step confirmation sequence — "are you sure", a device-auth gate,
-/// "type Delete exactly" — before the actual API call. Structural only, not
-/// pixel parity (D10 is scoped to the splash/auth screens), same posture
-/// `FeedbackView` already takes for its own dropdown/field styling.
-///
-/// This is a destructive, irreversible-feeling flow, so every step below —
-/// including the abort-silently-with-no-toast behavior on a cancelled step —
-/// is grounded directly in `_onDeletePressed`, `showConfirmationDialog`, and
-/// `showDeleteConfirmationDialog`, not simplified or reordered. The backend
-/// itself actually schedules deletion 7 days out rather than deleting
-/// synchronously, but Dart's own UI never surfaces that grace period either
-/// (just this same toast + sign-out), so none is added here — that would be
-/// scope beyond this port, not a correction of one.
+/// `AppRoute.deleteAccount` — the Help & Support dashboard opened on its Delete Account tab.
 struct AccountDeletionView: View {
+    var body: some View { HelpView(initialIndex: 2) }
+}
+
+/// Ports `DeleteAccountPage` (`lib/views/support/delete_account.dart`): reason
+/// dropdown (+ "Enter your reason" field for Other), sticky bottom bar with
+/// "Delete Account" / secondary "Cancel", then the exact 3-step sequence of
+/// `_onDeletePressed`: "Confirm" dialog -> device-auth gate -> "Confirm
+/// Delete" type-`Delete` dialog (`showDeleteConfirmationDialog`) -> API call.
+/// Dialogs use Flutter's custom blurred-dark card (`ParityConfirmationDialog`
+/// and `TypeDeleteDialog`) instead of system alerts.
+struct DeleteAccountContentView: View {
     @State private var viewModel = AccountDeletionViewModel()
-    @State private var selectedReason: AccountDeletionReason?
+    @State private var selectedReason: SupportDropdown.Item?
     @State private var otherReasonText = ""
 
-    // Step A — "are you sure" alert. Bridged to `async`/`await` with a stored
-    // continuation (same shape as `checkBiometricGate`'s LAContext bridge)
-    // so `beginDeletionFlow()` below can read the whole 3-step sequence as
-    // one straight-line function instead of a chain of completion handlers.
+    // Step A.
     @State private var isConfirmIntentPresented = false
     @State private var confirmIntentContinuation: CheckedContinuation<Bool, Never>?
 
-    // Step C — "type Delete exactly" alert.
+    // Step C.
     @State private var isTypeDeletePresented = false
-    @State private var typeDeleteText = ""
     @State private var typeDeleteContinuation: CheckedContinuation<Bool, Never>?
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
-    @Environment(\.appTheme) private var theme
     @Environment(\.toastCenter) private var toastCenter
 
-    /// `reasons` (`delete_account.dart`), copied verbatim — "Other"'s value
-    /// is the lowercase `"other"` sentinel `isOther` checks against; every
-    /// other entry's value equals its label exactly.
-    private static let reasons: [AccountDeletionReason] = [
-        AccountDeletionReason(label: "Privacy concerns", value: "Privacy concerns"),
-        AccountDeletionReason(label: "Not useful anymore", value: "Not useful anymore"),
-        AccountDeletionReason(label: "Too many notifications", value: "Too many notifications"),
-        AccountDeletionReason(label: "Switching to another app", value: "Switching to another app"),
-        AccountDeletionReason(label: "Other", value: "other"),
+    /// `reasons` (`delete_account.dart`), verbatim; "Other" carries the
+    /// lowercase `"other"` sentinel.
+    private static let reasons: [SupportDropdown.Item] = [
+        .init(label: "Privacy concerns", value: "Privacy concerns"),
+        .init(label: "Not useful anymore", value: "Not useful anymore"),
+        .init(label: "Too many notifications", value: "Too many notifications"),
+        .init(label: "Switching to another app", value: "Switching to another app"),
+        .init(label: "Other", value: "other"),
     ]
 
-    /// `isOther` (`delete_account.dart`).
     private var isOther: Bool { selectedReason?.value == "other" }
-
-    /// `isValid` (`delete_account.dart`).
-    private var isValid: Bool {
-        guard selectedReason != nil else { return false }
-        return isOther ? !trimmedOtherReason.isEmpty : true
-    }
 
     private var trimmedOtherReason: String {
         otherReasonText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// `finalReason` (`_onDeletePressed`).
+    private var isValid: Bool {
+        guard selectedReason != nil else { return false }
+        return isOther ? !trimmedOtherReason.isEmpty : true
+    }
+
     private var finalReason: String {
         isOther ? trimmedOtherReason : (selectedReason?.value ?? "")
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
-                reasonField
-                if isOther {
-                    otherReasonField
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    SupportDropdown(
+                        hint: "Choose reason",
+                        items: Self.reasons,
+                        selectedValue: selectedReason?.value,
+                        isDisabled: viewModel.isDeleting
+                    ) { item in
+                        selectedReason = item
+                        if item.value != "other" { otherReasonText = "" }
+                    }
+
+                    Spacer().frame(height: 20)
+
+                    if isOther {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ParityRequiredLabel(text: "Enter your reason")
+                                .padding(.bottom, 8)
+                            ParityTextField(
+                                text: $otherReasonText,
+                                placeholder: "Enter your reason",
+                                enabled: !viewModel.isDeleting,
+                                capitalization: .sentences,
+                                axis: .vertical,
+                                lineLimit: 1...4
+                            )
+                        }
+                        .padding(.vertical, 2)
+                    }
                 }
+                .padding(16)
             }
-            .padding(Spacing.md)
-        }
-        .background(theme.color(.backgroundPrimary))
-        .safeAreaInset(edge: .bottom) {
-            actionButtons
-                .padding(.horizontal, Spacing.md)
-                .padding(.vertical, Spacing.sm)
-                .background(theme.color(.backgroundPrimary))
-        }
-        // Step A.
-        .alert("Confirm", isPresented: $isConfirmIntentPresented) {
-            Button("Cancel", role: .cancel) { resumeConfirmIntent(with: false) }
-            Button("Yes") { resumeConfirmIntent(with: true) }
-        } message: {
-            Text("Are you sure you want to delete all data associated with your ID? This action cannot be undone.")
-        }
-        // Step C.
-        .alert("Confirm Delete", isPresented: $isTypeDeletePresented) {
-            TextField("Type Delete", text: $typeDeleteText)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-            Button("Cancel", role: .cancel) { resumeTypeDelete(with: false) }
-            Button("Next") { resumeTypeDelete(with: true) }
-                .disabled(typeDeleteText.trimmingCharacters(in: .whitespacesAndNewlines) != "Delete")
-        } message: {
-            Text("To continue, type 'Delete' exactly in the field below.")
-        }
-    }
+            .scrollDismissesKeyboard(.interactively)
 
-    // MARK: - Reason
-
-    private var reasonField: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            Text("Reason")
-                .typography(Typography.labelLarge)
-                .foregroundStyle(theme.color(.textPrimary))
-
-            Menu {
-                ForEach(Self.reasons) { reason in
-                    Button(reason.label) { selectReason(reason) }
+            SupportBottomBar {
+                SupportCustomButton(text: "Delete Account", enabled: isValid, isLoading: viewModel.isDeleting) {
+                    Task { await beginDeletionFlow() }
                 }
-            } label: {
-                HStack {
-                    Text(selectedReason?.label ?? "Choose reason")
-                        .typography(Typography.bodyMedium)
-                        .foregroundStyle(selectedReason == nil ? theme.color(.textTertiary) : theme.color(.textPrimary))
-                    Spacer(minLength: 0)
-                    theme.icon(.chevronDown)
-                        .foregroundStyle(theme.color(.textTertiary))
-                }
-                .padding(.horizontal, Spacing.md)
-                .frame(height: Spacing.inputHeight)
-                .background {
-                    RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                        .fill(theme.color(.surfaceInput))
-                }
+                SupportCustomButton(text: "Cancel", isSecondary: true) { coordinator.pop() }
             }
-            .buttonStyle(.plain)
-            .disabled(viewModel.isDeleting)
         }
-    }
-
-    /// `updateUI` (`delete_account.dart`) — clears the free-text field when
-    /// switching away from "Other".
-    private func selectReason(_ reason: AccountDeletionReason) {
-        selectedReason = reason
-        if reason.value != "other" {
-            otherReasonText = ""
-        }
-    }
-
-    /// `textInput(key: "reason", hint: "Enter your reason", maxLines: 4, ...)`
-    /// (`delete_account.dart`) — a multi-line field, so this mirrors
-    /// `FeedbackView.descriptionField`'s `TextEditor`-based shape (`AppTextField`
-    /// is single-line only) rather than that component, same reasoning
-    /// `FeedbackView` already applied to its own free-text field.
-    private var otherReasonField: some View {
-        ZStack(alignment: .topLeading) {
-            if otherReasonText.isEmpty {
-                Text("Enter your reason")
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(theme.color(.textTertiary))
-                    .padding(.horizontal, Spacing.sm + 4)
-                    .padding(.vertical, Spacing.sm + 8)
-                    .allowsHitTesting(false)
-            }
-            TextEditor(text: $otherReasonText)
-                .typography(Typography.bodyMedium)
-                .foregroundStyle(theme.color(.textPrimary))
-                .scrollContentBackground(.hidden)
-                .padding(Spacing.sm)
-                .frame(minHeight: 100)
-                .disabled(viewModel.isDeleting)
-        }
-        .background {
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .fill(theme.color(.surfaceInput))
-        }
-    }
-
-    // MARK: - Buttons
-
-    private var actionButtons: some View {
-        VStack(spacing: Spacing.sm) {
-            AppButton(
-                label: "Delete Account",
-                action: { Task { await beginDeletionFlow() } },
-                isLoading: viewModel.isDeleting,
-                enabled: isValid
+        .fullScreenCover(isPresented: $isConfirmIntentPresented) {
+            ParityConfirmationDialog(
+                message: "Are you sure you want to delete all data associated with your ID? This action cannot be undone.",
+                onCancel: { resumeConfirmIntent(with: false) },
+                onConfirm: { resumeConfirmIntent(with: true) }
             )
-            AppButton.secondary("Cancel", enabled: !viewModel.isDeleting) { coordinator.pop() }
+            .presentationBackground(.clear)
+        }
+        .fullScreenCover(isPresented: $isTypeDeletePresented) {
+            TypeDeleteDialog(
+                onCancel: { resumeTypeDelete(with: false) },
+                onNext: { resumeTypeDelete(with: true) }
+            )
+            .presentationBackground(.clear)
         }
     }
 
-    // MARK: - Deletion sequence
+    // MARK: Deletion sequence (`_onDeletePressed`)
 
-    /// The exact 3-step-then-API sequence `_onDeletePressed` runs, in the
-    /// exact same order: confirm intent (Step A) -> device-auth gate (Step
-    /// B) -> type "Delete" (Step C) -> the network call (Step D). Any step
-    /// that's cancelled or blocked returns early with no toast and no
-    /// further action, matching Dart's own silent-abort `.then((v) { if (v)
-    /// {...} })`/early-`return false` chain exactly.
     private func beginDeletionFlow() async {
         guard isValid else { return }
         let reason = finalReason
@@ -213,12 +133,6 @@ struct AccountDeletionView: View {
         guard let outcome = await viewModel.deleteAccount(reason: reason) else { return }
         switch outcome {
         case let .response(_, message):
-            // Shown unconditionally either way, matching AuthBloc.delete's
-            // own unconditional showSnackBarToast BEFORE its status-code
-            // check. On success the repository already signed the user out;
-            // SignOutSignal-driven RootView redirect takes it from here. On
-            // failure (e.g. a deletion already scheduled), the toast alone
-            // is the whole story — the user just stays on this screen.
             toastCenter.show(message)
         case .transportError:
             toastCenter.show("Internet error, please check your internet")
@@ -233,30 +147,133 @@ struct AccountDeletionView: View {
     }
 
     private func resumeConfirmIntent(with result: Bool) {
+        isConfirmIntentPresented = false
         confirmIntentContinuation?.resume(returning: result)
         confirmIntentContinuation = nil
     }
 
     private func presentTypeDeleteAlert() async -> Bool {
-        typeDeleteText = ""
-        return await withCheckedContinuation { continuation in
+        await withCheckedContinuation { continuation in
             typeDeleteContinuation = continuation
             isTypeDeletePresented = true
         }
     }
 
     private func resumeTypeDelete(with result: Bool) {
+        isTypeDeletePresented = false
         typeDeleteContinuation?.resume(returning: result)
         typeDeleteContinuation = nil
-        typeDeleteText = ""
     }
 }
 
-/// A selectable deletion reason: the `label` shown to the user and the
-/// `value` this screen either submits directly or checks against the
-/// `"other"` sentinel — see `AccountDeletionView.reasons`'s doc comment.
-private struct AccountDeletionReason: Identifiable, Equatable {
-    let label: String
-    let value: String
-    var id: String { value }
+/// `showDeleteConfirmationDialog` (`lib/dialogs/confirmation_dialog.dart`):
+/// 72% scrim, 28pt card, 64pt trash badge, "Confirm Delete", hint copy, an
+/// autofocused "Type Delete" field and Cancel | Next (Next enabled only when
+/// the text trims to exactly "Delete"). Not dismissible by tapping outside.
+private struct TypeDeleteDialog: View {
+    let onCancel: () -> Void
+    let onNext: () -> Void
+
+    @State private var text = ""
+    @State private var shown = false
+    @FocusState private var focused: Bool
+
+    private var canDelete: Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines) == "Delete"
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.72).ignoresSafeArea()
+            VStack(spacing: 0) {
+                Spacer().frame(height: 22)
+                ZStack {
+                    Circle().fill(Color.white.opacity(0.06))
+                    Circle().strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                    Image(systemName: "trash")
+                        .font(.system(size: 28))
+                        .foregroundStyle(Color.white)
+                }
+                .frame(width: 64, height: 64)
+                Spacer().frame(height: 16)
+                Text("Confirm Delete")
+                    .font(AccountParity.font(22, .bold))
+                    .tracking(-0.3)
+                    .foregroundStyle(Color.white)
+                Spacer().frame(height: 8)
+                Text("To continue, type 'Delete' exactly in the field below.")
+                    .font(AccountParity.font(14.5))
+                    .lineSpacing(14.5 * 0.45)
+                    .foregroundStyle(Color.white.opacity(0.72))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                Spacer().frame(height: 20)
+                ZStack(alignment: .leading) {
+                    if text.isEmpty {
+                        Text("Type Delete")
+                            .font(AccountParity.font(15))
+                            .foregroundStyle(Color.white.opacity(0.35))
+                            .allowsHitTesting(false)
+                    }
+                    TextField("", text: $text)
+                        .font(AccountParity.font(16, .medium))
+                        .foregroundStyle(Color.white)
+                        .tint(Color.white)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .focused($focused)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.05))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.white.opacity(focused ? 0.18 : 0.08), lineWidth: focused ? 1.2 : 1)
+                )
+                .padding(.horizontal, 20)
+                Spacer().frame(height: 22)
+                Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                HStack(spacing: 0) {
+                    Button(action: onCancel) {
+                        Text("Cancel")
+                            .font(AccountParity.font(17, .medium))
+                            .foregroundStyle(Color.white.opacity(0.78))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    Rectangle().fill(Color.white.opacity(0.06)).frame(width: 1)
+                    Button(action: onNext) {
+                        Text("Next")
+                            .font(AccountParity.font(17, .bold))
+                            .foregroundStyle(canDelete ? Color.white : Color.white.opacity(0.28))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canDelete)
+                }
+                .frame(height: 58)
+            }
+            .frame(maxWidth: 430)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(AccountParity.sheetBackground.opacity(0.96))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.45), radius: 30, x: 0, y: 16)
+            .padding(.horizontal, 22)
+            .scaleEffect(shown ? 1 : 0.95)
+            .opacity(shown ? 1 : 0)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.22)) { shown = true }
+            focused = true
+        }
+    }
 }

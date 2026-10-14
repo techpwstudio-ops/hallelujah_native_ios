@@ -1,55 +1,63 @@
 import SwiftUI
 
-/// T56 — ports `_VerseOfDayOptionsSheet` (`verse_of_day_options_sheet.dart`):
-/// exactly two rows, "Ask Emet" (hidden when `target.isEmpty` — nothing for
-/// Emet to explain) and "Hide for Today". Bare sheet content per
-/// `LanguagePickerSheet.swift`'s doc comment — `.appSheet` supplies the drag
-/// handle and glass chrome, so this file draws neither.
-///
-/// Parent-owns-secondary-sheet: unlike Dart's own `onTap`, which calls
-/// `showAiVerseInsightDialog` directly, this reports `onAskEmet` upward and
-/// leaves presenting `AIVerseInsightDialogView` to `VerseOfDayCardView`
-/// (matching `ReaderView.swift`'s own top-level ownership of that dialog) —
-/// presenting a second `.sheet` from inside a view already inside a `.sheet`
-/// doesn't reliably show in SwiftUI, so the parent must own it.
+/// `showVerseOfDayOptionsSheet` (`lib/sheets/book/verse_of_day_options_sheet.dart`):
+/// drag handle, an "Ask Emet" tile (24pt app logo; hidden when the verse has
+/// no text to explain) and a "Hide for today" tile (outlined eye-off), 8pt
+/// below. Tiles are 56pt, title in the default list-tile style (16pt).
 struct VerseOfDayOptionsSheet: View {
     let verse: VerseOfDay
     let onHide: () -> Void
     let onAskEmet: () -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.appTheme) private var theme
+    /// Dismisses the sheet (the presenter owns the binding).
+    let onClose: () -> Void
 
     private var target: VerseInsightTarget { .fromVerseOfDay(verse) }
 
     var body: some View {
         VStack(spacing: 0) {
+            ReadDragHandle()
+
             if !target.isEmpty {
-                row(icon: .tabAI, title: "Ask Emet") {
-                    dismiss()
+                tile(title: "Ask Emet", leading: {
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: Dimens.iconSize, height: Dimens.iconSize)
+                }) {
                     onAskEmet()
+                    onClose()
                 }
             }
-            row(icon: .visibilityOff, title: "Hide for Today") {
+
+            tile(title: "Hide for today", leading: {
+                Image(systemName: "eye.slash")
+                    .font(.system(size: 20))
+                    .foregroundStyle(ReadPalette.white)
+                    .frame(width: Dimens.iconSize, height: Dimens.iconSize)
+            }) {
                 onHide()
-                dismiss()
+                onClose()
             }
+
+            Spacer().frame(height: 8)
         }
-        .padding(.bottom, Spacing.sm)
     }
 
-    private func row(icon: IconToken, title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: Spacing.md) {
-                theme.icon(icon)
-                    .foregroundStyle(theme.color(.textPrimary))
+    private func tile<Leading: View>(
+        title: String,
+        @ViewBuilder leading: () -> Leading,
+        action: @escaping () -> Void
+    ) -> some View {
+        let leadingView = leading()
+        return Button(action: action) {
+            HStack(spacing: 16) {
+                leadingView
                 Text(title)
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(theme.color(.textPrimary))
+                    .readText(Typography.bodyLarge, weight: .regular)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.md)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 56)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

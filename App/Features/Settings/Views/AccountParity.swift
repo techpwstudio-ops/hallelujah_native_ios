@@ -424,6 +424,7 @@ private struct ParityFitSheetContent<Content: View>: View {
     var body: some View {
         content
             .frame(maxWidth: .infinity)
+            .padding(.bottom, 20)
             .background(
                 GeometryReader { proxy in
                     Color.clear.preference(key: ParityHeightKey.self, value: proxy.size.height)

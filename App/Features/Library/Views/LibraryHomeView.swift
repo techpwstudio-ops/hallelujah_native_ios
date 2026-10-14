@@ -1,126 +1,109 @@
 import SwiftUI
 
-/// Ports `LibraryPage` (`lib/views/library/library.dart`): a "Create"
-/// toolbar action, a tap-through fake search bar (`SearchWidgetUi`), a
-/// 3-way All/Music/Podcast filter row (`SongTypeTopNavigationButton`), four
-/// conditional quick-link tiles (`LibraryUi`), and the merged paginated
-/// playlist list (`LibraryListItem`).
-///
-/// No "recents" section — despite this task's own roadmap entry mentioning
-/// one, the real Dart source (`library.dart`, read directly) has no such
-/// section anywhere on this screen; the roadmap's description is a
-/// speculative a-priori guess this intentionally doesn't follow. D10
-/// (splash/auth pixel parity) doesn't apply here either — Library gets the
-/// same "structural port, native Liquid Glass" treatment Home/Search
-/// already got (T28/T42).
+/// Ports `LibraryPage` (`lib/views/library/library.dart`): app bar "Library"
+/// with a trailing "Create" button (32pt, radius 8, "+" icon), the tap-through
+/// `SearchWidgetUi` bar, an All / Music / Podcast `SongTypeTopNavigationButton`
+/// row (16pt gap, 16pt inset), the conditional `LibraryUi` quick tiles
+/// (Downloads for All, Liked Music for All/Music, Liked Episodes for
+/// All/Episode, Liked Artists always) and the merged `LibraryListItem` list.
+/// Spacing between sections is `Dimens.verticalSpacing` (12); 8pt page
+/// padding; a 96pt bottom bar; pull-to-refresh reloads everything.
 struct LibraryHomeView: View {
     @State private var viewModel = LibraryViewModel()
+    @State private var downloadEngine: DownloadEngine = DependencyContainer.current.resolve()
+    @State private var contentMenuTarget: ContentMenuTarget?
+    @State private var userPlaylistMenuTarget: UserPlaylistMenuTarget?
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
-    @Environment(\.appTheme) private var theme
+
+    private var downloadCount: Int {
+        downloadEngine.tasks.values.filter { $0.state == .completed }.count
+    }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.md) {
-                fakeSearchBar
-                    .padding(.horizontal, Spacing.md)
+            VStack(alignment: .leading, spacing: 0) {
+                ParityFakeSearchBar {
+                    coordinator.push(.contentSearch(userPlaylistID: nil, tags: [], checkedContent: [], isSelect: false))
+                }
+
+                Spacer().frame(height: Dimens.verticalSpacing)
 
                 filterRow
-                    .padding(.horizontal, Spacing.md)
+                    .padding(.horizontal, Dimens.screenPaddingAll)
+
+                Spacer().frame(height: Dimens.verticalSpacing)
 
                 quickLinks
-                    .padding(.horizontal, Spacing.md)
 
                 itemList
+
+                Color.clear.frame(height: 96)
             }
-            .padding(.vertical, Spacing.sm)
+            .padding(.horizontal, Dimens.screenPaddingAll)
         }
-        .background(theme.color(.backgroundPrimary))
+        .background(Color.black)
         .refreshable { await viewModel.refresh() }
-        // Dart's `onTap` re-dispatches both load events even when tapping
-        // the already-selected chip, forcing a wasted reload; `.task(id:)`
-        // only re-fires on an actual value change, so a repeat tap here is a
-        // no-op instead — a deliberate, harmless divergence (same data,
-        // nothing to re-render), not a gap to close.
         .task(id: viewModel.filter) { await viewModel.load() }
+        .contentMenu(target: $contentMenuTarget)
+        .userPlaylistMenu(target: $userPlaylistMenuTarget) {
+            Task { await viewModel.refresh() }
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Create") {
-                    coordinator.push(.createPlaylist(userPlaylistID: nil, songType: nil, songID: nil))
-                }
+                createButton
             }
         }
     }
 
-    // MARK: - Search bar
-
-    /// `SearchWidgetUi`, tapped rather than typed into — same pattern as
-    /// `BrowseView.fakeSearchBar`; no shared component to reuse (none
-    /// exists anywhere in this codebase yet).
-    private var fakeSearchBar: some View {
+    /// `FilledButton.icon(Icons.add, "Create")` at 32pt height, radius 8.
+    private var createButton: some View {
         Button {
-            coordinator.push(.contentSearch(userPlaylistID: nil, tags: [], checkedContent: [], isSelect: false))
+            coordinator.push(.createPlaylist(userPlaylistID: nil, songType: nil, songID: nil))
         } label: {
-            HStack(spacing: Spacing.sm) {
-                theme.icon(.search)
-                    .foregroundStyle(theme.color(.textTertiary))
-                Text("Search music, episodes, artists, playlists")
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(theme.color(.textTertiary))
-                    .lineLimit(1)
-                Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 18, weight: .medium))
+                Text("Create")
+                    .typography(Typography.labelLarge)
             }
-            .padding(.horizontal, Spacing.md)
-            .frame(height: Spacing.inputHeight)
-            .background {
-                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                    .fill(theme.color(.surfaceInput))
-            }
+            .foregroundStyle(Color.black)
+            .padding(.leading, 12)
+            .padding(.trailing, 16)
+            .frame(height: 32)
+            .background(
+                RoundedRectangle(cornerRadius: Dimens.cornerRadius, style: .continuous)
+                    .fill(Color.white)
+            )
         }
         .buttonStyle(.plain)
     }
 
     // MARK: - Filter row
 
-    /// `SongTypeTopNavigationButton` × 3 (`library.dart`) — unlike
-    /// `BrowseView`'s Music/Episode-only pair, Library's own row has a
-    /// third "All" option (`SongType.all`), confirmed directly against the
-    /// Dart source.
     private var filterRow: some View {
-        HStack(spacing: Spacing.sm) {
-            AppChip(title: "All", isSelected: viewModel.filter == .all, stretches: true) {
-                viewModel.filter = .all
-            }
-            AppChip(title: "Music", isSelected: viewModel.filter == .music, stretches: true) {
-                viewModel.filter = .music
-            }
-            AppChip(title: "Podcast", isSelected: viewModel.filter == .episode, stretches: true) {
-                viewModel.filter = .episode
-            }
+        HStack(spacing: Dimens.horizontalSpacing) {
+            ParityTypeButton(title: "All", isSelected: viewModel.filter == .all) { viewModel.filter = .all }
+            ParityTypeButton(title: "Music", isSelected: viewModel.filter == .music) { viewModel.filter = .music }
+            ParityTypeButton(title: "Podcast", isSelected: viewModel.filter == .episode) { viewModel.filter = .episode }
         }
     }
 
     // MARK: - Quick links
 
-    /// `LibraryUi` (`library_item_ui.dart`): Downloads only for `.all`,
-    /// Liked Music for `.all`/`.music`, Liked Episodes for `.all`/
-    /// `.episode`, Liked Artists always — exact visibility rules confirmed
-    /// directly against that widget's source.
-    ///
-    /// Downloads has no network count to wait on (T46 doesn't exist yet, see
-    /// below), so it's never gated by `isLoadingCounts` — matching Dart,
-    /// whose own `_LibraryItemShimmer` only ever covers the liked-* trio.
-    /// The other three swap to `quickLinkSkeletonRow` while `counts` is
-    /// still nil and a fetch is in flight, instead of flashing a bare `0`.
+    /// `LibraryUi`: Downloads only for `.all`; Liked Music for `.all`/`.music`;
+    /// Liked Episodes for `.all`/`.episode`; Liked Artists always. While the
+    /// counts load each liked tile is a shimmer skeleton.
     @ViewBuilder
     private var quickLinks: some View {
         VStack(spacing: 0) {
             if viewModel.filter == .all {
-                // No download engine exists yet (T46) — this app has
-                // nothing on-device to count, unlike Dart's local Realm
-                // tally, so this is an honest `0` rather than a fetched
-                // number.
-                LibraryQuickLinkRow(icon: .download, title: "Downloads", count: 0) {
+                LibraryQuickLinkRow(
+                    assetName: "downloads",
+                    fallbackSymbol: "arrow.down.circle",
+                    title: "Downloads",
+                    count: downloadCount
+                ) {
                     coordinator.push(.downloads(type: viewModel.filter.rawValue))
                 }
             }
@@ -130,7 +113,8 @@ struct LibraryHomeView: View {
             } else {
                 if viewModel.filter == .all || viewModel.filter == .music {
                     LibraryQuickLinkRow(
-                        icon: .favoriteFilled,
+                        assetName: "liked_musics",
+                        fallbackSymbol: "heart.fill",
                         title: "Liked Music",
                         count: viewModel.counts?.likedMusic ?? 0
                     ) {
@@ -139,7 +123,8 @@ struct LibraryHomeView: View {
                 }
                 if viewModel.filter == .all || viewModel.filter == .episode {
                     LibraryQuickLinkRow(
-                        icon: .favoriteFilled,
+                        assetName: "liked_episode",
+                        fallbackSymbol: "heart.fill",
                         title: "Liked Episodes",
                         count: viewModel.counts?.likedEpisodes ?? 0
                     ) {
@@ -147,7 +132,8 @@ struct LibraryHomeView: View {
                     }
                 }
                 LibraryQuickLinkRow(
-                    icon: .artists,
+                    assetName: "liked_artists",
+                    fallbackSymbol: "music.mic",
                     title: "Liked Artists",
                     count: viewModel.counts?.likedArtists ?? 0
                 ) {
@@ -157,34 +143,17 @@ struct LibraryHomeView: View {
         }
     }
 
-    /// One row per tile that would otherwise render this pass, gated by the
-    /// same filter rules as the real rows above — mirrors Dart's per-tile
-    /// `_LibraryItemShimmer`. Wrapped in a single `.shimmer()` around the
-    /// whole stack rather than one per row: `Shimmer.swift`'s own header
-    /// comment documents this as a hard cost rule ("ONE Shimmer PER
-    /// SECTION, never per card"), since `.shimmer()` owns an animation that
-    /// ticks every frame.
     private var countsSkeleton: some View {
         VStack(spacing: 0) {
             if viewModel.filter == .all || viewModel.filter == .music {
-                quickLinkSkeletonRow
+                LibraryQuickLinkSkeleton()
             }
             if viewModel.filter == .all || viewModel.filter == .episode {
-                quickLinkSkeletonRow
+                LibraryQuickLinkSkeleton()
             }
-            quickLinkSkeletonRow
+            LibraryQuickLinkSkeleton()
         }
         .shimmer()
-    }
-
-    private var quickLinkSkeletonRow: some View {
-        HStack(spacing: Spacing.md) {
-            SkeletonBox(width: 44, height: 44, radius: Radius.sm)
-            SkeletonBox(width: 120, height: 16)
-            Spacer(minLength: 0)
-            SkeletonBox(width: 28, height: 14)
-        }
-        .padding(.vertical, Spacing.xs)
     }
 
     // MARK: - Merged list
@@ -192,17 +161,21 @@ struct LibraryHomeView: View {
     private var itemList: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(viewModel.items) { entry in
-                LibraryEntryRow(entry: entry) { open(entry) }
-                    .padding(.horizontal, Spacing.md)
+                LibraryEntryRow(entry: entry, onMore: { openMenu(for: entry) }) { open(entry) }
                     .task { await viewModel.loadMoreItemsIfNeeded(currentItem: entry) }
             }
             if viewModel.isLoadingItems {
-                LoadingStateView()
-                    .frame(maxWidth: .infinity, minHeight: 60)
-            } else if viewModel.hasLoadedOnce, viewModel.items.isEmpty {
-                EmptyStateView(title: "No saved playlists yet")
-                    .frame(maxWidth: .infinity, minHeight: 160)
+                ParitySpinner()
             }
+        }
+    }
+
+    private func openMenu(for entry: LibraryEntry) {
+        switch entry {
+        case let .playlist(playlist):
+            contentMenuTarget = .playlist(playlist)
+        case let .userPlaylist(id, title, _, _, _, _):
+            userPlaylistMenuTarget = UserPlaylistMenuTarget(id: id, title: title)
         }
     }
 

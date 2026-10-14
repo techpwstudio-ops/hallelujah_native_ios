@@ -1,41 +1,33 @@
 import SwiftUI
 
 /// Ports `UserPlaylistSongs` (`lib/views/library/user_playlist_songs.dart`):
-/// a hero header (cover, title, song count, Shuffle, Play/Pause) over a
-/// paginated song list, plus three owner-only admin affordances Dart gates
-/// on `isAdmin` the same way — "Add songs", a per-row remove button, and a
-/// "..." menu (Rename/Delete). Non-owner viewers get the same header and a
-/// plain, read-only list, matching `PlaylistDetailView`'s own style.
+/// a square full-bleed hero (scrim stops 0 / 0.35 / 0.7 / 1.0 to black, a
+/// "more" menu top-right), an info block (title `headlineSmall`, visibility
+/// glyph + "<Visibility> · <duration>" in `labelSmall` white60, an action row
+/// with owner-only "add songs", Shuffle and Play), then the song list (8pt
+/// side padding; the song menu offers remove-from-playlist for the owner).
+/// The info block and the first 8 rows ease in (fade + slide, staggered over
+/// 750ms like `_entranceController`). Empty states: "Playlist not found",
+/// spinner, "No songs yet".
 ///
-/// `playlistID` may be `nil` — `AppRoute.userPlaylistSongs`'s own payload
-/// shape — handled the same defensive way
-/// `UserPlaylistDetailViewModel.load(page:)` documents: `.failed`, so this
-/// view falls through to `ErrorStateView`'s retry rather than spinning.
-///
-/// Scope cuts (T45, deliberate): drag-to-reorder, visibility toggle,
-/// follow/unfollow, share, add-to-queue, cover-image upload — none of these
-/// have a trigger here, matching Dart's own `isAdmin`-only "Add songs"/
-/// "..." pair (Follow/Share are non-owner Dart affordances this rewrite
-/// doesn't port either, per T45's scope-cut list).
+/// Not ported (no repository support): the owner's name line, the non-owner
+/// Follow button and the Share button.
 struct UserPlaylistDetailView: View {
     @State private var viewModel: UserPlaylistDetailViewModel
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
     @State private var showAddSongs = false
-    @State private var isDeleteConfirmationPresented = false
+    @State private var menuTarget: UserPlaylistMenuTarget?
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
-    @Environment(\.appTheme) private var theme
 
-    private static let heroHeight: CGFloat = 280
-    private static let controlDiameter: CGFloat = 44
+    private static let staggerCount = 8
 
     init(playlistID: String?) {
         _viewModel = State(initialValue: UserPlaylistDetailViewModel(playlistID: playlistID))
     }
 
-    /// The header's own playlist, pulled out of `LoadState` — both
-    /// `.loaded`/`.empty` carry one, `.loading`/`.failed` don't.
+    /// The header's own playlist, pulled out of `LoadState`.
     private var playlist: UserPlaylist? {
         switch viewModel.state {
         case .loaded(let playlist, _): playlist
@@ -50,131 +42,114 @@ struct UserPlaylistDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.lg) {
-                switch viewModel.state {
-                case .loading:
-                    LoadingStateView()
-                case .failed:
-                    ErrorStateView(
-                        title: "Couldn't load this playlist",
-                        onRetry: { Task { await viewModel.refresh() } }
-                    )
-                case .empty(let playlist):
-                    header(playlist: playlist)
-                    EmptyStateView(title: "No songs yet")
-                        .frame(maxWidth: .infinity, minHeight: 160)
-                case .loaded(let playlist, let page):
-                    header(playlist: playlist)
-                    songList(page: page)
-                }
+        Group {
+            switch viewModel.state {
+            case .loading:
+                ParitySpinner(fills: true).frame(maxHeight: .infinity)
+            case .failed:
+                ParityEmptyText(text: "Playlist not found").frame(maxHeight: .infinity)
+            case .empty(let playlist):
+                scroll(playlist: playlist, page: nil)
+            case .loaded(let playlist, let page):
+                scroll(playlist: playlist, page: page)
             }
-            .padding(.bottom, Spacing.xl)
         }
-        .background(theme.color(.backgroundPrimary))
-        .refreshable { await viewModel.refresh() }
-        .task { await viewModel.loadIfNeeded() }
+        .background(Color.black)
+        .ignoresSafeArea(.container, edges: .top)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .navigationTitle("")
         .toolbar {
-            if viewModel.isOwner, let playlist = playlist {
+            if let playlist {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Add songs") { showAddSongs = true }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button("Rename") {
-                            coordinator.push(.createPlaylist(userPlaylistID: playlist.id, songType: nil, songID: nil))
-                        }
-                        Button("Delete", role: .destructive) {
-                            isDeleteConfirmationPresented = true
-                        }
-                    } label: {
-                        theme.icon(.more)
+                    ParityIconButton(systemName: "ellipsis", rotation: 90, tooltip: "More") {
+                        menuTarget = UserPlaylistMenuTarget(id: playlist.id, title: playlist.title)
                     }
                 }
             }
         }
+        .task { await viewModel.loadIfNeeded() }
+        .userPlaylistMenu(target: $menuTarget) { coordinator.pop() }
         .sheet(isPresented: $showAddSongs, onDismiss: { Task { await viewModel.refresh() } }) {
-            if let playlist = playlist {
+            if let playlist {
                 AddSongsToPlaylistView(playlistID: playlist.id)
             }
         }
-        .confirmationDialog(
-            "Delete this playlist?",
-            isPresented: $isDeleteConfirmationPresented,
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                Task {
-                    if await viewModel.deletePlaylist() {
-                        coordinator.pop()
-                    }
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        }
     }
 
-    // MARK: - Header
-
-    private func header(playlist: UserPlaylist) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            // `GeometryReader` for the container's actual width, not
-            // `UIScreen.main` — same reasoning as `GenreSongsView`'s
-            // identical hero header.
-            GeometryReader { proxy in
-                ArtworkView(
+    private func scroll(playlist: UserPlaylist, page: Paginated<Song>?) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                ParityHeroImage(
                     url: ArtworkURLResolver().resolve(
                         path: playlist.image,
                         variant: .lg,
                         allowedVariants: playlist.imageVariants
                     ),
-                    width: proxy.size.width,
-                    height: Self.heroHeight,
-                    cornerRadius: 0,
-                    contentMode: .fill
+                    aspect: 1,
+                    stops: ParityHeroImage.playlistStops
                 )
+
+                info(playlist: playlist)
+                    .parityEntrance(delay: 0.0375, duration: 0.375, offset: 28)
+
+                if let page {
+                    songList(page: page)
+                } else {
+                    ParityEmptyText(text: "No songs yet")
+                }
+                Color.clear.frame(height: 168)
             }
-            .frame(height: Self.heroHeight)
-
-            HStack(spacing: Spacing.md) {
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text(playlist.title)
-                        .typography(Typography.headlineMedium)
-                        .foregroundStyle(theme.color(.textPrimary))
-                        .lineLimit(1)
-                    if let songsCount = playlist.songsCount {
-                        Text("\(songsCount) songs")
-                            .typography(Typography.bodySmall)
-                            .foregroundStyle(theme.color(.textSecondary))
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                Button {
-                    Task { await queueController.toggleShuffle() }
-                } label: {
-                    theme.icon(.shuffle)
-                        .font(.system(size: 18))
-                        .foregroundStyle(queueController.isShuffled ? theme.color(.textPrimary) : theme.color(.textSecondary))
-                }
-                .buttonStyle(.plain)
-
-                Button(action: togglePlayback) {
-                    ZStack {
-                        Circle().fill(theme.color(.textPrimary))
-                        theme.icon(isPlaying ? .pause : .play)
-                            .font(.system(size: 20))
-                            .foregroundStyle(theme.color(.backgroundPrimary))
-                    }
-                    .frame(width: Self.controlDiameter, height: Self.controlDiameter)
-                }
-                .buttonStyle(.plain)
-                .disabled(songs.isEmpty)
-                .opacity(songs.isEmpty ? 0.5 : 1)
-            }
-            .padding(.horizontal, Spacing.md)
         }
+        .refreshable { await viewModel.refresh() }
+    }
+
+    // MARK: - Info
+
+    private func info(playlist: UserPlaylist) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(playlist.title)
+                .typography(ParityHeroText.headlineSmall)
+                .foregroundStyle(Color.white)
+
+            Spacer().frame(height: 6)
+            Spacer().frame(height: 8)
+
+            HStack(spacing: 4) {
+                Image(systemName: playlist.visibility == "public" ? "globe" : "lock.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(ParityColor.white60)
+                Text(visibilityLine(for: playlist))
+                    .typography(ParityHeroText.labelSmall)
+                    .foregroundStyle(ParityColor.white60)
+            }
+
+            Spacer().frame(height: 4)
+
+            HStack(spacing: 0) {
+                if viewModel.isOwner {
+                    ParityIconButton(systemName: "plus.circle", size: 24, tooltip: "Add songs", frame: 40) {
+                        showAddSongs = true
+                    }
+                }
+                Spacer(minLength: 0)
+                ParityShuffleButton(isOn: queueController.isShuffled) {
+                    Task { await queueController.toggleShuffle() }
+                }
+                Spacer().frame(width: 4)
+                ParityPlayPauseButton(isPlaying: isPlaying) { togglePlayback() }
+                    .opacity(songs.isEmpty ? 0.5 : 1)
+            }
+
+            Spacer().frame(height: 8)
+        }
+        .padding(.leading, Dimens.screenPaddingAll * 2)
+        .padding(.trailing, Dimens.screenPaddingAll * 2)
+        .padding(.top, 6)
+    }
+
+    private func visibilityLine(for playlist: UserPlaylist) -> String {
+        let visibility = (playlist.visibility ?? "").parityCapitalized
+        return visibility + " \u{00B7} " + parityDurationText(playlist.duration)
     }
 
     // MARK: - Playback
@@ -208,9 +183,8 @@ struct UserPlaylistDetailView: View {
         }
     }
 
-    /// Matches `PlayerBloc`'s `PlaySongEvent` early-return, same as
-    /// `GenreSongsView.play(song:)`: tapping the row of the song already
-    /// playing in THIS playlist's queue toggles play/pause in place.
+    /// Matches `PlayerBloc`'s `PlaySongEvent` early-return: tapping the row of
+    /// the song already playing in THIS playlist's queue toggles play/pause.
     private func play(song: Song) {
         if isThisPlaylistQueueActive, queueController.queue?.currentSong?.id == song.id {
             togglePlayPause()
@@ -234,38 +208,29 @@ struct UserPlaylistDetailView: View {
     private func songList(page: Paginated<Song>) -> some View {
         LazyVStack(spacing: 0) {
             ForEach(Array(page.items.enumerated()), id: \.element.id) { index, song in
-                row(song: song)
+                row(song: song, index: index)
                     .onAppear {
                         guard index >= page.items.count - 2 else { return }
                         viewModel.loadMore()
                     }
             }
-        }
-    }
-
-    /// Dart's own remove-from-playlist trigger lives inside the shared "..."
-    /// song action sheet (`song_menu_sheet.dart:68-81`, gated on
-    /// `userPlaylistId != null`), which doesn't exist anywhere in this app
-    /// yet — `CreatorSongRow`'s own doc comment and T44's status log both
-    /// already name this gap. `.swipeActions` can't stand in for it either:
-    /// it's documented to work only on `List` row content, and this screen's
-    /// song list is a `LazyVStack`/`ScrollView` (matching every other song
-    /// list in this app), where the modifier silently no-ops. A plain
-    /// trailing icon button is the smallest affordance that's actually
-    /// interactive here.
-    private func row(song: Song) -> some View {
-        HStack(spacing: Spacing.sm) {
-            CreatorSongRow(song: song) { play(song: song) }
-            if viewModel.isOwner {
-                Button {
-                    Task { await viewModel.removeSong(id: song.id) }
-                } label: {
-                    theme.icon(.trash)
-                        .foregroundStyle(theme.color(.textSecondary))
-                }
-                .buttonStyle(.plain)
+            if viewModel.isLoadingMore {
+                ParitySpinner()
             }
         }
-        .padding(.horizontal, Spacing.md)
+        .padding(.horizontal, Dimens.screenPaddingAll)
+    }
+
+    @ViewBuilder
+    private func row(song: Song, index: Int) -> some View {
+        let item = CreatorSongRow(song: song, userPlaylistID: viewModel.isOwner ? playlist?.id : nil) {
+            play(song: song)
+        }
+        if index < Self.staggerCount {
+            let start = min(max(0.2 + Double(index) * 0.07, 0), 0.75)
+            item.parityEntrance(delay: start * 0.75, duration: 0.32 * 0.75, offset: 13)
+        } else {
+            item
+        }
     }
 }

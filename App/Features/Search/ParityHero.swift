@@ -204,3 +204,29 @@ struct ParityGradientHeader<Extra: View, Content: View>: View {
         .navigationTitle("")
     }
 }
+
+/// Fade + slide-up entrance (`FadeTransition` + `SlideTransition` driven by an
+/// `Interval` of `_entranceController`): starts transparent and `offset`pt
+/// low, eases out to rest after `delay`, over `duration`.
+private struct ParityEntranceModifier: ViewModifier {
+    let delay: Double
+    let duration: Double
+    let offset: CGFloat
+
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : offset)
+            .onAppear {
+                withAnimation(.easeOut(duration: duration).delay(delay)) { shown = true }
+            }
+    }
+}
+
+extension View {
+    func parityEntrance(delay: Double, duration: Double, offset: CGFloat) -> some View {
+        modifier(ParityEntranceModifier(delay: delay, duration: duration, offset: offset))
+    }
+}
