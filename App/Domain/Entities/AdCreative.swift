@@ -48,6 +48,9 @@ struct AdCreative {
     let adLoad: AdLoad
     /// Nil means every ad surface falls back to opening `clickUrl` directly.
     let action: AdAction?
+    /// `kind == 'company'`: the company's own promo — free, never billed, and
+    /// its token can't name a paid creative (no reactions/feedback to send).
+    var isCompany: Bool = false
 
     static func fromJSON(_ json: [String: Any]) -> AdCreative? {
         guard let adId = json["adId"] as? String,
@@ -57,7 +60,7 @@ struct AdCreative {
               let impressionToken = json["impressionToken"] as? String
         else { return nil }
 
-        return AdCreative(
+        var creative = AdCreative(
             adId: adId,
             campaignId: campaignId,
             placement: placement,
@@ -78,6 +81,8 @@ struct AdCreative {
             adLoad: AdLoad.fromJSON(json["adLoad"] as? [String: Any] ?? [:]),
             action: (json["action"] as? [String: Any]).map(AdAction.fromJSON)
         )
+        creative.isCompany = (json["kind"] as? String) == "company"
+        return creative
     }
 }
 

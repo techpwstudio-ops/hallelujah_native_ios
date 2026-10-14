@@ -112,6 +112,28 @@ final class AdsRepository {
         }
     }
 
+    /// `_reactions` (Dart) — the thumb each served creative currently shows,
+    /// keyed by impression token. Session-local.
+    private var reactions: [String: AdReaction] = [:]
+
+    func reaction(for ad: AdCreative) -> AdReaction? { reactions[ad.impressionToken] }
+
+    /// `AdsRepository.react` — remembered locally first so the thumb lights on
+    /// the frame it's pressed, then a silent fire-and-forget
+    /// `POST /ads/reaction`; `nil` takes the thumb back (`"none"`).
+    func react(to ad: AdCreative, _ reaction: AdReaction?) {
+        reactions[ad.impressionToken] = reaction
+        // A company ad's token can't name a paid creative: lit locally only.
+        guard !ad.isCompany else { return }
+        let payload: [String: String] = [
+            "token": ad.impressionToken,
+            "reaction": reaction?.wireValue ?? AdReaction.clearWireValue,
+        ]
+        Task {
+            _ = try? await client.send(.post("/ads/reaction"), body: try? JSONSerialization.data(withJSONObject: payload))
+        }
+    }
+
     /// Fire-and-forget: record a tap on `token`'s creative. Only call this
     /// for a CTA opened in-app — an external `clickUrl`'s own signed redirect
     /// already records the click server-side.
@@ -119,5 +141,26 @@ final class AdsRepository {
         Task {
             _ = try? await client.send(.post("/ads/track/click"), body: try? JSONSerialization.data(withJSONObject: ["token": token]))
         }
+    }
+}
+
+/// `ads/ad_reaction.dart` — a listener's thumb on an ad. Wire values are the
+/// backend's, spelled out rather than derived from the case name.
+enum AdReaction: Sendable, Equatable {
+    case like
+    case dislike
+
+    static let clearWireValue = "none"
+
+    var wireValue: String {
+        switch self {
+        case .like: "like"
+        case .dislike: "dislike"
+        }
+    }
+
+    /// `nextReaction`: pressing the lit thumb takes it back; the other switches.
+    static func next(current: AdReaction?, tapped: AdReaction) -> AdReaction? {
+        current == tapped ? nil : tapped
     }
 }

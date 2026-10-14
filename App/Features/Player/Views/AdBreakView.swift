@@ -16,9 +16,8 @@ import SwiftUI
 ///
 /// Not ported: the app bar's ad-options sheet (no native equivalent yet), the
 /// two-back-presses escape hatch, the wide (16:9) picture variant (the native
-/// `AdCreative` carries no `wideImageUrl`), and persisting the like / dislike
-/// to the backend (`AdsRepository.react` has no native counterpart — the
-/// thumbs only light up locally).
+/// `AdCreative` carries no `wideImageUrl`). Like / dislike persist through
+/// `AdsRepository.react`.
 struct AdBreakView: View {
     let pacing: AdPacingController
 
@@ -185,8 +184,9 @@ private struct AdBreakControlPanel: View {
     let coordinator: AppNavigationCoordinator
 
     @State private var reaction: Reaction?
+    private let ads: AdsRepository = DependencyContainer.current.resolve()
 
-    private enum Reaction { case like, dislike }
+    private typealias Reaction = AdReaction
 
     private var hasCTA: Bool { ad.action != nil || ad.clickUrl != nil }
 
@@ -208,6 +208,8 @@ private struct AdBreakControlPanel: View {
         .padding(.horizontal, PlayerStyle.pageSidePadding)
         .padding(.top, PlayerStyle.pageSidePadding)
         .padding(.bottom, 8 + 12)
+        // A different ad in the slot starts from what the repository holds for it.
+        .task(id: ad.impressionToken) { reaction = ads.reaction(for: ad) }
     }
 
     // `_AdBreakAdvertiserRow`
@@ -308,7 +310,9 @@ private struct AdBreakControlPanel: View {
             ? (selected ? "hand.thumbsup.fill" : "hand.thumbsup")
             : (selected ? "hand.thumbsdown.fill" : "hand.thumbsdown")
         return Button {
-            reaction = selected ? nil : kind
+            let next = AdReaction.next(current: reaction, tapped: kind)
+            reaction = next
+            ads.react(to: ad, next)
         } label: {
             Image(systemName: name)
                 .font(.system(size: 24))
