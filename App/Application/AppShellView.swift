@@ -54,6 +54,7 @@ struct AppShellView: View {
 
             AppBottomDockView(playerTransitionNamespace: playerTransitionNamespace)
         }
+        .toastOverlay()
         .environment(coordinator)
         .environment(networkStatus)
         // T18 — this is the earliest point a coordinator exists to route a

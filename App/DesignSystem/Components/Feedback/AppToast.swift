@@ -102,20 +102,28 @@ private struct ToastOverlay: View {
 
 extension View {
     /// Installs a `ToastCenter` into the environment and overlays its
-    /// active toast. Apply once, near the app's root.
+    /// active toast. Apply near the app's root and on screens presented in their own layer.
     func toastOverlay() -> some View {
         modifier(ToastOverlayModifier())
     }
 }
 
-private struct ToastOverlayModifier: ViewModifier {
-    @State private var center = ToastCenter()
+extension ToastCenter {
+    /// The single app-wide center. Screens that pop right after showing a
+    /// toast (Profile → "Profile updated successfully") still have it
+    /// rendered, because an overlay also lives on the shell, not only on
+    /// the screen. Every `.toastOverlay()` shares it; a sheet gets its own
+    /// overlay layer so toasts aren't hidden behind it, and the identical
+    /// pill drawn by an outer layer underneath is invisible.
+    static let shared = ToastCenter()
+}
 
+private struct ToastOverlayModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .environment(\.toastCenter, center)
+            .environment(\.toastCenter, ToastCenter.shared)
             .overlay {
-                ToastOverlay(message: center.current)
+                ToastOverlay(message: ToastCenter.shared.current)
             }
     }
 }
