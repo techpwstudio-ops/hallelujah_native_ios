@@ -341,6 +341,11 @@ enum AppComposition {
         container.register(SleepTimerController.self) { sleepTimerController }
         let adPacingController = AdPacingController(adsRepository: adsRepository, engine: audioEngine)
         container.register(AdPacingController.self) { adPacingController }
+        // Companion banner / player ad strip / mini banner cycle; FullPlayerView
+        // and AppBottomDock resolve it.
+        let playerAdController = PlayerAdController(source: RepositoryPlayerAdSource(adsRepository: adsRepository))
+        playerAdController.bind(engine: audioEngine, adBreaks: adPacingController)
+        container.register(PlayerAdController.self) { playerAdController }
 
         // Fatal on failure, same as the config/Info.plist parsing above: a
         // database or cache directory that can't be created means the app

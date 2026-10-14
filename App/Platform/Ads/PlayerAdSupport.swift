@@ -136,6 +136,11 @@ struct AdCaption: Equatable {
     let title: String
     let subtitle: String
 
+    init(title: String, subtitle: String) {
+        self.title = title
+        self.subtitle = subtitle
+    }
+
     init(ad: AdCreative) {
         let headline = ad.headline?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let advertiser = ad.advertiserName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

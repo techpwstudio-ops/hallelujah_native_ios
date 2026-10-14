@@ -40,7 +40,7 @@ final class RepositoryPlayerAdSource: PlayerAdSource {
     }
 
     func everyN(_ surface: PlayerAdSurface) -> Int {
-        adsRepository.pacingEveryN(forPlacement: surface.placement) ?? Self.defaultEveryN
+        adsRepository.pacingEveryN(surface.placement) ?? Self.defaultEveryN
     }
 
     func backoffRemaining(_ surface: PlayerAdSurface) -> TimeInterval {
@@ -55,7 +55,6 @@ final class RepositoryPlayerAdSource: PlayerAdSource {
         )
         if let ad {
             adsRepository.rememberTimeline(forPlacement: surface.placement, load: ad.adLoad)
-            adsRepository.rememberPacingEveryN(forPlacement: surface.placement, ad.adLoad.pacingEveryN)
         }
         return ad
     }

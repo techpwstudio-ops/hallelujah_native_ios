@@ -202,11 +202,10 @@ final class AdsRepository {
 
     // MARK: - Player image takeover (`player_image_*` placements)
 
-    /// `timeline`/`rememberTimeline`/`pacingEveryN` (Dart) — what each placement
+    /// `timeline`/`rememberTimeline` (Dart) — what each placement
     /// reported this session, saved so the first song of a launch is timed
     /// before any response could have come back.
     private var timelines: [String: AdTimeline] = [:]
-    private var pacingByPlacement: [String: Int] = [:]
     private var confirmedImpressionTokens: Set<String> = []
 
     /// Whether this listener can be shown an ad at all right now — the gates
@@ -230,18 +229,6 @@ final class AdsRepository {
     func trackImpressionOnce(_ token: String) {
         guard confirmedImpressionTokens.insert(token).inserted else { return }
         trackImpression(token)
-    }
-
-    func pacingEveryN(forPlacement placement: String) -> Int? {
-        if let live = pacingByPlacement[placement] { return live }
-        let saved = UserDefaults.standard.integer(forKey: "ads_pacing_everyN:\(placement)")
-        return saved > 0 ? saved : nil
-    }
-
-    func rememberPacingEveryN(forPlacement placement: String, _ everyN: Int?) {
-        guard let everyN, everyN > 0, pacingByPlacement[placement] != everyN else { return }
-        pacingByPlacement[placement] = everyN
-        UserDefaults.standard.set(everyN, forKey: "ads_pacing_everyN:\(placement)")
     }
 
     /// The Intro / Ad / Gap timeline of the player takeover on `placement`: this
