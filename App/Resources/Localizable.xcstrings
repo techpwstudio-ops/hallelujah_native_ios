@@ -101,32 +101,202 @@
         }
       }
     },
-    "carplay.placeholder.detailText": {
+    "carplay.downloads.empty": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Full CarPlay support is on the way."
+            "value": "No downloads yet"
           }
         }
       }
     },
-    "carplay.placeholder.itemText": {
+    "carplay.library.downloads.detail": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coming soon"
+            "value": "Saved for offline"
           }
         }
       }
     },
-    "carplay.placeholder.rootTitle": {
+    "carplay.library.downloads.title": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hallelujah"
+            "value": "Downloads"
+          }
+        }
+      }
+    },
+    "carplay.library.liked.detail": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your favorites"
+          }
+        }
+      }
+    },
+    "carplay.library.liked.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liked Songs"
+          }
+        }
+      }
+    },
+    "carplay.library.playlists.detail": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yours and curated for you"
+          }
+        }
+      }
+    },
+    "carplay.library.playlists.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlists"
+          }
+        }
+      }
+    },
+    "carplay.liked.empty": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No liked songs yet"
+          }
+        }
+      }
+    },
+    "carplay.loading": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading…"
+          }
+        }
+      }
+    },
+    "carplay.noSongs": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No songs"
+          }
+        }
+      }
+    },
+    "carplay.nothingToShow": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing to show"
+          }
+        }
+      }
+    },
+    "carplay.playlists.empty": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No playlists yet"
+          }
+        }
+      }
+    },
+    "carplay.recents.empty": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No recent plays"
+          }
+        }
+      }
+    },
+    "carplay.search.hint.detail": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Say “Hey Siri, play [song] in Hallelujah”"
+          }
+        }
+      }
+    },
+    "carplay.search.hint.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask Siri to play audio"
+          }
+        }
+      }
+    },
+    "carplay.signInRequired": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in on your iPhone to use Hallelujah in the car"
+          }
+        }
+      }
+    },
+    "carplay.tab.home": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home"
+          }
+        }
+      }
+    },
+    "carplay.tab.library": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Library"
+          }
+        }
+      }
+    },
+    "carplay.tab.recents": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recents"
+          }
+        }
+      }
+    },
+    "carplay.tab.search": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search"
           }
         }
       }
