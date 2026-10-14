@@ -14,7 +14,7 @@ import Foundation
 /// is itself `@MainActor`.
 ///
 /// **The premium check lives here** (`serve`, right after the `adsEnabled`
-/// gate): `membershipStore.membership?.subscription.isActive == true` skips
+/// gate): `PremiumGate.showsAds` (T65's single source of truth) skips
 /// serving entirely. This is the one gate T69 needed and T65 (Premium
 /// gating, deferred to a later batch) does not yet exist to centralize —
 /// `Subscription.isActive` is the same entitlement `SettingsView`/T61 already
@@ -23,7 +23,7 @@ import Foundation
 @MainActor
 final class AdsRepository {
     private let client: HTTPClient
-    private let membershipStore: MembershipStore
+    private let premiumGate: PremiumGate
     private let logger = AppLogger(category: .ads)
 
     /// `_retryNotBefore` (Dart) — keyed by `placement[:assetType]`, same
@@ -44,7 +44,7 @@ final class AdsRepository {
 
     init(client: HTTPClient, membershipStore: MembershipStore) {
         self.client = client
-        self.membershipStore = membershipStore
+        premiumGate = PremiumGate(membershipStore: membershipStore)
     }
 
     /// Requests one ad for `placement`, or nil on no-fill/any failure.
@@ -60,7 +60,7 @@ final class AdsRepository {
             return nil
         }
 
-        if membershipStore.membership?.subscription.isActive == true {
+        if await !premiumGate.showsAds {
             logger.debug("ads:skip placement=\(placement) reason=isPremium=true")
             return nil
         }

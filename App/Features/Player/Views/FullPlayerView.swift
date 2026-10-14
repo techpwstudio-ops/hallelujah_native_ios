@@ -67,6 +67,7 @@ struct FullPlayerView: View {
     @State private var engine: AudioEngine = DependencyContainer.current.resolve()
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var favouriteRepository: any FavouriteRepository = DependencyContainer.current.resolve()
+    @State private var premiumGate: PremiumGate = DependencyContainer.current.resolve()
     @State private var downloadEngine: DownloadEngine = DependencyContainer.current.resolve()
     @State private var keyValueStore: any KeyValueStoring = DependencyContainer.current.resolve()
     @State private var tipPurchaseManager: TipPurchaseManager = DependencyContainer.current.resolve()
@@ -347,6 +348,13 @@ struct FullPlayerView: View {
     /// `PlaybackAnalyticsRecorder` — stateless, so a fresh instance here is
     /// equivalent, same reasoning already used there).
     private func startDownload(_ song: Song) async {
+        // T65 — downloads are premium-only (`song_menu_sheet.dart`). A free
+        // listener is sent to the plans screen instead, the same redirect.
+        guard await premiumGate.allows(.downloads) else {
+            coordinator.dismissFullScreen()
+            coordinator.push(.subscriptionPlans)
+            return
+        }
         let selector = AudioQualitySelector(
             keyValueStore: keyValueStore,
             batteryMonitor: UIDeviceBatteryLevelMonitor(),

@@ -43,9 +43,11 @@ struct SettingsView: View {
     @State private var currentUserStore: CurrentUserStore = DependencyContainer.current.resolve()
     @State private var keyValueStore: any KeyValueStoring = DependencyContainer.current.resolve()
     @State private var membershipStore: MembershipStore = DependencyContainer.current.resolve()
+    @State private var premiumGate: PremiumGate = DependencyContainer.current.resolve()
 
     @State private var user: User?
     @State private var membership: Membership?
+    @State private var isPremium = false
     @State private var selectedAudioQuality: AudioQuality = .standard
     @State private var isDownloadOverWifiOnly = false
     @State private var isAudioQualityPickerPresented = false
@@ -136,13 +138,17 @@ struct SettingsView: View {
                     ) {
                         coordinator.push(.contentLanguage(label: "Choose Content Language", canPop: true))
                     }
-                    rowDivider
-                    row(
-                        icon: "waveform",
-                        title: "Audio Quality",
-                        subtitle: selectedAudioQuality.settingsLabel
-                    ) {
-                        isAudioQualityPickerPresented = true
+                    // T65 — shown to premium listeners only; Dart hides the
+                    // row for everyone else (`settings_screen.dart`).
+                    if isPremium {
+                        rowDivider
+                        row(
+                            icon: "waveform",
+                            title: "Audio Quality",
+                            subtitle: selectedAudioQuality.settingsLabel
+                        ) {
+                            isAudioQualityPickerPresented = true
+                        }
                     }
                     rowDivider
                     SettingsRow(
@@ -197,6 +203,7 @@ struct SettingsView: View {
         .task {
             user = await currentUserStore.user
             membership = await membershipStore.membership
+            isPremium = await premiumGate.hasPremium
             selectedAudioQuality = await audioQualitySelector.userSelectedQuality
             isDownloadOverWifiOnly = keyValueStore.bool(forKey: Self.downloadOverWifiOnlyKey)
         }

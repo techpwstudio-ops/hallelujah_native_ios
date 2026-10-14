@@ -61,6 +61,8 @@ enum AppComposition {
         // actor, not an independent copy.
         let membershipStore = MembershipStore(keyValueStore: UserDefaultsKeyValueStore())
         container.register(MembershipStore.self) { membershipStore }
+        // T65 — the one premium gate every feature check goes through.
+        container.register(PremiumGate.self) { PremiumGate(membershipStore: membershipStore) }
         // T26 — the one place anything reacts to a session ending, for
         // whatever reason. Both registered actions run off this SAME
         // `onLogout` closure (a single-callback seam — see `SignOutSignal`'s
