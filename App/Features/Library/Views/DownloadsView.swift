@@ -160,29 +160,29 @@ struct DownloadsView: View {
     private func controls(for task: DownloadTask) -> some View {
         switch task.state {
         case .downloading:
-            ParityIconButton(systemName: "pause.fill", size: 18, tooltip: "Pause", frame: 40) {
+            ParityIconButton(systemName: "pause.fill", size: 18, tooltip: "Pause", hitSize: 40) {
                 downloadEngine.pause(songID: task.songID)
             }
         case .paused:
             HStack(spacing: 0) {
-                ParityIconButton(systemName: "play.fill", size: 18, tooltip: "Resume", frame: 40) {
+                ParityIconButton(systemName: "play.fill", size: 18, tooltip: "Resume", hitSize: 40) {
                     downloadEngine.resume(songID: task.songID)
                 }
-                ParityIconButton(systemName: "xmark", size: 18, tooltip: "Cancel", frame: 40) {
+                ParityIconButton(systemName: "xmark", size: 18, tooltip: "Cancel", hitSize: 40) {
                     downloadEngine.cancel(songID: task.songID)
                 }
             }
         case .failed:
             HStack(spacing: 0) {
-                ParityIconButton(systemName: "arrow.clockwise", size: 18, tooltip: "Retry", frame: 40) {
+                ParityIconButton(systemName: "arrow.clockwise", size: 18, tooltip: "Retry", hitSize: 40) {
                     Task { await downloadEngine.retry(songID: task.songID) }
                 }
-                ParityIconButton(systemName: "xmark", size: 18, tooltip: "Cancel", frame: 40) {
+                ParityIconButton(systemName: "xmark", size: 18, tooltip: "Cancel", hitSize: 40) {
                     downloadEngine.cancel(songID: task.songID)
                 }
             }
         case .queued:
-            ParityIconButton(systemName: "xmark", size: 18, tooltip: "Cancel", frame: 40) {
+            ParityIconButton(systemName: "xmark", size: 18, tooltip: "Cancel", hitSize: 40) {
                 downloadEngine.cancel(songID: task.songID)
             }
         case .completed:

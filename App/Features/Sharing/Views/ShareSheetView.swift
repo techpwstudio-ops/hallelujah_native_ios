@@ -1,49 +1,99 @@
+import Photos
 import SwiftUI
 import UIKit
 
-/// Generic share sheet for T68 — every entry point (`FullPlayerView`,
-/// `CreatorProfileView`, `PlaylistDetailView`) presents this same view via
-/// `.appSheet`, differing only in `target`/`title`/`subtitle`/`artworkURL`.
+/// Generic share sheet (`showShareSheet` / `ShareSheet`,
+/// `lib/sheets/share/show_content_share_sheet.dart`): `fillColor` card with a
+/// 24pt top radius, 8pt top gap, drag handle, themed story-card preview,
+/// 24pt gradient-circle theme picker, then a wrap of 52pt circular actions
+/// (installed chat apps, Copy Link, Save Image, More). The "Share as Story"
+/// section is commented out in Flutter and so omitted here. AI-answer and
+/// verse card types are not rendered by this view (Bible verses have their own
+/// editor, `BibleVerseShareView`).
 ///
-/// Covers every live Flutter share target except the dead "status share"
-/// path (`_buildStatusSection()` is commented out in the Dart source) and
-/// AI-message/plain-creator-playlist sharing, neither of which the Flutter
-/// app itself supports either.
+/// `aspectRatio` "16:9" selects the wide card (`_Landscape16x9Preview`).
 struct ShareSheetView: View {
     let target: ShareTarget
     let title: String
     let subtitle: String?
     let artworkURL: URL?
+    var aspectRatio: String = "1:1"
 
     @State private var viewModel: ShareSheetViewModel
     @State private var selectedTheme: ShareCardTheme = .crimson
     @State private var confirmationMessage: String?
-    @Environment(\.appTheme) private var theme
+    @State private var installedChatApps: [ChatApp] = []
+    @State private var isSavingImage = false
+    @State private var isPhotoAccessDialogPresented = false
 
-    init(target: ShareTarget, title: String, subtitle: String?, artworkURL: URL?) {
+    init(target: ShareTarget, title: String, subtitle: String?, artworkURL: URL?, aspectRatio: String = "1:1") {
         self.target = target
         self.title = title
         self.subtitle = subtitle
         self.artworkURL = artworkURL
+        self.aspectRatio = aspectRatio
         _viewModel = State(initialValue: ShareSheetViewModel(target: target))
+    }
+
+    struct ChatApp: Identifiable, Equatable {
+        let name: String
+        let systemImage: String
+        let scheme: String
+        var id: String { scheme }
+    }
+
+    /// `_kChatApps` (SVG assets stood in by SF Symbols).
+    private static let chatApps: [ChatApp] = [
+        ChatApp(name: "WhatsApp", systemImage: "message.circle.fill", scheme: "whatsapp"),
+        ChatApp(name: "Telegram", systemImage: "paperplane.circle.fill", scheme: "tg"),
+        ChatApp(name: "Twitter", systemImage: "bird", scheme: "twitter"),
+    ]
+
+    private var isLandscape: Bool { aspectRatio == "16:9" }
+
+    /// 1:1 -> `screenWidth * 0.8`; 16:9 -> `screenWidth - 40`.
+    private var cardWidth: CGFloat {
+        let screen = UIScreen.main.bounds.width
+        return isLandscape ? screen - Dimens.spacing40 : screen * 0.8
     }
 
     var body: some View {
         Group {
             switch viewModel.state {
             case .loading:
-                LoadingStateView(message: "Preparing to share…")
+                ProgressView()
+                    .tint(AccountParity.white)
+                    .frame(maxWidth: .infinity, minHeight: 240)
             case .failed:
-                ErrorStateView(
-                    title: "Couldn't create share link",
-                    onRetry: { Task { await viewModel.retry() } }
-                )
+                VStack(spacing: Dimens.spacing12) {
+                    Text("Couldn't create share link")
+                        .font(AccountParity.bodyMedium)
+                        .foregroundStyle(AccountParity.white)
+                    ParityFilledButton(title: "Retry") { Task { await viewModel.retry() } }
+                }
+                .frame(maxWidth: .infinity, minHeight: 240)
             case .loaded(let url):
                 loadedContent(baseURL: url)
             }
         }
-        .padding(.bottom, Spacing.xl)
+        .background(AccountParity.fill)
         .task { await viewModel.loadIfNeeded() }
+        .task { await detectInstalledChatApps() }
+        .fullScreenCover(isPresented: $isPhotoAccessDialogPresented) {
+            ParityConfirmationDialog(
+                title: "Photo access",
+                message: "Allow photo access in Settings to save this image to your device.",
+                systemIcon: "photo.on.rectangle",
+                onCancel: { isPhotoAccessDialogPresented = false },
+                onConfirm: {
+                    isPhotoAccessDialogPresented = false
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            )
+            .presentationBackground(.clear)
+        }
     }
 
     @ViewBuilder
@@ -51,101 +101,136 @@ struct ShareSheetView: View {
         let sharedURL = versionedURL(baseURL)
 
         ScrollView {
-            VStack(spacing: Spacing.lg) {
-                ShareCardView(theme: selectedTheme, title: title, subtitle: subtitle, artworkURL: artworkURL)
-                    .padding(.top, Spacing.sm)
+            VStack(spacing: 0) {
+                Spacer().frame(height: Dimens.spacing8)
+                ParityDragHandler()
+                Spacer().frame(height: Dimens.spacing20)
 
+                ShareCardView(
+                    theme: selectedTheme,
+                    title: title,
+                    subtitle: subtitle,
+                    artworkURL: artworkURL,
+                    cardWidth: cardWidth,
+                    isLandscape: isLandscape
+                )
+                .shadow(color: selectedTheme.gradientColors[0].opacity(0.5), radius: Dimens.spacing24 / 2, x: 0, y: Dimens.spacing8)
+
+                Spacer().frame(height: Dimens.spacing16)
                 themePicker
+                Spacer().frame(height: Dimens.spacing24)
 
-                chatAppsRow(url: sharedURL)
-
-                actionButtonsRow(url: sharedURL)
+                actions(url: sharedURL)
+                    .padding(.horizontal, Dimens.spacing20)
 
                 confirmationLabel
+
+                Spacer().frame(height: Dimens.spacing32)
             }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.md)
         }
     }
 
+    // MARK: Theme picker (`_ThemeSelector`)
+
     private var themePicker: some View {
-        HStack(spacing: Spacing.md) {
+        HStack(spacing: 0) {
             ForEach(ShareCardTheme.allCases, id: \.self) { cardTheme in
+                let isSelected = selectedTheme == cardTheme
                 Button {
                     selectedTheme = cardTheme
                 } label: {
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: cardTheme.gradientColors,
-                                startPoint: .top,
-                                endPoint: .bottom
+                        .fill(LinearGradient(
+                            colors: cardTheme.gradientColors,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ))
+                        .frame(width: Dimens.spacing24, height: Dimens.spacing24)
+                        .overlay(
+                            Circle().strokeBorder(
+                                isSelected ? AccountParity.white : AccountParity.white24,
+                                lineWidth: isSelected ? Dimens.spacing2 : Dimens.borderWidth
                             )
                         )
-                        .frame(width: 32, height: 32)
-                        .overlay {
-                            Circle()
-                                .strokeBorder(
-                                    theme.color(.textPrimary),
-                                    lineWidth: selectedTheme == cardTheme ? 2 : 0
-                                )
-                        }
+                        .shadow(
+                            color: isSelected ? cardTheme.gradientColors[0].opacity(0.55) : Color.clear,
+                            radius: Dimens.spacing8 / 2
+                        )
+                        .padding(.trailing, Dimens.spacing8)
                 }
                 .buttonStyle(.plain)
+                .animation(.easeInOut(duration: 0.2), value: isSelected)
                 .accessibilityLabel(cardTheme.title)
             }
         }
+        .frame(height: Dimens.spacing24)
     }
 
-    private func chatAppsRow(url: URL) -> some View {
-        HStack(spacing: Spacing.lg) {
-            iconButton(systemImage: "message.fill", label: "WhatsApp") {
-                open(scheme: "whatsapp://send?text=\(shareText(url: url))")
-            }
-            iconButton(systemImage: "paperplane.fill", label: "Telegram") {
-                open(scheme: "tg://msg?text=\(shareText(url: url))")
-            }
-            iconButton(systemImage: "at", label: "Twitter") {
-                open(scheme: "twitter://post?message=\(shareText(url: url))")
-            }
-            Spacer()
-        }
-    }
+    // MARK: Actions (`_buildChatSection`)
 
-    private func actionButtonsRow(url: URL) -> some View {
-        HStack(spacing: Spacing.lg) {
-            iconButton(systemImage: "doc.on.doc", label: "Copy Link") {
+    private func actions(url: URL) -> some View {
+        WrapLayout(spacing: Dimens.spacing16, lineSpacing: Dimens.spacing16) {
+            ForEach(installedChatApps) { app in
+                shareIcon(label: app.name) {
+                    Image(systemName: app.systemImage)
+                        .font(.system(size: Dimens.iconSize))
+                        .foregroundStyle(AccountParity.white)
+                } action: {
+                    shareToChatApp(app, url: url)
+                }
+            }
+            shareIcon(label: "Copy Link") {
+                Image(systemName: "link")
+                    .font(.system(size: Dimens.iconSize))
+                    .foregroundStyle(AccountParity.white)
+            } action: {
                 UIPasteboard.general.string = url.absoluteString
                 showConfirmation("Link copied")
             }
-            iconButton(systemImage: "square.and.arrow.down", label: "Save Image") {
+            shareIcon(label: "Save Image") {
+                if isSavingImage {
+                    ProgressView().tint(AccountParity.white60)
+                } else {
+                    Image(systemName: "arrow.down.to.line")
+                        .font(.system(size: Dimens.iconSize))
+                        .foregroundStyle(AccountParity.white)
+                }
+            } action: {
                 Task { await saveImage() }
             }
             ShareLink(item: url) {
-                iconButtonLabel(systemImage: "square.and.arrow.up", label: "More")
+                shareIconLabel(label: "More") {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: Dimens.iconSize))
+                        .foregroundStyle(AccountParity.white)
+                }
             }
-            Spacer()
+            .buttonStyle(.plain)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func iconButton(systemImage: String, label: String, action: @escaping () -> Void) -> some View {
+    /// `_ShareIcon`: 52pt white10 circle with white12 border, 8pt gap, 60pt-wide
+    /// 10pt white60 label.
+    private func shareIcon<Icon: View>(label: String, @ViewBuilder icon: () -> Icon, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            iconButtonLabel(systemImage: systemImage, label: label)
+            shareIconLabel(label: label, icon: icon)
         }
         .buttonStyle(.plain)
     }
 
-    private func iconButtonLabel(systemImage: String, label: String) -> some View {
-        VStack(spacing: Spacing.xs) {
-            Image(systemName: systemImage)
-                .font(.system(size: 20))
-                .foregroundStyle(theme.color(.textPrimary))
-                .frame(width: 48, height: 48)
-                .background(theme.color(.surfaceSecondary))
-                .clipShape(Circle())
+    private func shareIconLabel<Icon: View>(label: String, @ViewBuilder icon: () -> Icon) -> some View {
+        VStack(spacing: Dimens.spacing8) {
+            icon()
+                .frame(width: Dimens.buttonHeight, height: Dimens.buttonHeight)
+                .background(Circle().fill(AccountParity.white10))
+                .overlay(Circle().strokeBorder(AccountParity.white12, lineWidth: 1))
             Text(label)
-                .typography(Typography.labelSmall)
-                .foregroundStyle(theme.color(.textSecondary))
+                .font(AccountParity.font(10))
+                .lineSpacing(3)
+                .foregroundStyle(AccountParity.white60)
+                .multilineTextAlignment(.center)
+                .frame(width: Dimens.spacing60)
         }
     }
 
@@ -153,15 +238,19 @@ struct ShareSheetView: View {
     private var confirmationLabel: some View {
         if let confirmationMessage {
             Text(confirmationMessage)
-                .typography(Typography.labelMedium)
-                .foregroundStyle(theme.color(.textSecondary))
+                .font(AccountParity.bodyMedium)
+                .foregroundStyle(AccountParity.black)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(AccountParity.white))
+                .padding(.top, Dimens.spacing16)
                 .transition(.opacity)
         }
     }
 
-    /// `?viewType=` so a recipient's link-preview/OG-crawler image matches
-    /// the theme picked here, even though this app never re-fetches that
-    /// server-composited card itself (see `ShareCardTheme`'s own doc comment).
+    // MARK: Behaviour
+
+    /// `?viewType=` so a recipient's OG-crawler image matches the picked theme.
     private func versionedURL(_ url: URL) -> URL {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         var queryItems = components?.queryItems ?? []
@@ -170,22 +259,62 @@ struct ShareSheetView: View {
         return components?.url ?? url
     }
 
-    private func shareText(url: URL) -> String {
-        let text = "\(title) — \(url.absoluteString)"
-        var allowedCharacters = CharacterSet.urlQueryAllowed
-        allowedCharacters.remove(charactersIn: "&=+")
-        return text.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? text
+    /// `_isAppInstalled` -> `canLaunchUrl('<scheme>://')`. Requires the schemes
+    /// in `LSApplicationQueriesSchemes`.
+    private func detectInstalledChatApps() async {
+        let installed = Self.chatApps.filter { app in
+            guard let url = URL(string: "\(app.scheme)://") else { return false }
+            return UIApplication.shared.canOpenURL(url)
+        }
+        installedChatApps = installed
     }
 
-    /// No `canOpenURL` guard, matching every other `UIApplication.shared.open`
-    /// call site in this codebase — none of the four precedents check first.
-    private func open(scheme: String) {
-        guard let url = URL(string: scheme) else { return }
-        UIApplication.shared.open(url)
+    /// `_shareToChatApp`: title, subtitle, versioned url joined by newlines,
+    /// `Uri.encodeComponent`-encoded into each app's URL scheme.
+    private func shareToChatApp(_ app: ChatApp, url: URL) {
+        var lines: [String] = []
+        if !title.isEmpty { lines.append(title) }
+        if let subtitle, !subtitle.trimmingCharacters(in: .whitespaces).isEmpty {
+            lines.append(subtitle.trimmingCharacters(in: .whitespaces))
+        }
+        lines.append(url.absoluteString)
+        let text = lines.joined(separator: "\n")
+
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-_.!~*'()")
+        let encoded = text.addingPercentEncoding(withAllowedCharacters: allowed) ?? text
+
+        let raw: String
+        switch app.scheme {
+        case "whatsapp": raw = "whatsapp://send?text=\(encoded)"
+        case "tg": raw = "tg://msg?text=\(encoded)"
+        default: raw = "twitter://post?message=\(encoded)"
+        }
+        guard let target = URL(string: raw) else {
+            showConfirmation("\(app.name) not supported")
+            return
+        }
+        UIApplication.shared.open(target) { success in
+            if !success {
+                Task { @MainActor in showConfirmation("\(app.name) not available") }
+            }
+        }
     }
 
+    /// `_downloadImage`: ask for photo access (add-only), explain via the
+    /// "Photo access" dialog if denied, render the card at 3x and save it.
     @MainActor
     private func saveImage() async {
+        guard !isSavingImage else { return }
+        isSavingImage = true
+        defer { isSavingImage = false }
+
+        let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+        guard status == .authorized || status == .limited else {
+            isPhotoAccessDialogPresented = true
+            return
+        }
+
         let resolvedArtwork: UIImage? = if let artworkURL {
             await ArtworkImageCache.shared.image(for: artworkURL, maxPixelSize: 400)
         } else {
@@ -198,17 +327,25 @@ struct ShareSheetView: View {
                 title: title,
                 subtitle: subtitle,
                 artworkURL: artworkURL,
+                cardWidth: cardWidth,
+                isLandscape: isLandscape,
                 resolvedArtwork: resolvedArtwork
             )
         )
         renderer.scale = 3
 
         guard let uiImage = renderer.uiImage else {
-            showConfirmation("Couldn't save image")
+            showConfirmation("Couldn\u{2019}t create the image. Please try again.")
             return
         }
-        UIImageWriteToSavedPhotosAlbum(uiImage, nil, nil, nil)
-        showConfirmation("Saved to Photos")
+        do {
+            try await PHPhotoLibrary.shared().performChanges {
+                _ = PHAssetChangeRequest.creationRequestForAsset(from: uiImage)
+            }
+            showConfirmation("Saved to Photos")
+        } catch {
+            showConfirmation("Couldn\u{2019}t save the image. Please try again.")
+        }
     }
 
     private func showConfirmation(_ message: String) {
@@ -216,6 +353,49 @@ struct ShareSheetView: View {
         Task {
             try? await Task.sleep(for: .seconds(2))
             withAnimation { confirmationMessage = nil }
+        }
+    }
+}
+
+/// Minimal `Wrap` for the action grid.
+private struct WrapLayout: Layout {
+    var spacing: CGFloat
+    var lineSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var width: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0 && x + size.width > maxWidth {
+                y += rowHeight + lineSpacing
+                x = 0
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+            width = max(width, x - spacing)
+        }
+        return CGSize(width: width, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX && x + size.width > bounds.maxX {
+                y += rowHeight + lineSpacing
+                x = bounds.minX
+                rowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
         }
     }
 }

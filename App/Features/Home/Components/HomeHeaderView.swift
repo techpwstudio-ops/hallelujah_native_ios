@@ -57,10 +57,7 @@ struct HomeHeaderView: View {
             Button { coordinator.push(.settings) } label: {
                 HStack(spacing: Dimens.spacing8) {
                     avatar
-                    (Text("Hi ").foregroundStyle(HomeColors.white50)
-                        + Text(firstName).fontWeight(.bold).foregroundStyle(Color.white))
-                        .typography(Typography.titleMedium)
-                        .lineLimit(1)
+                    greeting
                     Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
@@ -88,6 +85,16 @@ struct HomeHeaderView: View {
             user = await currentUserStore.user
             isPremium = await premiumGate.hasPremium
         }
+    }
+
+    /// "Hi " (white54) + the first name (w700, white), both titleMedium.
+    private var greeting: some View {
+        let hi = Text("Hi ").foregroundStyle(HomeColors.white50)
+        let name = Text(firstName).fontWeight(.bold).foregroundStyle(Color.white)
+        let combined: Text = hi + name
+        return combined
+            .typography(Typography.titleMedium)
+            .lineLimit(1)
     }
 
     /// `LoadImage(path: image ?? defaultThumbnailUrl(name))` in a 28pt circle.

@@ -127,7 +127,7 @@ struct UserPlaylistDetailView: View {
 
             HStack(spacing: 0) {
                 if viewModel.isOwner {
-                    ParityIconButton(systemName: "plus.circle", size: 24, tooltip: "Add songs", frame: 40) {
+                    ParityIconButton(systemName: "plus.circle", size: 24, tooltip: "Add songs", hitSize: 40) {
                         showAddSongs = true
                     }
                 }

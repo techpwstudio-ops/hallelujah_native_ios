@@ -155,6 +155,12 @@ private struct AppRouteDestinationView: View {
             StorageSettingsView()
         case .contentSearch:
             ContentSearchView()
+        case let .creatorSongs(creatorID, userPlaylistID):
+            CreatorProfileView(creatorID: creatorID, userPlaylistID: userPlaylistID)
+        case .episodes:
+            EpisodesView()
+        case .genreSearch:
+            GenreSearchView()
         case let .genreSongs(genreID, genreName, genreImage, genreImageVariants):
             GenreSongsView(
                 genreID: genreID,

@@ -157,6 +157,14 @@ final class CreatorProfileViewModel {
         songPages[type]?.items ?? []
     }
 
+    func hasLoadedSongs(for type: HomeContentType) -> Bool {
+        songPages[type]?.loadedOnce ?? false
+    }
+
+    func hasLoadedPlaylists(for type: HomeContentType) -> Bool {
+        playlistPages[type]?.loadedOnce ?? false
+    }
+
     func isLoadingSongs(for type: HomeContentType) -> Bool {
         songPages[type]?.isLoading ?? false
     }
@@ -192,6 +200,7 @@ final class CreatorProfileViewModel {
             page.loadedOnce = true
         } catch {
             logger.warning("creator songs page load failed: \(error)")
+            page.loadedOnce = true
         }
         page.isLoading = false
         songPages[type] = page
@@ -233,6 +242,7 @@ final class CreatorProfileViewModel {
             page.loadedOnce = true
         } catch {
             logger.warning("creator playlists page load failed: \(error)")
+            page.loadedOnce = true
         }
         page.isLoading = false
         playlistPages[type] = page

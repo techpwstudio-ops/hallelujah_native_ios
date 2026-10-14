@@ -1,30 +1,15 @@
 import SwiftUI
 
 /// Ports `PlaylistListItem` (`lib/widgets/song/playlist_list_item.dart`): a
-/// 56×56 square thumbnail, title, and a "songsCount Songs/Podcasts" subtitle
-/// (the creator-name half of Dart's subtitle is dropped — every row here is
-/// already scoped to one creator's own profile, so repeating their name on
-/// every row would be redundant in a way it isn't on Dart's shared
-/// cross-creator playlist list). No `Formater.formatNumber` abbreviation
-/// (no native equivalent exists yet) — the plain count is shown instead.
-///
-/// `contentType` (the tab this row is rendered under) picks the noun rather
-/// than `playlist.type`. This was originally a deliberate sidestep of an
-/// unresolved ambiguity between two candidate readings of `playlist.type`;
-/// T43 has since resolved it with direct evidence (Prisma schema, backend
-/// controller, and Dart's own `_SavedItemRow._resolve()`) that `type` is in
-/// fact the wire's `SongType` column (`"music"`/`"episode"`) — see
-/// `Playlist.swift`'s `isSeason`. That confirms Dart's own
-/// `playlist.type == SongType.music.name` check this row was sidestepping
-/// would now be portable directly (`playlist.isSeason ? "Podcasts" :
-/// "Songs"`), which would also be more accurate than `contentType` for a
-/// mixed-type tab. Left as `contentType` here since fixing it is unrelated
-/// to T43's own scope (Library) — not revisited by this task.
+/// 12/8-padded tile with a 56pt thumbnail (radius 4, `sm`), 14pt gap, title
+/// `titleSmall` capitalised ("Untitled Playlist" fallback), 4pt gap, subtitle
+/// `bodySmall` white70 — `"<creator> • <n> Songs|Podcasts"`. Tapping opens the
+/// album / season (`PlaylistSongPage`). `contentType` (the tab this row is
+/// under) picks the noun, as `playlist.type` is the same wire value.
 struct CreatorPlaylistRow: View {
     let playlist: Playlist
     let contentType: HomeContentType
-
-    @Environment(\.appTheme) private var theme
+    var onTap: () -> Void = {}
 
     private static let thumbnailSize: CGFloat = 56
 
@@ -39,25 +24,39 @@ struct CreatorPlaylistRow: View {
     private var subtitle: String {
         let count = playlist.songsCount ?? 0
         let noun = contentType == .episode ? "Podcasts" : "Songs"
-        return "\(count) \(noun)"
+        var parts: [String] = []
+        if case let .creator(_, name) = playlist.owner, let name, !name.isEmpty { parts.append(name) }
+        parts.append("\(count) \(noun)")
+        return parts.joined(separator: parityDotSign)
     }
 
     var body: some View {
-        HStack(spacing: Spacing.md) {
-            ArtworkView(url: resolvedArtwork, width: Self.thumbnailSize, height: Self.thumbnailSize)
+        HStack(spacing: 14) {
+            ArtworkView(
+                url: resolvedArtwork,
+                width: Self.thumbnailSize,
+                height: Self.thumbnailSize,
+                cornerRadius: Dimens.cornerRadiusSmall
+            )
 
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(playlist.title.isEmpty ? "Untitled Playlist" : playlist.title)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(playlist.title.isEmpty ? "Untitled Playlist" : playlist.title.parityCapitalized)
                     .typography(Typography.titleSmall)
-                    .foregroundStyle(theme.color(.textPrimary))
+                    .foregroundStyle(Color.white)
                     .lineLimit(1)
+                    .truncationMode(.tail)
                 Text(subtitle)
                     .typography(Typography.bodySmall)
-                    .foregroundStyle(theme.color(.textSecondary))
+                    .foregroundStyle(ParityColor.white70)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, Dimens.paddingMedium)
+        .padding(.vertical, Dimens.spacing8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
     }
 }

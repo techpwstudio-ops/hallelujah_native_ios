@@ -99,7 +99,7 @@ struct ParityIconButton: View {
     var size: CGFloat = 24
     var tooltip: String = ""
     var tint: Color = Color.white
-    var frame: CGFloat = 48
+    var hitSize: CGFloat = 48
     let action: () -> Void
 
     var body: some View {
@@ -108,7 +108,7 @@ struct ParityIconButton: View {
                 .rotationEffect(.degrees(rotation))
                 .font(.system(size: size))
                 .foregroundStyle(tint)
-                .frame(width: frame, height: frame)
+                .frame(width: hitSize, height: hitSize)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

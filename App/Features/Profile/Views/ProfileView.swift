@@ -129,7 +129,13 @@ private struct ProfileContentView: View {
         .fullScreenCover(isPresented: $isCameraPresented) {
             CameraPicker { url in
                 isCameraPresented = false
-                if let url { cropSourceURL = url }
+                if let url {
+                    // Let the camera cover finish dismissing before the crop cover presents.
+                    Task {
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                        cropSourceURL = url
+                    }
+                }
             }
             .ignoresSafeArea()
         }

@@ -1,51 +1,59 @@
 import SwiftUI
 
-/// Ports `CreatorSongsPage` (`lib/views/library/creator_songs_page.dart`),
-/// T30's "Creator page, their songs, follow/favourite": a header (artwork,
-/// name, follower count, follow button) and Songs/Albums/Podcasts/Seasons
-/// tabs, each an independently-paginated list.
+/// Ports `CreatorSongsPage` (`lib/views/library/creator_songs_page.dart`): a
+/// square full-bleed hero (extends under the status bar, scrimmed by
+/// `GradiantDecoratedBox`, a "more" button top-right opening the creator
+/// menu), the info block (name `headlineSmall`; "<n> Followers" in 70% white
+/// beside a 36pt Follow/Following pill; Shuffle + Play on the right for song
+/// tabs), a pinned scrollable tab bar (Songs / Albums / Podcasts / Seasons,
+/// white underline, `labelLarge`) and the active tab's list (8pt padding) —
+/// `SongListItem` rows for song tabs, `PlaylistListItem` rows for albums /
+/// seasons. Spinner while loading; "Something went wrong" on failure.
 ///
-/// Left out of this pass, all deliberate scope cuts:
-/// - The collapsing `SliverAppBar` hero-image parallax and the "⋮" creator
-///   hero parallax — cosmetic. A plain header +
-///   `ScrollView` carries the same information. Share (T68) is wired as its
-///   own `shareButton` rather than reviving that menu just to hold one item;
-///   report has no native endpoint wiring and stays out.
-/// - The shuffle/play-all row next to the tab bar — needs the playback
-///   engine (T31+), which doesn't exist yet.
-/// - Tapping a row: T31+ (playback) and T29 (playlist detail screens) own
-///   what a tap should actually do; rows here are display-only for now.
+/// Not ported: the collapsing parallax app bar, its fade-in title and the
+/// `Hero` thumbnail transition.
 struct CreatorProfileView: View {
     @State private var viewModel: CreatorProfileViewModel
+    @State private var queueController: QueueController = DependencyContainer.current.resolve()
+    @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
     @State private var menuTarget: ContentMenuTarget?
-    @Environment(\.appTheme) private var theme
+
+    @Environment(AppNavigationCoordinator.self) private var coordinator
 
     init(creatorId: String) {
         _viewModel = State(initialValue: CreatorProfileViewModel(creatorId: creatorId))
     }
 
+    /// `AppRoute.creatorSongs(creatorID:userPlaylistID:)`.
+    init(creatorID: String?, userPlaylistID: String? = nil) {
+        _viewModel = State(initialValue: CreatorProfileViewModel(creatorId: creatorID ?? ""))
+    }
+
     var body: some View {
-        ScrollView {
+        Group {
             if let creator = viewModel.creator {
-                VStack(alignment: .leading, spacing: Spacing.lg) {
-                    header(for: creator)
-                    if !viewModel.tabs.isEmpty {
-                        tabBar
-                        tabContent
-                    }
-                }
-                .padding(.bottom, Spacing.xl)
+                scroll(creator: creator)
             } else if viewModel.isLoadingCreator {
-                LoadingStateView()
-                    .frame(maxWidth: .infinity, minHeight: 320)
-            } else if let error = viewModel.loadError {
-                ErrorStateView(title: "Couldn't load this creator", message: error) {
-                    Task { await viewModel.loadCreator() }
-                }
-                .frame(maxWidth: .infinity, minHeight: 320)
+                ParitySpinner(fills: true).frame(maxHeight: .infinity)
+            } else if viewModel.loadError != nil {
+                ParityEmptyText(text: "Something went wrong").frame(maxHeight: .infinity)
+            } else {
+                ParitySpinner(fills: true).frame(maxHeight: .infinity)
             }
         }
-        .background(theme.color(.backgroundPrimary))
+        .background(Color.black)
+        .ignoresSafeArea(.container, edges: .top)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .navigationTitle("")
+        .toolbar {
+            if viewModel.creator != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    ParityIconButton(systemName: "ellipsis", rotation: 90, tooltip: "More") {
+                        if let creator = viewModel.creator { menuTarget = .creator(creator) }
+                    }
+                }
+            }
+        }
         .task { await viewModel.onAppear() }
         .contentMenu(target: $menuTarget) {
             // The menu can follow/unfollow; refresh so the header chip agrees.
@@ -53,93 +61,111 @@ struct CreatorProfileView: View {
         }
     }
 
-    // MARK: - Header
-
-    /// `ArtworkView` needs a concrete pixel size up front for its own
-    /// downsampling (`maxPixelSize = max(width, height) * displayScale`), so
-    /// this reads the container's actual width via `GeometryReader` rather
-    /// than a `UIScreen.main` guess — the latter also predates multi-window
-    /// iPadOS, which this reader isn't tied to.
-    private static let heroHeight: CGFloat = 280
-
-    private func header(for creator: Creator) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            GeometryReader { proxy in
-                ArtworkView(
+    private func scroll(creator: Creator) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                ParityHeroImage(
                     url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants),
-                    width: proxy.size.width,
-                    height: Self.heroHeight,
-                    cornerRadius: 0,
-                    contentMode: .fill
+                    aspect: 1
                 )
-            }
-            .frame(height: Self.heroHeight)
 
-            VStack(alignment: .leading, spacing: Spacing.sm) {
-                Text(creator.name ?? "")
-                    .typography(Typography.headlineMedium)
-                    .foregroundStyle(theme.color(.textPrimary))
+                info(creator: creator)
 
-                HStack(spacing: Spacing.sm) {
-                    Text("\(creator.followersCount ?? 0) Followers")
-                        .typography(Typography.bodyMedium)
-                        .foregroundStyle(theme.color(.textSecondary))
-
-                    AppChip(
-                        title: creator.isFollowing == true ? "Following" : "Follow",
-                        isSelected: creator.isFollowing == true,
-                        enabled: !viewModel.isTogglingFollow
-                    ) {
-                        Task { await viewModel.toggleFollow() }
+                Section {
+                    tabContent
+                        .padding(Dimens.screenPaddingAll)
+                    Color.clear.frame(height: 168)
+                } header: {
+                    if !viewModel.tabs.isEmpty {
+                        tabBar
                     }
-
-                    Spacer()
-
-                    moreButton(for: creator)
-                }
-
-                if let bio = creator.bio, !bio.isEmpty {
-                    Text(bio)
-                        .typography(Typography.bodyMedium)
-                        .foregroundStyle(theme.color(.textSecondary))
                 }
             }
-            .padding(.horizontal, Spacing.md)
         }
     }
 
-    /// `showCreatorMenu`: share, add the artist's songs to the queue, and
-    /// add/remove from the library.
-    private func moreButton(for creator: Creator) -> some View {
-        Button { menuTarget = .creator(creator) } label: {
-            theme.icon(.more)
-                .foregroundStyle(theme.color(.textSecondary))
+    // MARK: - Info
+
+    private func info(creator: Creator) -> some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(creator.name ?? "")
+                    .typography(ParityHeroText.headlineSmall)
+                    .foregroundStyle(Color.white)
+                Spacer().frame(height: 8)
+                HStack(spacing: 8) {
+                    Text("\(creator.followersCount ?? 0) Followers")
+                        .typography(Typography.bodyMedium)
+                        .foregroundStyle(ParityColor.white70)
+                    followButton(creator: creator)
+                }
+            }
+            Spacer(minLength: 0)
+            if case .songs? = viewModel.selectedTab {
+                HStack(spacing: 8) {
+                    ParityShuffleButton(isOn: queueController.isShuffled) {
+                        Task { await queueController.toggleShuffle() }
+                    }
+                    ParityPlayPauseButton(isPlaying: isPlaying) { togglePlayback() }
+                }
+            }
+        }
+        .padding(.horizontal, Dimens.screenPaddingAll * 2)
+    }
+
+    /// `CreatorFollowButton`: a 36pt `ElevatedButton`, label w600 white.
+    private func followButton(creator: Creator) -> some View {
+        Button {
+            Task { await viewModel.toggleFollow() }
+        } label: {
+            Text(creator.isFollowing == true ? "Following" : "Follow")
+                .font(.custom(Typography.fontFamily, size: 14).weight(.semibold))
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 24)
+                .frame(height: 36)
+                .background(Capsule().fill(ParityColor.darkFill))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("More")
+        .disabled(viewModel.isTogglingFollow)
     }
 
     // MARK: - Tabs
 
+    /// `TabBar(isScrollable, tabAlignment: start, indicatorColor: white)`.
     private var tabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.sm) {
+            HStack(spacing: 0) {
                 ForEach(viewModel.tabs, id: \.self) { tab in
-                    AppChip(title: tab.title, isSelected: viewModel.selectedTab == tab) {
+                    let isSelected = viewModel.selectedTab == tab
+                    Button {
                         viewModel.selectedTab = tab
+                    } label: {
+                        Text(tab.title)
+                            .typography(Typography.labelLarge)
+                            .foregroundStyle(isSelected ? Color.white : Color(red: 0xCA / 255, green: 0xC4 / 255, blue: 0xD0 / 255))
+                            .padding(.horizontal, 16)
+                            .frame(height: 48)
+                            .overlay(alignment: .bottom) {
+                                Rectangle()
+                                    .fill(isSelected ? Color.white : Color.clear)
+                                    .frame(height: 2)
+                            }
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, Spacing.md)
         }
+        .frame(height: 48)
+        .background(Color.black)
     }
 
     @ViewBuilder
     private var tabContent: some View {
         switch viewModel.selectedTab {
-        case .songs(let type):
+        case .songs(let type)?:
             songsList(type: type)
-        case .playlists(let type):
+        case .playlists(let type)?:
             playlistsList(type: type)
         case nil:
             EmptyView()
@@ -149,18 +175,17 @@ struct CreatorProfileView: View {
     private func songsList(type: HomeContentType) -> some View {
         let songs = viewModel.songs(for: type)
         return VStack(spacing: 0) {
-            if songs.isEmpty, viewModel.isLoadingSongs(for: type) {
-                LoadingStateView().frame(maxWidth: .infinity, minHeight: 160)
+            if songs.isEmpty, viewModel.isLoadingSongs(for: type) || !viewModel.hasLoadedSongs(for: type) {
+                ParitySpinner(fills: true)
             } else if songs.isEmpty {
-                EmptyStateView(title: "No songs yet").frame(maxWidth: .infinity, minHeight: 160)
+                ParityEmptyText(text: "No Record Founds.")
             } else {
                 ForEach(songs) { song in
-                    CreatorSongRow(song: song)
-                        .padding(.horizontal, Spacing.md)
+                    CreatorSongRow(song: song) { play(song: song, in: songs) }
                         .task { await viewModel.loadMoreSongsIfNeeded(type: type, currentItem: song) }
                 }
                 if viewModel.isLoadingSongs(for: type) {
-                    LoadingStateView().frame(maxWidth: .infinity, minHeight: 60)
+                    ParitySpinner()
                 }
             }
         }
@@ -170,21 +195,80 @@ struct CreatorProfileView: View {
     private func playlistsList(type: HomeContentType) -> some View {
         let playlists = viewModel.playlists(for: type)
         return VStack(spacing: 0) {
-            if playlists.isEmpty, viewModel.isLoadingPlaylists(for: type) {
-                LoadingStateView().frame(maxWidth: .infinity, minHeight: 160)
+            if playlists.isEmpty, viewModel.isLoadingPlaylists(for: type) || !viewModel.hasLoadedPlaylists(for: type) {
+                ParitySpinner(fills: true)
             } else if playlists.isEmpty {
-                EmptyStateView(title: "Nothing here yet").frame(maxWidth: .infinity, minHeight: 160)
+                ParityEmptyText(text: "No Record Founds.")
             } else {
                 ForEach(playlists) { playlist in
-                    CreatorPlaylistRow(playlist: playlist, contentType: type)
-                        .padding(.horizontal, Spacing.md)
+                    CreatorPlaylistRow(playlist: playlist, contentType: type) { open(playlist) }
                         .task { await viewModel.loadMorePlaylistsIfNeeded(type: type, currentItem: playlist) }
                 }
                 if viewModel.isLoadingPlaylists(for: type) {
-                    LoadingStateView().frame(maxWidth: .infinity, minHeight: 60)
+                    ParitySpinner()
                 }
             }
         }
         .task(id: type) { await viewModel.loadPlaylistsIfNeeded(type: type) }
+    }
+
+    // MARK: - Actions
+
+    private func open(_ playlist: Playlist) {
+        var creatorID: String?
+        var creatorName: String?
+        if case let .creator(id, name) = playlist.owner {
+            creatorID = id
+            creatorName = name
+        }
+        coordinator.push(.playlistDetail(
+            playlistID: playlist.id,
+            title: playlist.title,
+            image: playlist.image,
+            imageVariants: playlist.imageVariants,
+            songsCount: playlist.songsCount,
+            isCompanyOwned: playlist.owner == .company,
+            creatorID: creatorID,
+            creatorName: creatorName
+        ))
+    }
+
+    private var attribution: QueueAttribution {
+        QueueAttribution(playerType: .creator, id: viewModel.creator?.creatorId, title: viewModel.creator?.name ?? "")
+    }
+
+    private var currentSongs: [Song] {
+        if case .songs(let type)? = viewModel.selectedTab { return viewModel.songs(for: type) }
+        return []
+    }
+
+    private var isThisQueueActive: Bool {
+        queueController.queue?.source.playerID == attribution.playerID
+    }
+
+    private var isPlaying: Bool {
+        isThisQueueActive && audioEngine.status == .playing
+    }
+
+    private func togglePlayback() {
+        if isThisQueueActive {
+            if audioEngine.status == .playing { audioEngine.pause() } else { audioEngine.resume() }
+            return
+        }
+        guard let first = currentSongs.first else { return }
+        play(song: first, in: currentSongs)
+    }
+
+    private func play(song: Song, in songs: [Song]) {
+        if isThisQueueActive, queueController.queue?.currentSong?.id == song.id {
+            if audioEngine.status == .playing { audioEngine.pause() } else { audioEngine.resume() }
+            return
+        }
+        guard let index = songs.firstIndex(where: { $0.id == song.id }) else { return }
+        let source = attribution
+        Task {
+            await queueController.play(songs: songs, startIndex: index, source: source)
+            coordinator.presentPlayer()
+        }
     }
 }
