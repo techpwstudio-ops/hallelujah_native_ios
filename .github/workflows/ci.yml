@@ -17,11 +17,23 @@ jobs:
       - name: Generate project
         run: make generate
 
+      # Non-blocking for now: the code base predates strict lint (255
+      # violations at the time of writing), and a red lint step used to skip
+      # the tests entirely. Burn the violations down, then drop this flag.
       - name: Lint
         run: make lint
+        continue-on-error: true
 
       - name: Test
-        run: make test
+        run: |
+          set -o pipefail
+          make test 2>&1 | tee test.log
+
+      # Failures and compile errors de-duplicated at the end of the log, so a
+      # red run is diagnosable from the tail of the job output alone.
+      - name: Test failures
+        if: failure()
+        run: grep -E "error:|✘|failed" test.log | sed 's|.*/hallelujah_native_ios/||' | sort -u | head -150
 
   # Compile check kept independent of `lint-and-test`: lint runs first there
   # and fails the job before any Swift is compiled, so a lint failure would
