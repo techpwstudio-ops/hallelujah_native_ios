@@ -1,157 +1,148 @@
 import SwiftUI
 
-/// T54 (Bible reader) — the Read tab's root content (wired later by a
-/// deferred `AppShellView` patch as `case .read: ReaderView()`, the same
-/// no-parameter tab-root shape as `HomeView()`/`BrowseView()`; `AppShellView`
-/// is on the forbidden-to-edit list, so that wiring isn't done here).
+/// `ReadPage` (`lib/views/read/read_page.dart`) — the Read tab.
 ///
-/// Layout: a top bar (current book name / "chapter/maxChapters" / language /
-/// font-size-and-theme), a transient boundary-message banner, then the
-/// chapter body — previous/next chapter chevrons flanking a scrollable
-/// `LazyVStack` of `VerseRowView`, one per `viewModel.verses`, exactly as
-/// the locked contract's layout instruction describes. `.back`/
-/// `.chevronForward` (checked `IconToken.swift` first, per the contract's
-/// hard rule — both already exist) stand in for the previous/next chapter
-/// chevrons; no raw SF Symbol fallback was needed for either direction.
+/// Layout (all values from the Dart widget tree):
+/// - App bar (56pt): "Bible" titleLarge w600, left aligned, with a 20pt search
+///   icon and a vertical "more" icon; search swaps it for a 44pt #333333
+///   field (12pt radius) with a close button and a dropdown panel
+///   (`BibleSearchPanel`) over a 60% black scrim.
+/// - Body padded 16 horizontally: the chapter's verses (`VerseRowView`, top
+///   and bottom edges softly masked like `CustomShadedMask`), then a bottom
+///   row — book name + up chevron (opens the table of contents), prev/next
+///   chevrons (18pt) around "n/max" (opens the chapter grid) — with 84pt of
+///   room under it for the floating tab bar (`Ios26BottomSpacing(1.5)`).
+/// - Loading / failed / empty chapter states: a spinner, or "Something went
+///   wrong please check your network" with a Retry button.
+/// - Chapter boundaries toast "This is first chapter" / "This is last chapter".
 ///
-/// Sheet wiring follows the *actual* convention its sibling components
-/// (`BookTableOfContentsSheet`/`ChapterGridSheet`/`LanguagePickerSheet`/
-/// `ReaderPreferencesSheet`, already on disk from Agent D) document for
-/// themselves: each is bare content built for `.appSheet(isPresented:)`
-/// (`AppSheet.swift`) — the shared glass-chrome + drag-handle container,
-/// the same convention `PhoneAuthView` uses for `CountryPickerView` — not
-/// the plain SwiftUI `.sheet`. `MyNotesView`/`VerseNoteEditorSheet` (also
-/// already on disk, from Agent E) are the opposite: each owns its own
-/// `NavigationStack`/background/toolbar, and their own doc comments say
-/// plain `.sheet(isPresented:)`/`.sheet(item:)` — so that's what's used for
-/// those two here. This is a deliberate deviation from the locked
-/// contract's own generic "`.sheet(isPresented:)`" wording for the first
-/// four, in favor of matching the real, already-written sibling files —
-/// the contract's own "match this codebase's real conventions exactly"
-/// hard rule takes precedence over a paraphrase.
-///
-/// The verse note editor's own presentation state
-/// (`noteEditorVerse: BibleVerse?`) isn't one of the 5 `show*` flags the
-/// locked contract names explicitly, but is needed to route
-/// `VerseRowView`'s "Note" context-menu action to `VerseNoteEditorSheet`
-/// (whose own doc comment says exactly this call site) — added the same
-/// way as the other presentation flags, keyed on the tapped verse itself
-/// (`BibleVerse` is `Identifiable`) so `.sheet(item:)` can drive it.
+/// There is no pull-to-refresh, font-size/theme sheet or read-aloud in the
+/// Flutter reader, so none is exposed here (their files remain unused).
 struct ReaderView: View {
     @State private var viewModel = ReaderViewModel()
+    @State private var searchViewModel = BibleSearchViewModel()
+    @State private var isSearching = false
+    @FocusState private var searchFocused: Bool
+
+    @State private var showMenu = false
+    @State private var showLanguage = false
+    @State private var showNotes = false
     @State private var showTableOfContents = false
-    @State private var showChapterGrid = false
-    @State private var showLanguagePicker = false
-    @State private var showPreferences = false
-    @State private var showMyNotes = false
-    @State private var showBibleSearch = false
+    @State private var chapterGridBook: BibleBook?
+    @State private var verseOfDayCommentsID: String?
     @State private var noteEditorVerse: BibleVerse?
     @State private var askEmetVerse: BibleVerse?
-    @State private var readAloud = ReadAloudController()
-    /// T56 — resolved once (not per-render) so `ReaderNavigationStore`'s
-    /// shared instance is captured, matching `AIChatNavigationStore`'s own
-    /// call-site convention.
+    @State private var highlightPaletteVerse: BibleVerse?
+    @State private var pendingAfterDismiss: (() -> Void)?
+
     @State private var navigationStore: ReaderNavigationStore = DependencyContainer.current.resolve()
+    @State private var offlineService: BibleOfflineDownloadService = DependencyContainer.current.resolve()
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
-    @Environment(\.appTheme) private var theme
+    @Environment(\.toastCenter) private var toastCenter
+
+    private static let bottomDockSpacing: CGFloat = Spacing.tabBarHeight + Spacing.dockBottomInset
 
     var body: some View {
-        VStack(spacing: 0) {
-            topBar
-            if readAloud.activeKey != nil {
-                ListenControlBar(
-                    status: readAloud.status,
-                    progress: readAloud.progress,
-                    isRestarting: readAloud.isRestarting,
-                    onTogglePlayPause: readAloud.togglePlayPause,
-                    onSeek: { readAloud.seek(toFraction: $0) },
-                    onStop: { readAloud.stop() }
-                )
+        ZStack {
+            ReadPalette.background.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                if isSearching {
+                    searchAppBar
+                } else {
+                    defaultAppBar
+                }
+
+                ZStack {
+                    bodyContent
+                        .padding(.horizontal, Dimens.screenPaddingAll * 2)
+
+                    if isSearching && hasSearchPanelContent {
+                        searchOverlay
+                    }
+
+                    if highlightPaletteVerse != nil {
+                        highlightPalette
+                    }
+                }
             }
-            if let boundaryMessage = viewModel.boundaryMessage {
-                boundaryBanner(boundaryMessage)
-            }
-            content
         }
-        .background(theme.color(.backgroundPrimary))
-        .animation(.default, value: viewModel.boundaryMessage)
+        .preferredColorScheme(.dark)
+        .toolbar(.hidden, for: .navigationBar)
         .task { await viewModel.loadIfNeeded() }
-        .refreshable { await viewModel.refresh() }
-        .onChange(of: viewModel.currentChapterNumber) { _, _ in
-            readAloud.stop()
-        }
-        // T56 — a verse-of-day tap/push/deep link can set `pendingTarget`
-        // before or after this view's own book list has finished loading
-        // (unlike `AIChatNavigationStore.pendingConversationID`, consuming
-        // it needs `viewModel.books` to already be populated), so both
-        // orderings are watched rather than just the one `.onChange` other
-        // navigation-store consumers use.
+        // A verse-of-day tap/push/deep link can set `pendingTarget` before or
+        // after the book list has loaded, so both orderings are watched.
         .onChange(of: viewModel.state) { _, _ in consumePendingTarget() }
         .onChange(of: navigationStore.pendingTarget) { _, _ in consumePendingTarget() }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("My Notes") { showMyNotes = true }
-                } label: {
-                    theme.icon(.more)
-                }
-            }
+        .onChange(of: viewModel.boundaryMessage) { _, message in
+            guard let message else { return }
+            toastCenter.show(message)
+            viewModel.clearBoundaryMessage()
         }
-        .appSheet(isPresented: $showTableOfContents) {
-            BookTableOfContentsSheet(books: viewModel.books) { book in
-                viewModel.select(book: book)
-            }
+        .readSheet(isPresented: $showMenu, onDismiss: runPendingAction, detents: [.height(300)]) {
+            menuSheet
         }
-        .appSheet(isPresented: $showChapterGrid) {
-            if let book = viewModel.currentBook {
-                ChapterGridSheet(book: book, currentChapter: viewModel.currentChapterNumber) { chapterNumber in
-                    viewModel.select(chapterNumber: chapterNumber)
-                }
-            }
-        }
-        .appSheet(isPresented: $showLanguagePicker) {
-            LanguagePickerSheet(languages: viewModel.languages, currentLanguage: viewModel.currentLanguage) { language in
+        .readSheet(
+            isPresented: $showLanguage,
+            onDismiss: runPendingAction,
+            detents: [.fraction(0.45), .fraction(0.85)]
+        ) {
+            LanguagePickerSheet(
+                languages: viewModel.languages,
+                currentLanguage: viewModel.currentLanguage
+            ) { language in
+                showLanguage = false
                 viewModel.select(language: language)
             }
         }
-        .appSheet(isPresented: $showPreferences) {
-            ReaderPreferencesSheet(
-                preferences: viewModel.preferences,
-                onFontSizeChange: { viewModel.setFontSize($0) },
-                onThemeChange: { viewModel.setTheme($0) }
-            )
+        .readSheet(
+            isPresented: $showNotes,
+            onDismiss: runPendingAction,
+            detents: [.fraction(0.5), .fraction(0.9)]
+        ) {
+            MyNotesView(books: viewModel.books) { entry in
+                showNotes = false
+                viewModel.select(
+                    bookNumber: entry.bookNumber,
+                    chapterNumber: entry.chapterNumber,
+                    verseNumber: entry.verseNumber
+                )
+            }
         }
-        // T55 — verse/content/book search within `viewModel.currentLanguage`.
-        // Both taps reuse `select(bookNumber:chapterNumber:)` (added for
-        // T56's `ReaderNavigationStore` above), the one dispatch that jumps
-        // straight to an arbitrary book/chapter in a single load.
-        .appSheet(isPresented: $showBibleSearch) {
-            BibleSearchSheet(
-                languageName: viewModel.currentLanguage,
-                onVerseTap: { result in
-                    viewModel.select(bookNumber: result.bookNumber, chapterNumber: result.chapterNumber)
+        .readSheet(
+            isPresented: $showTableOfContents,
+            onDismiss: runPendingAction,
+            detents: [.fraction(0.75)],
+            cornerRadius: 16
+        ) {
+            BookTableOfContentsSheet(
+                books: viewModel.books,
+                currentBookNumber: viewModel.currentBook?.bookNumber
+            ) { book in
+                showTableOfContents = false
+                pendingAfterDismiss = { chapterGridBook = book }
+            }
+        }
+        .readSheet(item: $chapterGridBook, onDismiss: runPendingAction, detents: [.fraction(0.7)]) { book in
+            ChapterGridSheet(
+                book: book,
+                currentChapter: viewModel.currentChapterNumber,
+                currentBookNumber: viewModel.currentBook?.bookNumber,
+                onBack: {
+                    chapterGridBook = nil
+                    pendingAfterDismiss = { showTableOfContents = true }
                 },
-                onBookTap: { book in
-                    viewModel.select(bookNumber: book.bookNumber, chapterNumber: 1)
+                onSelect: { chapter in
+                    chapterGridBook = nil
+                    viewModel.select(bookNumber: book.bookNumber, chapterNumber: chapter)
                 }
             )
         }
-        // Plain `.sheet`, not `.appSheet` — `MyNotesView` owns its own
-        // `NavigationStack`/background/"Done" toolbar (see its doc
-        // comment), unlike the 4 bare-content sheets above. Passes
-        // `viewModel.books` so it can resolve each note's book name
-        // locally, per the contract. Not `coordinator.push(...)`: no
-        // `AppRoute` case exists for "open my notes", and adding one to
-        // `AppRoute.swift` is forbidden here.
-        .sheet(isPresented: $showMyNotes) {
-            MyNotesView(books: viewModel.books)
-        }
-        // Also a plain `.sheet`, keyed on the tapped verse — see this
-        // type's own doc comment.
-        .sheet(item: $noteEditorVerse) { verse in
+        .readSheet(item: $noteEditorVerse, detents: [.large]) { verse in
             VerseNoteEditorSheet(
                 verse: verse,
+                bookName: viewModel.currentBook?.name ?? "",
                 existingNote: viewModel.notesByVerseID[verse.id],
                 onSave: { content in
                     Task { await viewModel.saveNote(verseID: verse.id, content: content) }
@@ -161,8 +152,15 @@ struct ReaderView: View {
                 }
             )
         }
-        // Also a plain `.sheet(item:)`, mirroring `noteEditorVerse` above —
-        // T60's "Ask Emet about this verse" entry point.
+        .readSheet(
+            item: Binding<VerseOfDaySheetID?>(
+                get: { verseOfDayCommentsID.map { VerseOfDaySheetID(id: $0) } },
+                set: { verseOfDayCommentsID = $0?.id }
+            ),
+            detents: [.fraction(0.65), .fraction(0.95)]
+        ) { item in
+            VerseOfDayCommentsSheet(verseOfDayId: item.id, showsVerseOfDay: true)
+        }
         .sheet(item: $askEmetVerse) { verse in
             AIVerseInsightDialogView(
                 target: .fromBibleVerse(verse, bookName: viewModel.currentBook?.name, languageName: viewModel.currentLanguage)
@@ -170,153 +168,232 @@ struct ReaderView: View {
         }
     }
 
+    private struct VerseOfDaySheetID: Identifiable {
+        let id: String
+    }
+
+    private func runPendingAction() {
+        guard let action = pendingAfterDismiss else { return }
+        pendingAfterDismiss = nil
+        action()
+    }
+
     // MARK: - Navigation store
 
-    /// See the `.onChange` pair above for why this is reached from two
-    /// different triggers.
     private func consumePendingTarget() {
         guard viewModel.state == .loaded, let target = navigationStore.pendingTarget else { return }
         navigationStore.pendingTarget = nil
-        viewModel.select(bookNumber: target.bookNumber, chapterNumber: target.chapterNumber)
+        viewModel.select(
+            bookNumber: target.bookNumber,
+            chapterNumber: target.chapterNumber,
+            verseNumber: target.verseNumber
+        )
     }
 
-    // MARK: - Top bar
+    // MARK: - App bars
 
-    private var topBar: some View {
-        HStack(spacing: Spacing.md) {
-            Button {
-                showTableOfContents = true
-            } label: {
-                Text(viewModel.currentBook?.name ?? "Select Book")
-                    .typography(Typography.titleSmall)
-                    .foregroundStyle(theme.color(.textPrimary))
-                    .lineLimit(1)
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                showChapterGrid = true
-            } label: {
-                Text("\(viewModel.currentChapterNumber)/\(viewModel.maxChapters)")
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(theme.color(.textSecondary))
-            }
-            .buttonStyle(.plain)
-            .disabled(viewModel.currentBook == nil)
-
+    private var defaultAppBar: some View {
+        HStack(spacing: 0) {
+            Text("Bible")
+                .readText(Typography.titleLarge, weight: .semibold)
+                .padding(.leading, 16)
             Spacer(minLength: 0)
-
-            // T55 — search within the current language's Bible content
-            // (`BibleSearchSheet`), distinct from `showLanguagePicker`'s own
-            // language-list search below it.
-            Button {
-                showBibleSearch = true
-            } label: {
-                theme.icon(.search)
-                    .foregroundStyle(theme.color(.textSecondary))
+            Button(action: openSearch) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 20))
+                    .foregroundStyle(ReadPalette.white)
+                    .frame(width: 48, height: 48)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-
-            // No `IconToken` case for a globe/language glyph (checked
-            // `IconToken.swift` first, per the contract's hard rule) — raw
-            // SF Symbol, per the contract's own explicit instruction.
             Button {
-                showLanguagePicker = true
+                showMenu = true
             } label: {
-                Image(systemName: "globe")
-                    .foregroundStyle(theme.color(.textSecondary))
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 20, weight: .bold))
+                    .rotationEffect(.degrees(90))
+                    .foregroundStyle(ReadPalette.white)
+                    .frame(width: 48, height: 48)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-
-            // No `IconToken` case for a font-size glyph either — same
-            // reasoning, also per the contract's own explicit instruction.
-            Button {
-                showPreferences = true
-            } label: {
-                Image(systemName: "textformat.size")
-                    .foregroundStyle(theme.color(.textSecondary))
-            }
-            .buttonStyle(.plain)
-
-            // No `IconToken` case for a speaker/listen glyph either — same
-            // reasoning. Toggles `ReadAloudController` on the current
-            // chapter; tapping again while already reading this chapter
-            // toggles play/pause (see `ReadAloudController.toggle(key:...)`).
-            Button {
-                toggleReadAloud()
-            } label: {
-                Image(systemName: "speaker.wave.2")
-                    .foregroundStyle(theme.color(.textSecondary))
-            }
-            .buttonStyle(.plain)
-            .disabled(viewModel.currentBook == nil)
         }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
+        .frame(height: 56)
     }
 
-    // MARK: - Boundary banner
+    private var searchAppBar: some View {
+        HStack(spacing: 0) {
+            Spacer().frame(width: Dimens.paddingLarge)
+            TextField(
+                "",
+                text: Binding(
+                    get: { searchViewModel.queryText },
+                    set: { searchViewModel.queryChanged($0, languageName: viewModel.currentLanguage) }
+                ),
+                prompt: Text("Search").foregroundColor(ReadPalette.grey)
+            )
+            .typography(Typography.bodyMedium)
+            .foregroundStyle(ReadPalette.white)
+            .tint(ReadPalette.logo)
+            .submitLabel(.search)
+            .focused($searchFocused)
+            .autocorrectionDisabled()
+            .onAppear { searchFocused = true }
 
-    /// A simple transient inline banner (the contract's other option, an
-    /// `.alert`, would demand an explicit dismiss tap for what Dart treats
-    /// as a fire-and-forget toast) — auto-clears itself via `.task(id:)`
-    /// keyed on the message text, so a fresh boundary message re-arms its
-    /// own timer independently of any previous one.
-    private func boundaryBanner(_ message: String) -> some View {
-        Text(message)
-            .typography(Typography.bodySmall)
-            .foregroundStyle(theme.color(.textOnBrand))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Spacing.sm)
-            .background(theme.color(.brandPrimary))
-            .transition(.move(edge: .top).combined(with: .opacity))
-            .task(id: message) {
-                try? await Task.sleep(for: .seconds(2))
-                viewModel.clearBoundaryMessage()
+            Button(action: onSearchTrailingTap) {
+                Image(systemName: "xmark")
+                    .font(.system(size: Dimens.iconSizeSmall + 4))
+                    .foregroundStyle(ReadPalette.white60)
+                    .frame(width: 48, height: 48)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+        }
+        .frame(height: 44)
+        .background(
+            RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous)
+                .fill(ReadPalette.searchBar)
+        )
+        .padding(.horizontal, Dimens.screenPadding)
+        .frame(height: 56)
     }
 
-    // MARK: - Content
+    // MARK: - Search
+
+    private var hasSearchPanelContent: Bool {
+        searchViewModel.hasQuery || !searchViewModel.recent.isEmpty
+    }
+
+    private func openSearch() {
+        isSearching = true
+    }
+
+    private func closeSearch() {
+        searchFocused = false
+        searchViewModel.reset()
+        isSearching = false
+    }
+
+    /// Clears the field first, then closes search once it is empty.
+    private func onSearchTrailingTap() {
+        if !searchViewModel.queryText.isEmpty {
+            searchViewModel.clearButtonTapped()
+            searchFocused = true
+        } else {
+            closeSearch()
+        }
+    }
+
+    private var searchOverlay: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .top) {
+                Color.black.opacity(0.6)
+                    .contentShape(Rectangle())
+                    .onTapGesture { closeSearch() }
+
+                BibleSearchPanel(
+                    viewModel: searchViewModel,
+                    maxHeight: proxy.size.height * 0.8,
+                    onVerseTap: { result in
+                        searchViewModel.recordTap(result)
+                        closeSearch()
+                        viewModel.select(
+                            bookNumber: result.bookNumber,
+                            chapterNumber: result.chapterNumber,
+                            verseNumber: result.verseNumber
+                        )
+                    },
+                    onBookTap: { book in
+                        closeSearch()
+                        viewModel.select(bookNumber: book.bookNumber, chapterNumber: 1)
+                    }
+                )
+                // Absorb taps on the panel so it doesn't close the overlay.
+                .onTapGesture {}
+            }
+        }
+    }
+
+    // MARK: - Body
+
+    private var bodyContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            mainArea
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if viewModel.state == .loaded {
+                bottomBar
+            }
+
+            Spacer()
+                .frame(height: isSearching ? 0 : Self.bottomDockSpacing)
+        }
+    }
 
     @ViewBuilder
-    private var content: some View {
+    private var mainArea: some View {
         switch viewModel.state {
         case .loading:
-            LoadingStateView()
-                .frame(maxHeight: .infinity)
+            ReadSpinner()
         case .failed:
-            // `.refresh()`, not `.loadIfNeeded()`: `ReaderViewModel`'s own
-            // `loadIfNeeded()` guards on `state == .loading`, so once
-            // `state` has flipped to `.failed` it would be a permanent
-            // no-op here — `refresh()` is the one that actually re-issues
-            // a request, matching `UserPlaylistDetailView`'s own
-            // `ErrorStateView` retry convention.
-            ErrorStateView(
-                title: "Couldn't load the reader",
-                onRetry: { Task { await viewModel.refresh() } }
-            )
-            .frame(maxHeight: .infinity)
+            if viewModel.books.isEmpty {
+                VStack(spacing: 16) {
+                    Text("Failed to load books")
+                        .font(.custom(Typography.fontFamily, size: 14, relativeTo: .body))
+                        .foregroundStyle(ReadPalette.white)
+                    retryButton
+                }
+            } else {
+                emptyState
+            }
         case .loaded:
-            chapterBody
+            if viewModel.isChapterLoading {
+                ReadSpinner()
+            } else if viewModel.verses.isEmpty {
+                emptyState
+            } else {
+                verseList
+            }
         }
     }
 
-    private var chapterBody: some View {
-        HStack(spacing: 0) {
-            chevronButton(.back, action: viewModel.goToPreviousChapter)
+    private var emptyState: some View {
+        VStack(spacing: 0) {
+            ReadEmptyText(text: "Something went wrong please check your network")
+            Spacer().frame(height: 16)
+            retryButton
+        }
+    }
 
+    private var retryButton: some View {
+        Button {
+            Task { await viewModel.retry() }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 18))
+                Text("Retry")
+                    .readText(Typography.labelLarge)
+            }
+            .foregroundStyle(ReadPalette.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var verseList: some View {
+        ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: Spacing.xs) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(viewModel.verses) { verse in
                         VerseRowView(
                             verse: verse,
                             highlightColorHex: viewModel.highlightsByVerseID[verse.id]?.colorHex,
-                            hasNote: viewModel.notesByVerseID[verse.id] != nil,
-                            fontSize: viewModel.preferences.fontSize,
-                            theme: viewModel.preferences.theme,
-                            onHighlight: { hex in
-                                Task { await viewModel.toggleHighlight(verseID: verse.id, colorHex: hex) }
-                            },
+                            noteContent: viewModel.notesByVerseID[verse.id]?.content,
+                            isFocused: viewModel.focusedVerse == verse.verseNumber,
+                            onRequestHighlight: { highlightPaletteVerse = verse },
                             onRemoveHighlight: {
                                 Task { await viewModel.removeHighlight(verseID: verse.id) }
                             },
@@ -324,56 +401,225 @@ struct ReaderView: View {
                             onShare: { Task { await share(verse: verse) } },
                             onAskEmet: { askEmetVerse = verse }
                         )
+                        .id(verse.verseNumber)
                     }
                 }
-                .padding(.vertical, Spacing.sm)
             }
-            .overlay(alignment: .top) {
-                if viewModel.isChapterLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                        .padding(.top, Spacing.xs)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: Color.clear, location: 0.0),
+                        .init(color: Color.black, location: 0.02),
+                        .init(color: Color.black, location: 0.98),
+                        .init(color: Color.clear, location: 1.0),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .onChange(of: viewModel.scrollTargetVerse) { _, target in
+                guard let target else { return }
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    proxy.scrollTo(target, anchor: .top)
                 }
             }
-
-            chevronButton(.chevronForward, action: viewModel.goToNextChapter)
         }
     }
 
-    private func chevronButton(_ icon: IconToken, action: @escaping () -> Void) -> some View {
+    // MARK: - Bottom row
+
+    private var bottomBar: some View {
+        HStack(spacing: 0) {
+            Button {
+                showTableOfContents = true
+            } label: {
+                HStack(spacing: 4) {
+                    Text(viewModel.currentBook?.name ?? "Loading...")
+                        .readText(Typography.titleMedium, weight: .bold)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ReadPalette.white)
+                        .frame(width: 22, height: 22)
+                }
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Spacer().frame(width: 8)
+
+            HStack(spacing: 0) {
+                navIcon(systemName: "chevron.left") {
+                    viewModel.goToPreviousChapter()
+                }
+                Button {
+                    if let book = viewModel.currentBook {
+                        chapterGridBook = book
+                    }
+                } label: {
+                    Text("\(viewModel.currentChapterNumber)/\(viewModel.maxChapters)")
+                        .readText(Typography.titleLarge, weight: .bold, color: ReadPalette.secondaryText)
+                        .padding(.horizontal, 8)
+                }
+                .buttonStyle(.plain)
+                navIcon(systemName: "chevron.right") {
+                    viewModel.goToNextChapter()
+                }
+            }
+        }
+    }
+
+    private func navIcon(systemName: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            theme.icon(icon)
-                .foregroundStyle(theme.color(.textSecondary))
-                .frame(width: Spacing.minTapTarget, height: Spacing.minTapTarget)
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(ReadPalette.white)
+                .frame(width: 18, height: 18)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.isChapterLoading)
+    }
+
+    // MARK: - Highlight palette
+
+    /// Flutter's white colour popup (`_showColorsPalate`): a collapse chevron,
+    /// then the four `bookHighlightColors` as 20pt dots split by dividers.
+    private var highlightPalette: some View {
+        ZStack {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { highlightPaletteVerse = nil }
+
+            HStack(spacing: 0) {
+                Button {
+                    highlightPaletteVerse = nil
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(ReadPalette.black)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+
+                ForEach(Array(ReadPalette.highlightHexes.enumerated()), id: \.offset) { index, hex in
+                    Button {
+                        if let verse = highlightPaletteVerse {
+                            Task { await viewModel.toggleHighlight(verseID: verse.id, colorHex: hex) }
+                        }
+                        highlightPaletteVerse = nil
+                    } label: {
+                        Circle()
+                            .fill(Color(readHex: hex) ?? ReadPalette.white)
+                            .frame(width: 20, height: 20)
+                            .padding(.horizontal, 8)
+                    }
+                    .buttonStyle(.plain)
+
+                    if index != ReadPalette.highlightHexes.count - 1 {
+                        Rectangle()
+                            .fill(Color.black.opacity(0.12))
+                            .frame(width: 1, height: 24)
+                    }
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(ReadPalette.white)
+            )
+        }
+    }
+
+    // MARK: - Menu sheet (`showBookPageMainMenu`)
+
+    private var menuSheet: some View {
+        VStack(spacing: 0) {
+            ReadDragHandle()
+
+            menuRow(icon: "globe", title: "Language", trailing: {
+                HStack(spacing: 0) {
+                    Text(viewModel.state == .loaded ? viewModel.currentLanguage : "-")
+                        .readText(Typography.titleMedium, weight: .medium, color: ReadPalette.tertiaryText)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ReadPalette.white)
+                        .frame(width: 24, height: 24)
+                }
+            }) {
+                showMenu = false
+                pendingAfterDismiss = { showLanguage = true }
+            }
+
+            if !viewModel.currentLanguage.isEmpty {
+                menuRow(icon: "arrow.down.circle", title: "Offline Bible", trailing: {
+                    BibleOfflineDownloadButton(language: viewModel.currentLanguage)
+                }) {
+                    let language = viewModel.currentLanguage
+                    Task {
+                        await startBibleOfflineDownload(language: language, service: offlineService, toast: toastCenter)
+                    }
+                }
+            }
+
+            menuRow(icon: "note.text", title: "Notes", trailing: { EmptyView() }) {
+                showMenu = false
+                pendingAfterDismiss = { showNotes = true }
+            }
+
+            menuRow(icon: "book", title: "Verse of the day", trailing: { EmptyView() }) {
+                showMenu = false
+                pendingAfterDismiss = { openVerseOfDay() }
+            }
+
+            Spacer().frame(height: 16)
+        }
+    }
+
+    private func menuRow<Trailing: View>(
+        icon: String,
+        title: String,
+        @ViewBuilder trailing: () -> Trailing,
+        action: @escaping () -> Void
+    ) -> some View {
+        let trailingView = trailing()
+        return Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+                    .foregroundStyle(ReadPalette.white)
+                    .frame(width: 24, height: 24)
+                Text(title)
+                    .readText(Typography.titleMedium, weight: .medium)
+                Spacer(minLength: 0)
+                trailingView
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Listen
-
-    /// Starts (or toggles play/pause on) `ReadAloudController` for the
-    /// currently displayed chapter. Key format matches
-    /// `ReadAloudController`'s own doc comment.
-    private func toggleReadAloud() {
-        guard let book = viewModel.currentBook else { return }
-        readAloud.toggle(
-            key: "\(book.bookNumber)-\(viewModel.currentChapterNumber)-\(viewModel.currentLanguage)",
-            verses: viewModel.verses,
-            languageName: viewModel.currentLanguage
-        )
+    /// "Verse of the day" menu row: the latest verse's comments sheet with the
+    /// verse card on top, or a toast when none has ever been delivered.
+    private func openVerseOfDay() {
+        let container = DependencyContainer.current
+        let keyValueStore: any KeyValueStoring = container.resolve()
+        let localStore = VerseOfDayLocalStore(keyValueStore: keyValueStore)
+        guard let id = localStore.lastVerseOfDayID else {
+            toastCenter.show("There is no verse of day for today.")
+            return
+        }
+        verseOfDayCommentsID = id
     }
 
     // MARK: - Share
 
-    /// Drives the pre-existing, already-declared `AppRoute` case
-    /// `.bibleVerseShare(verseReference:verseText:deepLinkURL:)` —
-    /// `VerseRowView`'s "Share" context-menu action is the only
-    /// user-triggered entry point into it anywhere in this feature.
-    /// `verseReference`/`verseText` are built client-side from the
-    /// already-loaded `BibleBook.name` + `BibleVerse`, per the locked
-    /// contract, rather than parsing the server's `title`/`description`
-    /// strings — only `link` is used from `GET /book/verse/share/:id`'s
-    /// response (`BibleRepository.shareVerse(id:)`).
     private func share(verse: BibleVerse) async {
         guard let url = await viewModel.shareURL(for: verse), let book = viewModel.currentBook else { return }
         let reference = "\(book.name) \(viewModel.currentChapterNumber):\(verse.verseNumber)"

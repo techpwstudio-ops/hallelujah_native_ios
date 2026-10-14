@@ -116,6 +116,18 @@ final class ReaderViewModel {
     /// background for the *next* open, matching Dart's fire-and-forget
     /// `_refreshAnnotations` precedent — that policy lives in the
     /// repository, not here.
+    /// The empty/failed state's "Retry" (Flutter dispatches a real
+    /// `ReadOnContentChangedEvent`): reloads the book list if it never loaded,
+    /// otherwise re-fetches the current chapter.
+    func retry() async {
+        if currentBook == nil {
+            state = .loading
+            await loadIfNeeded()
+        } else {
+            await refresh()
+        }
+    }
+
     func refresh() async {
         guard let currentBook else { return }
         dispatchChapterLoad(

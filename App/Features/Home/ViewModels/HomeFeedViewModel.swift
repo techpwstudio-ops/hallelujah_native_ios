@@ -210,6 +210,17 @@ final class HomeFeedViewModel {
         inFlight[uiId] = task
     }
 
+    /// `reloadSection` — the "Tap to retry" affordance on a failed rail: drops
+    /// whatever request is in flight for it, forgets that its one automatic
+    /// degraded-retry was spent, and asks for it again from scratch.
+    func reloadSection(uiId: String) {
+        inFlight[uiId]?.cancel()
+        inFlight[uiId] = nil
+        retriedRails.remove(uiId)
+        railStates[uiId] = .placeholder
+        ensureLoaded(uiId: uiId)
+    }
+
     /// Reloads a `.degraded` rail once, automatically, shortly after it's
     /// first seen — §3.2's own guidance for the flag. Not repeated: if the
     /// retry also comes back degraded, the rail just stays on its skeleton
@@ -258,8 +269,16 @@ final class HomeFeedViewModel {
                 }
             case .degraded:
                 if existing == nil {
-                    railStates[uiId] = .degraded
-                    scheduleDegradedRetry(uiId: uiId, generation: generation)
+                    if retriedRails.contains(uiId) {
+                        // The single automatic retry was spent and the server
+                        // is still building this rail — keep its place and
+                        // offer "Tap to retry" (`_SectionError`) instead of
+                        // shimmering forever.
+                        railStates[uiId] = .failed
+                    } else {
+                        railStates[uiId] = .degraded
+                        scheduleDegradedRetry(uiId: uiId, generation: generation)
+                    }
                 }
                 // A degraded page-2+ fetch just leaves page 1's content on
                 // screen; the user's own pull-to-refresh can try again later.

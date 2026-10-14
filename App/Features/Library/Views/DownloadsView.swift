@@ -1,87 +1,34 @@
 import SwiftUI
 
-/// Ports `DownloadsPage` (`lib/views/library/downloads.dart`) — Dart shows
-/// only the already-completed song list (no in-progress states at all, since
-/// `flutter_downloader`'s own bloc never surfaces one); this screen is wider
-/// by contract (T46's locked contract), since `DownloadEngine` actually
-/// models `.queued`/`.downloading`/`.paused`/`.failed` states Dart's bare
-/// `DownloadBloc.songs`/`episodes` id lists have no equivalent for.
+/// Ports `DownloadsPage` (`lib/views/library/downloads.dart`): a 220pt
+/// `#4E00F6 @ 67% -> black` gradient header ("Downloads" 26pt bold, Shuffle +
+/// Play, "<n> Songs · <m> Podcasts" in white70), a Music / Podcast toggle
+/// (`SongTypeTopNavigationButton`, 16pt gap, 16pt inset), then the downloaded
+/// `SongListItem` rows separated by 12pt, or "Nothing in Downloads".
 ///
-/// No music/podcast filter row either — Dart's `songType` toggle has exactly
-/// one real call site pushing this route today (`LibraryHomeView`'s
-/// Downloads quick link, always `type: "all"`), so `type` is accepted
-/// (matching `AppRoute.downloads`'s payload shape) but unused: a filter UI
-/// with no live caller would be speculative scope, not a gap. Add real
-/// filtering here if and when a second call site needs it.
-///
-/// No view model — `DownloadEngine` (T46) is itself `@Observable` and this
-/// screen does nothing but read its `tasks` dictionary and forward taps to
-/// its mutating methods, with no network fetch/pagination of its own to
-/// manage (unlike `UserPlaylistDetailViewModel`'s heavier resolve-and-load
-/// shape). Resolved the same direct way `UserPlaylistDetailView` already
-/// resolves `QueueController`/`AudioEngine`.
-///
-/// Tap-to-play on a `.completed` row is deliberately left out — wiring a
-/// downloaded file into playback is T47 (Offline playback)'s job, not this
-/// one's (see T46's own scope boundary); rows here are plain, non-tappable
-/// display-plus-control surfaces only.
+/// Native-only additions the Dart screen has no equivalent for (the engine
+/// models real in-flight states): a 2pt progress bar under a row that is
+/// queued/downloading/paused, an 8pt bold red "Downloading Failed" label
+/// (`DownloadProgressWidget`'s exact styles), and pause/resume/cancel/retry
+/// buttons trailing such a row. `type` is accepted for route parity; the
+/// toggle starts on Music like Dart's `songType` default.
 struct DownloadsView: View {
     let type: String
 
     @State private var downloadEngine: DownloadEngine = DependencyContainer.current.resolve()
-    @State private var isDeleteAllConfirmationPresented = false
+    @State private var queueController: QueueController = DependencyContainer.current.resolve()
+    @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
+    @State private var isEpisodes = false
 
-    @Environment(\.appTheme) private var theme
     @Environment(AppNavigationCoordinator.self) private var coordinator
 
-    private static let thumbnailSize: CGFloat = 56
+    /// `ColorTheme.downloadsBgTopColor` (0xAB4E00F6).
+    private static let gradientTop = Color(red: 0x4E / 255, green: 0x00 / 255, blue: 0xF6 / 255).opacity(0xAB / 255)
+    private static let attribution = QueueAttribution(playerType: .download, id: "downloaded", title: "Downloads")
 
-    var body: some View {
-        ScrollView {
-            if downloadEngine.tasks.isEmpty {
-                EmptyStateView(title: "No downloads yet")
-                    .frame(maxWidth: .infinity, minHeight: 300)
-            } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(sortedTasks) { task in
-                        row(for: task)
-                            .padding(.horizontal, Spacing.md)
-                    }
-                }
-                .padding(.vertical, Spacing.sm)
-            }
-        }
-        .background(theme.color(.backgroundPrimary))
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Storage") { coordinator.push(.storageSettings) }
-            }
-            if !downloadEngine.tasks.isEmpty {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Delete All", role: .destructive) {
-                        isDeleteAllConfirmationPresented = true
-                    }
-                }
-            }
-        }
-        .confirmationDialog(
-            "Delete all downloads?",
-            isPresented: $isDeleteAllConfirmationPresented,
-            titleVisibility: .visible
-        ) {
-            Button("Delete All", role: .destructive) {
-                downloadEngine.deleteAll()
-            }
-            Button("Cancel", role: .cancel) {}
-        }
-    }
+    // MARK: - Data
 
-    // MARK: - Sorting
-
-    /// In-progress first (`.downloading`/`.queued`/`.paused`), then
-    /// `.completed`, then `.failed` — T46's locked contract's own row
-    /// ordering. Most-recently-enqueued first within each group.
-    private var sortedTasks: [DownloadTask] {
+    private var allTasks: [DownloadTask] {
         downloadEngine.tasks.values.sorted { lhs, rhs in
             let lhsRank = sortRank(for: lhs.state)
             let rhsRank = sortRank(for: rhs.state)
@@ -98,115 +45,184 @@ struct DownloadsView: View {
         }
     }
 
+    private func isEpisode(_ task: DownloadTask) -> Bool { task.songType == "episode" }
+
+    private var visibleTasks: [DownloadTask] {
+        allTasks.filter { isEpisode($0) == isEpisodes }
+    }
+
+    private var completedVisibleSongs: [Song] {
+        visibleTasks.filter { $0.state == .completed }.map(Song.makeDownloadedSnapshot)
+    }
+
+    private var songCount: Int { allTasks.filter { $0.state == .completed && !isEpisode($0) }.count }
+    private var episodeCount: Int { allTasks.filter { $0.state == .completed && isEpisode($0) }.count }
+
+    // MARK: - Body
+
+    var body: some View {
+        ParityGradientHeader(
+            top: Self.gradientTop,
+            title: "Downloads",
+            subtitle: "\(songCount) Songs \u{00B7} \(episodeCount) Podcasts",
+            isShuffled: queueController.isShuffled,
+            isPlaying: isPlaying,
+            onShuffle: { Task { await queueController.toggleShuffle() } },
+            onPlay: { togglePlayback() },
+            extra: { typeToggle },
+            content: { list }
+        )
+        .background(Color.black)
+    }
+
+    private var typeToggle: some View {
+        HStack(spacing: Dimens.horizontalSpacing) {
+            ParityTypeButton(title: "Music", isSelected: !isEpisodes) { isEpisodes = false }
+            ParityTypeButton(title: "Podcast", isSelected: isEpisodes) { isEpisodes = true }
+        }
+        .padding(.horizontal, Dimens.screenPaddingAll + 8)
+    }
+
+    @ViewBuilder
+    private var list: some View {
+        let tasks = visibleTasks
+        if tasks.isEmpty {
+            Text("Nothing in Downloads")
+                .font(.custom(Typography.fontFamily, size: 14))
+                .foregroundStyle(Color.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollView {
+                LazyVStack(spacing: Dimens.verticalSpacing) {
+                    ForEach(tasks) { task in
+                        row(for: task)
+                    }
+                    Color.clear.frame(height: 168)
+                }
+                .padding(.top, 8)
+            }
+        }
+    }
+
     // MARK: - Row
 
     private func row(for task: DownloadTask) -> some View {
-        HStack(spacing: Spacing.md) {
-            ArtworkView(
-                url: ArtworkURLResolver().resolve(
-                    path: task.songArtworkPath,
-                    variant: .sm,
-                    allowedVariants: task.songArtworkVariants
-                ),
-                width: Self.thumbnailSize,
-                height: Self.thumbnailSize
-            )
-
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(task.songTitle)
-                    .typography(Typography.titleSmall)
-                    .foregroundStyle(theme.color(.textPrimary))
-                    .lineLimit(1)
-                if let genre = task.songGenreName {
-                    Text(genre)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.textSecondary))
-                        .lineLimit(1)
-                }
+        let song = Song.makeDownloadedSnapshot(task)
+        return HStack(spacing: 0) {
+            CreatorSongRow(
+                song: song,
+                showsMenu: task.state == .completed,
+                subtitleOverride: subtitle(for: task),
+                statusView: statusView(for: task)
+            ) {
+                if task.state == .completed { play(song: song) }
             }
-
-            Spacer(minLength: 0)
-
-            trailingControl(for: task)
+            if task.state != .completed {
+                controls(for: task)
+                    .padding(.trailing, Dimens.paddingMedium)
+            }
         }
-        .padding(.vertical, Spacing.xs)
     }
 
-    /// One state-appropriate trailing affordance per `DownloadState` — the
-    /// exact set T46's locked contract specifies.
-    @ViewBuilder
-    private func trailingControl(for task: DownloadTask) -> some View {
+    private func subtitle(for task: DownloadTask) -> String {
+        if isEpisode(task) { return parityDurationText(task.songDurationSeconds) }
+        return task.songGenreName ?? ""
+    }
+
+    /// `DownloadProgressWidget` (complete rows show nothing on this page).
+    private func statusView(for task: DownloadTask) -> AnyView? {
         switch task.state {
-        case .queued:
-            Text("Waiting…")
-                .typography(Typography.labelMedium)
-                .foregroundStyle(theme.color(.textTertiary))
-
-        case .downloading:
-            HStack(spacing: Spacing.sm) {
-                if let totalBytes = task.totalBytes, totalBytes > 0 {
-                    ProgressView(value: Double(task.bytesWritten), total: Double(totalBytes))
-                        .frame(width: 60)
-                } else {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                }
-                Button {
-                    downloadEngine.pause(songID: task.songID)
-                } label: {
-                    theme.icon(.pause)
-                        .foregroundStyle(theme.color(.textSecondary))
-                }
-                .buttonStyle(.plain)
-            }
-
-        case .paused:
-            HStack(spacing: Spacing.sm) {
-                Button {
-                    downloadEngine.resume(songID: task.songID)
-                } label: {
-                    theme.icon(.play)
-                        .foregroundStyle(theme.color(.textSecondary))
-                }
-                .buttonStyle(.plain)
-                Button {
-                    downloadEngine.cancel(songID: task.songID)
-                } label: {
-                    theme.icon(.trash)
-                        .foregroundStyle(theme.color(.textSecondary))
-                }
-                .buttonStyle(.plain)
-            }
-
         case .completed:
-            Button {
-                downloadEngine.deleteDownload(songID: task.songID)
-            } label: {
-                theme.icon(.trash)
-                    .foregroundStyle(theme.color(.textSecondary))
-            }
-            .buttonStyle(.plain)
-
+            return nil
         case .failed:
-            HStack(spacing: Spacing.sm) {
-                Text("Failed")
-                    .typography(Typography.labelMedium)
-                    .foregroundStyle(theme.color(.statusError))
-                Button {
-                    Task { await downloadEngine.retry(songID: task.songID) }
-                } label: {
-                    theme.icon(.retry)
-                        .foregroundStyle(theme.color(.textSecondary))
-                }
-                .buttonStyle(.plain)
-                Button {
-                    downloadEngine.cancel(songID: task.songID)
-                } label: {
-                    theme.icon(.trash)
-                        .foregroundStyle(theme.color(.textSecondary))
-                }
-                .buttonStyle(.plain)
+            return AnyView(
+                Text("Downloading Failed")
+                    .font(.custom(Typography.fontFamily, size: 8).weight(.bold))
+                    .foregroundStyle(Color.red)
+            )
+        case .queued, .downloading, .paused:
+            if let total = task.totalBytes, total > 0, task.bytesWritten > 0 {
+                return AnyView(
+                    ProgressView(value: Double(task.bytesWritten), total: Double(total))
+                        .progressViewStyle(.linear)
+                        .tint(Color.white)
+                )
             }
+            return AnyView(
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .tint(Color.white)
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func controls(for task: DownloadTask) -> some View {
+        switch task.state {
+        case .downloading:
+            ParityIconButton(systemName: "pause.fill", size: 18, tooltip: "Pause", frame: 40) {
+                downloadEngine.pause(songID: task.songID)
+            }
+        case .paused:
+            HStack(spacing: 0) {
+                ParityIconButton(systemName: "play.fill", size: 18, tooltip: "Resume", frame: 40) {
+                    downloadEngine.resume(songID: task.songID)
+                }
+                ParityIconButton(systemName: "xmark", size: 18, tooltip: "Cancel", frame: 40) {
+                    downloadEngine.cancel(songID: task.songID)
+                }
+            }
+        case .failed:
+            HStack(spacing: 0) {
+                ParityIconButton(systemName: "arrow.clockwise", size: 18, tooltip: "Retry", frame: 40) {
+                    Task { await downloadEngine.retry(songID: task.songID) }
+                }
+                ParityIconButton(systemName: "xmark", size: 18, tooltip: "Cancel", frame: 40) {
+                    downloadEngine.cancel(songID: task.songID)
+                }
+            }
+        case .queued:
+            ParityIconButton(systemName: "xmark", size: 18, tooltip: "Cancel", frame: 40) {
+                downloadEngine.cancel(songID: task.songID)
+            }
+        case .completed:
+            EmptyView()
+        }
+    }
+
+    // MARK: - Playback
+
+    private var isThisQueueActive: Bool {
+        queueController.queue?.source.playerID == Self.attribution.playerID
+    }
+
+    private var isPlaying: Bool {
+        isThisQueueActive && audioEngine.status == .playing
+    }
+
+    private func togglePlayback() {
+        if isThisQueueActive {
+            if audioEngine.status == .playing { audioEngine.pause() } else { audioEngine.resume() }
+            return
+        }
+        play(startIndex: 0)
+    }
+
+    private func play(song: Song) {
+        if isThisQueueActive, queueController.queue?.currentSong?.id == song.id {
+            if audioEngine.status == .playing { audioEngine.pause() } else { audioEngine.resume() }
+            return
+        }
+        guard let index = completedVisibleSongs.firstIndex(where: { $0.id == song.id }) else { return }
+        play(startIndex: index)
+    }
+
+    private func play(startIndex: Int) {
+        let songs = completedVisibleSongs
+        guard !songs.isEmpty else { return }
+        Task {
+            await queueController.play(songs: songs, startIndex: startIndex, source: Self.attribution)
+            coordinator.presentPlayer()
         }
     }
 }
