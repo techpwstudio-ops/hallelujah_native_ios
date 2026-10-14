@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// A minimal, persisted stand-in for `Song` — just enough to render a
 /// history row and, on tap, rebuild something `QueueController.play` can

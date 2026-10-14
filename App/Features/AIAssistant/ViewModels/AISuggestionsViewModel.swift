@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T58 — the AI chat empty-state suggestion chips. Ports the Flutter app's
 /// `AiSuggestionsNotifier`: a non-critical affordance, so a failure (even

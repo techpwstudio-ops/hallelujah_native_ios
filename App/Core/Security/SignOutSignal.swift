@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Bridges `Session`'s actor-isolated `onLogout` callback into SwiftUI, so
 /// `RootView` can react the instant a session ends for ANY reason — an

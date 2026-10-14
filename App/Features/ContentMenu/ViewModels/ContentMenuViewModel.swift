@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// A whole container the overflow menu can act on — a company playlist, an
 /// album/season, or an artist (`showContentMenu`/`showCreatorMenu`,

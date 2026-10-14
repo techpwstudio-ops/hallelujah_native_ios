@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Ported from `EmailAuthState` (`email_auth_state.dart`) — one case per Dart
 /// subclass, same collapsing-into-one-enum shape as `PhoneAuthFlowState`.

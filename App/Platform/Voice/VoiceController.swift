@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import Observation
 
 /// T59 — ports `VoiceController` (`lib/features/voice/voice_controller.dart`,
 /// 1577 lines). The orchestrator for one spoken conversation: wires

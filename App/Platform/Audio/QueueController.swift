@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T33 — the queue model: canonical ordered queue, source attribution,
 /// shuffle, repeat mode, reorder. Ports the queue-orchestration half of

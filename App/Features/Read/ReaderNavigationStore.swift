@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T56 — carries a "jump to this verse" intent from wherever it originates
 /// (a verse-of-day push tap, a verse-of-day deep link, a bare Bible-verse

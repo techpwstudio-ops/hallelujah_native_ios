@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T45 — a signed-in user's own playlist: header, paginated songs, and
 /// owner-only admin actions (add/remove songs, rename, delete). Ports

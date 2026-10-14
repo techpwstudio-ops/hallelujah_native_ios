@@ -93,7 +93,7 @@ struct User: Sendable, Equatable, Identifiable, Codable {
         try container.encodeIfPresent(updatedAt.map(User.isoFormatter.string(from:)), forKey: .updatedAt)
     }
 
-    private static let isoFormatter = ISO8601DateFormatter()
+    nonisolated(unsafe) private static let isoFormatter = ISO8601DateFormatter()
 }
 
 extension User {

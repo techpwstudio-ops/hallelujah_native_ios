@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// The three outcomes `_onSubmit` (`lib/views/support/feedback.dart`)
 /// distinguishes with its `try`/`else`/`catch` — kept separate here (rather

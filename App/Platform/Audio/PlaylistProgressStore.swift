@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T38 — ports `PlaylistProgressService` (`lib/services/playlist_progress_service.dart`):
 /// how far a listener has got through a container, measured in DISTINCT

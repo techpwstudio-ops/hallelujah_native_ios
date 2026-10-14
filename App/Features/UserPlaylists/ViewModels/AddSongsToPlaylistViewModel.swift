@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T45's "add songs" picker — the native answer to `content_search_page.dart`'s
 /// `isSelect: true` mode (`AddToPlaylistCheckBox`, `SelectContentBloc`), but

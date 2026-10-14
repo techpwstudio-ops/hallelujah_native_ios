@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T58 — the AI chat conversation list (history sidebar / picker). Ports
 /// the Flutter app's `AiConversationsNotifier`.

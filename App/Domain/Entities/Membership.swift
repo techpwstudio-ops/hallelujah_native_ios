@@ -42,7 +42,7 @@ struct Subscription: Sendable, Equatable, Codable {
     /// regardless of which `JSONDecoder` a caller happens to use, rather
     /// than silently depending on the caller picking a decoder whose
     /// `dateDecodingStrategy` tolerates fractional seconds.
-    private static let isoFormatter = ISO8601DateFormatter()
+    nonisolated(unsafe) private static let isoFormatter = ISO8601DateFormatter()
 
     private enum PlanKeys: String, CodingKey {
         case maxMembers

@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// One rail's on-screen state. `empty`/`degraded` both arrive from the wire
 /// as "no rows right now" but want opposite handling (`HOME_V2_API.md`

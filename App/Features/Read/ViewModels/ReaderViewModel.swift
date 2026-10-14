@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T54 — the Bible reader tab. Ports the shape of `bible_bloc.dart`
 /// (book/chapter/language navigation, `StorageService`-persisted position,

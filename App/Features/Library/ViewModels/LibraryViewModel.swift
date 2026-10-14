@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Same shape as `GenreSongsViewModel`'s private page struct — one merged,
 /// paginated list.

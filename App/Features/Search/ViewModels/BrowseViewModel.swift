@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Ports `_SearchPageState` (`lib/views/search/search_page.dart`) — the
 /// Search tab's landing screen. Dart drives its grid from a reactive Realm

@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// One paged fetch of a genre's songs. Same shape as
 /// `CreatorProfileViewModel`'s `CreatorContentPage<Item>`, just not generic

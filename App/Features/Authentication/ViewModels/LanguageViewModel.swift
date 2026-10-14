@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 enum LanguageSaveState: Equatable {
     case idle

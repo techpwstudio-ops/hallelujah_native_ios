@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Ports `FamilyMembersNotifier` (`lib/river_pods/family_members_provider.dart`)
 /// — fetch/refresh plus the local-mutation methods the invite/remove flows

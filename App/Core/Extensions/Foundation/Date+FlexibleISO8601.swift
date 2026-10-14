@@ -17,8 +17,8 @@ extension Date {
         return isoFormatterWithFractionalSeconds.date(from: string) ?? isoFormatter.date(from: string)
     }
 
-    private static let isoFormatter = ISO8601DateFormatter()
-    private static let isoFormatterWithFractionalSeconds: ISO8601DateFormatter = {
+    nonisolated(unsafe) private static let isoFormatter = ISO8601DateFormatter()
+    nonisolated(unsafe) private static let isoFormatterWithFractionalSeconds: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter

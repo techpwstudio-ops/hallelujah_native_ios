@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Ports `_FlashScreenState._initAuthAndNavigate()` /
 /// `_resolveDestination()` (`lib/views/launch/flash.dart`).

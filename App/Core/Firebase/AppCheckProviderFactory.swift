@@ -1,3 +1,4 @@
+import FirebaseCore
 import FirebaseAppCheck
 
 /// Matches `main.dart`'s `FirebaseAppCheck.instance.activate(providerApple:)`

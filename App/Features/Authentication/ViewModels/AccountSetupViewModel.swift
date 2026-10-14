@@ -1,3 +1,5 @@
+import Observation
+
 enum AccountSetupFlowState: Equatable {
     case idle
     case loading

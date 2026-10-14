@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T60 — drives `AIVerseInsightDialogView`. Ports the Flutter app's
 /// `verseInsightProvider` (`lib/river_pods/verse_insight_provider.dart`),

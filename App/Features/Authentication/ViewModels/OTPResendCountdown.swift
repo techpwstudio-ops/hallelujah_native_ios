@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Ported from `OtpTimeoutBloc` (`lib/blocs/otp_timeout/bloc.dart`): a
 /// 30-second, 1-second-tick countdown gating the OTP screen's resend button.

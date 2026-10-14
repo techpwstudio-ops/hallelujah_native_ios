@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 enum ProfileFlowState: Equatable {
     case idle

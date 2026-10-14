@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T40/T41 — ports `SearchBloc`/`SearchState` (`lib/blocs/search/bloc.dart`,
 /// `lib/blocs/search/state.dart`) plus the widget-level pending flag

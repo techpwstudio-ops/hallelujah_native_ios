@@ -1,5 +1,6 @@
 import Foundation
 import LocalAuthentication
+import Observation
 
 /// The two outcomes `_onDeletePressed`/`AuthBloc.delete` (`bloc.dart:395-424`)
 /// distinguish for the final API call — same "keep the fixed transport-error

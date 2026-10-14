@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T58 — one per-conversation chat session. Ports the Flutter app's
 /// `AiChatNotifier`. Drives a single conversation's transcript: initial

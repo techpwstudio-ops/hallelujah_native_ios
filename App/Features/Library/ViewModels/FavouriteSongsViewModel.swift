@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Same shape as `GenreSongsViewModel`'s own private page struct — see its
 /// doc comment for why this isn't generalized into one shared type.

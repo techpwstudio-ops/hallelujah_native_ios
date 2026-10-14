@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T55 — the recent-searches list `BibleSearchPanel` renders above results
 /// when the search field is empty (`bible_search_panel.dart`'s

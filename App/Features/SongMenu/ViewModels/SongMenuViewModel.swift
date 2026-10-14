@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Backs `SongMenuSheet` — the native `showSongMenu` (`lib/sheets/song/
 /// song_menu_sheet.dart`) and the sheets it opens (credits, report, add to

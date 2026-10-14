@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// What is being shared — mirrors the `DeepLinkService` outbound methods
 /// that actually have a UI entry point in this rewrite (T68). Verse-of-Day

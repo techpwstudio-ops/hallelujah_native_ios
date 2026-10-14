@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Ports `_SubscriptionPlansPageState` (`lib/views/subscription/plans_screen.dart`)
 /// — plan catalogue + purchase/restore, Apple/StoreKit rail only (T62 owns

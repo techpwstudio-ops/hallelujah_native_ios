@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T56 — the Home card's own state. Ports the read side of
 /// `VerseOfDayHistoryBloc`'s state (`lib/blocs/verse_of_day_history/bloc.dart`):

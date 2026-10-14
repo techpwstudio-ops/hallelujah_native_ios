@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Ported from `PhoneAuthState` (`phone_auth_state.dart`) — one case per
 /// Dart subclass, collapsed into a single enum since Swift has no sealed-class

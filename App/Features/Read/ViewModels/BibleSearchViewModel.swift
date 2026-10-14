@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T55 — drives `BibleSearchSheet`, porting `bible_search_panel.dart`'s
 /// three states (recent / loading / response) plus the debounced dispatch

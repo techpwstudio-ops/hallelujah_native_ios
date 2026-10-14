@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// One of `CreatorSongsPage._setupTabs`'s (`lib/views/library/creator_songs_page.dart`)
 /// four tabs, shown only when its matching count is > 0, same as Dart.

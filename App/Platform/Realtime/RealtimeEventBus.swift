@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T67 — the landing spot for realtime events whose consuming feature has no
 /// targeted per-id patch method (`LibraryViewModel` only exposes coarse

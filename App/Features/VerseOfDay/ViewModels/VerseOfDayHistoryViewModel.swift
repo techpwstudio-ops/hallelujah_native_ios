@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Same shape as `FavouriteSongsViewModel`'s own private page struct — see
 /// that file's doc comment for why this isn't generalized into one shared

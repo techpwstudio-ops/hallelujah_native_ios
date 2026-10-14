@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Mirrors the state shape `EmailAuthFlowState`/the phone equivalent use —
 /// no `otpSent` case here since there's no OTP step, only a single round

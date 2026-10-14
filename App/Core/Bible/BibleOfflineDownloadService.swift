@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T55 — orchestrates whole-language offline Bible downloads, mirroring
 /// `bible_offline_service.dart`'s `BibleOfflineService`. Deliberate scope

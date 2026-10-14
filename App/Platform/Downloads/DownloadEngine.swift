@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T46 — the offline-download engine: a background `URLSession`, up to 3
 /// concurrent transfers, and the catalog of what's been downloaded. Mirrors

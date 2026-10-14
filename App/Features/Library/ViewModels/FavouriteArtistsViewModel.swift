@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Same shape as `FavouriteSongsViewModel`'s own private page struct.
 private struct FavouriteArtistsPage: Sendable {

@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Native port of `NetworkStatusBloc` (`lib/blocs/network/bloc.dart`),
 /// folded together with the app-lifecycle wiring `InternetService`'s

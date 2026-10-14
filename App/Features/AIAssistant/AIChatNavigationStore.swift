@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// T58 — a tiny cross-screen signal, same shape as `SignOutSignal`
 /// (`Core/Security/SignOutSignal.swift`): `@MainActor @Observable`, `Sendable`

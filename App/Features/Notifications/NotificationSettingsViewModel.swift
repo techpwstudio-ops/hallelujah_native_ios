@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import Observation
 
 /// T66 — per-category notification preferences. Ports
 /// `_NotificationSettingsPageState` (`lib/views/notification_settings_page.dart`):

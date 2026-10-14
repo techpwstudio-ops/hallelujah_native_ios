@@ -1,5 +1,6 @@
 import Foundation
 import SocketIO
+import Observation
 
 /// Ports `WebSocketService` (`lib/services/websocket.dart`) — connect with
 /// the existing long-lived access token as a query param, not the separate

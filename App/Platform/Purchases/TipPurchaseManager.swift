@@ -1,5 +1,6 @@
 import Foundation
 import StoreKit
+import Observation
 
 /// Ports the Apple/StoreKit rail of `TipService`/`IAPService.buyConsumable`
 /// (`lib/services/tip_service.dart`, `lib/services/IAPService.dart`) onto

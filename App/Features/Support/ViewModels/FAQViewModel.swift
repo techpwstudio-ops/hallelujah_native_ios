@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// Ports `FaqNotifier` (`lib/river_pods/faqProvider.dart`) behind `FAQView`.
 /// `SupportRepository.fetchFAQs()`'s own doc comment already records why

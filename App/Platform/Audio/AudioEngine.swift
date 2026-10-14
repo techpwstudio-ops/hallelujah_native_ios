@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import Observation
 
 /// T31 — the low-level playback engine: `AVQueuePlayer` wrapping,
 /// `AVAudioSession` lifecycle (category, interruptions, route changes),

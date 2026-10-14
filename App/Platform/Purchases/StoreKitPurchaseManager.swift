@@ -1,5 +1,6 @@
 import Foundation
 import StoreKit
+import Observation
 
 /// Ports the Apple/StoreKit rail of `IAPService`/`PaymentService`
 /// (`lib/services/IAPService.dart`, `lib/services/payment_service.dart`)
