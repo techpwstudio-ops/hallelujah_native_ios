@@ -39,7 +39,8 @@ actor CarPlayArtworkLoader {
             return cached
         }
 
-        guard let image = await ArtworkImageCache.shared.image(for: url, maxPixelSize: Self.maxPixelSize, headers: headers) else {
+        let size = Self.maxPixelSize
+        guard let image = await ArtworkImageCache.shared.image(for: url, maxPixelSize: size, headers: headers) else {
             return nil
         }
         if let diskURL, let data = image.pngData() {

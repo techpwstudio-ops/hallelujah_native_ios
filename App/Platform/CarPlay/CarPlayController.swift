@@ -423,7 +423,8 @@ final class CarPlayController {
     /// shows means building a new button and resubmitting it.
     private func refreshLikeButton(scale: CGFloat = 1.0) {
         let isFavorited = engine.currentSong?.isFavorited ?? false
-        let button = CPNowPlayingImageButton(image: Self.heartImage(filled: isFavorited, scale: scale)) { [weak self] _ in
+        let heart = Self.heartImage(filled: isFavorited, scale: scale)
+        let button = CPNowPlayingImageButton(image: heart) { [weak self] _ in
             MainActor.assumeIsolated { self?.toggleFavouriteFromCarPlay() }
         }
         button.isSelected = isFavorited

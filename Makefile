@@ -4,6 +4,8 @@ XCODEGEN := $(shell command -v xcodegen 2> /dev/null || echo $(HOME)/.local/bin/
 PROJECT := GHallelujah.xcodeproj
 SCHEME := GHallelujah Development
 DESTINATION := platform=iOS Simulator,name=iPhone 17 Pro
+# Extra xcodebuild arguments (CI passes CODE_SIGNING_ALLOWED=NO).
+XCODEBUILD_FLAGS ?=
 
 # Regenerate the Xcode project, then stop — run this first after a clone.
 bootstrap: generate
@@ -32,7 +34,7 @@ test: generate
 	xcodebuild test -project $(PROJECT) -scheme "$(SCHEME)" -destination '$(DESTINATION)' -only-testing:GHallelujahTests
 
 build: generate
-	xcodebuild build -project $(PROJECT) -scheme "$(SCHEME)" -destination '$(DESTINATION)'
+	xcodebuild build -project $(PROJECT) -scheme "$(SCHEME)" -destination '$(DESTINATION)' $(XCODEBUILD_FLAGS)
 
 clean:
 	rm -rf ~/Library/Developer/Xcode/DerivedData/GHallelujah-*

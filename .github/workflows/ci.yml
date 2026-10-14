@@ -22,3 +22,18 @@ jobs:
 
       - name: Test
         run: make test
+
+  # Compile check kept independent of `lint-and-test`: lint runs first there
+  # and fails the job before any Swift is compiled, so a lint failure would
+  # otherwise hide real build errors. Needs the iOS 26 SDK (Liquid Glass and
+  # CarPlay iOS 26 APIs), hence the macOS 26 runner.
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: brew install xcodegen
+
+      - name: Build
+        run: make build XCODEBUILD_FLAGS="CODE_SIGNING_ALLOWED=NO"
