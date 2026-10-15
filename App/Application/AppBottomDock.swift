@@ -374,3 +374,15 @@ private struct DockPreviewContent: View {
         .environment(\.appTheme, .standard)
         .preferredColorScheme(.dark)
 }
+
+/// Trailing space for a tab's scroll content so its last row can be scrolled
+/// clear of the floating ad strip + mini player (the bottom safe-area inset
+/// alone leaves it tucked underneath).
+struct DockClearance: View {
+    @Environment(AppNavigationCoordinator.self) private var coordinator
+    var base: CGFloat = 16
+
+    var body: some View {
+        Color.clear.frame(height: base + (coordinator.isMiniPlayerVisible ? 120 : 0))
+    }
+}

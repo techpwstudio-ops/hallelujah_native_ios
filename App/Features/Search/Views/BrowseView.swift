@@ -38,7 +38,7 @@ struct BrowseView: View {
                     genreGrid
 
                     // `Ios26BottomSpacing(multiply: 3)` over the floating dock.
-                    Color.clear.frame(height: 16)
+                    DockClearance()
                 }
             }
             .scrollDismissesKeyboard(.immediately)

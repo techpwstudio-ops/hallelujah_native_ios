@@ -519,7 +519,7 @@ private struct SearchFilterChip: View {
         Button(action: action) {
             Text(label)
                 .typography(isSelected ? Self.selectedStyle : Self.normalStyle)
-                .foregroundStyle(isSelected ? Color.white : ParityColor.white70)
+                .foregroundStyle(isSelected ? Color.black : ParityColor.white70)
                 .padding(.horizontal, Dimens.spacing16)
                 .frame(maxHeight: .infinity)
                 .glassRounded(Dimens.cornerRadiusMedium, isSelected ? .tinted(.brandPrimary) : .regular, interactive: true)

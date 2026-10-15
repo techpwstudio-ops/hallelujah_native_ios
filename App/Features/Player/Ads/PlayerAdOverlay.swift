@@ -63,6 +63,7 @@ struct PlayerAdOverlay<Content: View>: View {
                 }
                 .animation(.easeInOut(duration: 0.35), value: ad?.impressionToken)
             }
+            .environment(\.adOptionsPresentationChanged) { controller.setOptionsOpen($0) }
             .playerAdSurface(controller, isEnabled: isUncovered)
     }
 

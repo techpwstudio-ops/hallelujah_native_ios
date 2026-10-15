@@ -174,7 +174,7 @@ struct CreatorProfileView: View {
         } label: {
             Text(creator.isFollowing == true ? "Following" : "Follow")
                 .font(.custom(Typography.fontFamily, size: 14).weight(.semibold))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(creator.isFollowing == true ? Color.white : Color.black)
                 .padding(.horizontal, 24)
                 .frame(height: 36)
                 .glassCapsule(creator.isFollowing == true ? .regular : .tinted(.brandPrimary), interactive: true)

@@ -139,7 +139,7 @@ struct HomeView: View {
             }
             Color.clear.frame(height: Dimens.screenPaddingAll * 2)
         }
-        Color.clear.frame(height: HomeMetrics.feedBottomSpacing)
+        DockClearance(base: HomeMetrics.feedBottomSpacing)
     }
 
     /// Nothing laid out yet: the single cold-start spinner, or — once the

@@ -45,6 +45,7 @@ struct PlayerAdStrip: View {
         .frame(maxWidth: .infinity)
         // `AnimatedSize` 250 ms.
         .animation(.easeInOut(duration: 0.25), value: ad?.impressionToken)
+        .environment(\.adOptionsPresentationChanged) { controller.setOptionsOpen($0) }
         .playerAdSurface(controller, isEnabled: isUncovered)
     }
 }

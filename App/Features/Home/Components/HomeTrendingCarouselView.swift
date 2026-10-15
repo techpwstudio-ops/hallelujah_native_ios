@@ -140,7 +140,7 @@ struct HomeTrendingCarouselView: View {
 /// to `Animatable` so a settle animation interpolates `page` itself, frame by
 /// frame, like the PageView's scroll position, instead of cross-fading between
 /// two card assignments.
-private struct HomeTrendingStack<Card: View>: View, Animatable {
+private struct HomeTrendingStack<Card: View>: @MainActor View, @MainActor Animatable {
     var page: Double
     let count: Int
     let spread: CGFloat

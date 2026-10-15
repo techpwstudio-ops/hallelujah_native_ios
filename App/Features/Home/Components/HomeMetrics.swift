@@ -54,12 +54,13 @@ enum HomeMetrics {
     static let listPlaySize: CGFloat = 26
     static let listFavouriteSize: CGFloat = 28
 
+    /// Extra breathing room (24) so the last rail clears the ad strip + mini player.
     /// Bottom spacer under the feed: `Dimens.bottomSpacerHeight` plus
     /// `Ios26BottomSpacing(multiply: 3)` over a 56pt toolbar (the floating
     /// dock overlays the scroll view natively exactly as it does on Flutter).
-    static let feedBottomSpacing: CGFloat = 16
+    static let feedBottomSpacing: CGFloat = 24
     /// `Ios26BottomSpacing(multiply: 3)` on its own (sub-pages).
-    static let pageBottomSpacing: CGFloat = 16
+    static let pageBottomSpacing: CGFloat = 24
 
     /// `HomeCardTitle.lineHeight` (`AppTextStyles.homeCardTitleHeight`).
     static let cardTitleToken = TypographyToken(size: 14, weight: .semibold, lineHeightMultiple: 1.3)

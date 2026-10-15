@@ -29,9 +29,9 @@ enum ParityColor {
     /// `ColorTheme.searchBarColor` — 0xFF333333.
     static let searchBar = Color(red: 51 / 255, green: 51 / 255, blue: 51 / 255)
     /// `ColorTheme.darkGold` — 0xFFB8861B.
-    static let darkGold = Color(red: 184 / 255, green: 134 / 255, blue: 27 / 255)
+    static let darkGold = Color.white
     /// velocity_x `Vx.yellow400` (Material yellow 400) — now-playing accent.
-    static let yellow400 = Color(red: 1.0, green: 238 / 255, blue: 88 / 255)
+    static let yellow400 = Color.white
     /// `ColorTheme.containerBorderColor` — 0x33BBBBBB.
     static let containerBorder = Color(red: 187 / 255, green: 187 / 255, blue: 187 / 255).opacity(0.2)
     /// `ColorTheme.bottomSheetBgColor` — 0xFF111111.
@@ -247,7 +247,7 @@ struct ParityTypeButton: View {
         Button(action: action) {
             Text(title)
                 .typography(Self.label)
-                .foregroundStyle(Color.white)
+                .foregroundStyle(isSelected ? Color.black : Color.white)
                 .padding(.horizontal, Dimens.spacing8)
                 .frame(maxWidth: .infinity, minHeight: 36, maxHeight: 36)
                 .glassRounded(8, isSelected ? .tinted(.brandPrimary) : .regular, interactive: true)
@@ -259,7 +259,7 @@ struct ParityTypeButton: View {
 
 extension ParityColor {
     /// velocity_x `Vx.yellow500` — now-playing title in `BaseMediaListTile`.
-    static let yellow500 = Color(red: 1.0, green: 235 / 255, blue: 59 / 255)
+    static let yellow500 = Color.white
     /// `Colors.white54` / `Colors.white70` / `Colors.white60` (Material alphas).
     static let white54 = Color.white.opacity(0.54)
 }
@@ -317,8 +317,8 @@ struct ParityContinueButton: View {
     var isDisabled = false
     let action: () -> Void
 
-    private static let gold = Color(red: 1.0, green: 0xC8 / 255, blue: 0x57 / 255)
-    private static let goldBorder = Color(red: 1.0, green: 0xE7 / 255, blue: 0xA3 / 255)
+    private static let gold = Color.white
+    private static let goldBorder = Color.white
     private static let label = TypographyToken(size: 14, weight: .semibold, lineHeightMultiple: 1, tracking: 0.1)
 
     var body: some View {

@@ -68,7 +68,7 @@ struct CreatorGridView: View {
             } label: {
                 Text("Done")
                     .typography(Typography.labelLarge)
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.black)
                     .padding(.horizontal, 24)
                     .frame(height: 44)
                     .glassCapsule(.tinted(.brandPrimary), interactive: true)

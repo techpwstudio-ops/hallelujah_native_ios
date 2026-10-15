@@ -383,7 +383,7 @@ private struct StopButtonView: View {
 // `brandPrimary` would make this screen theme-reactive when Dart's isn't.
 // ---------------------------------------------------------------------------
 
-private let voiceGoldColor = Color(voiceHex: 0xB8861B)
+private let voiceGoldColor = Color.white
 
 private extension Color {
     init(voiceHex hex: UInt32) {

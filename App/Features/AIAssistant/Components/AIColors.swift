@@ -21,7 +21,7 @@ enum AIColors {
     /// `ColorTheme.darkFillColor`.
     static let darkFill = rgb(0x282828)
     /// `ColorTheme.darkGold`.
-    static let gold = rgb(0xB8861B)
+    static let gold = rgb(0xFFFFFF)
     /// `ColorTheme.hintColor`.
     static let hint = rgb(0x808080)
     /// `ColorTheme.errorBgColor`.

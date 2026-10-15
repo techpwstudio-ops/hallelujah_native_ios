@@ -31,11 +31,11 @@ struct VerseRowView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("\(verse.verseNumber). \(verse.text)")
                 .font(.custom(Typography.fontFamily, size: Self.fontSize, relativeTo: .body).weight(.light))
-                .lineSpacing(Self.fontSize * 0.5)
+                .lineSpacing(Self.fontSize * 0.35)
                 .foregroundStyle(textColor)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 8)
+                .padding(.vertical, 10)
                 .contextMenu {
                     Button(action: onAskEmet) {
                         Text("Ask Emet")
@@ -63,7 +63,7 @@ struct VerseRowView: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isFocused ? ReadPalette.darkGold.opacity(0.3) : Color.clear)
+                .fill(isFocused ? ReadPalette.darkGold.opacity(0.15) : Color.clear)
         )
         .animation(.easeInOut(duration: 0.5), value: isFocused)
     }

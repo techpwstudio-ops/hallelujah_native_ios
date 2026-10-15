@@ -37,7 +37,7 @@ enum ReadPalette {
     /// `ColorTheme.logoColor` (cursor colour, search highlight tint).
     static var logo: Color { Color(readRGB: 0xB07514) }
     /// `ColorTheme.darkGold` (verse focus highlight).
-    static var darkGold: Color { Color(readRGB: 0xB8861B) }
+    static var darkGold: Color { Color.white }
     /// `ColorTheme.hintColor`.
     static var hint: Color { Color(readRGB: 0x808080) }
     /// `Colors.grey`.

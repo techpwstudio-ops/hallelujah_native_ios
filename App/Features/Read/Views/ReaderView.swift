@@ -57,7 +57,7 @@ struct ReaderView: View {
 
                 ZStack {
                     bodyContent
-                        .padding(.horizontal, Dimens.screenPaddingAll * 2)
+                        .padding(.horizontal, Dimens.spacing20)
 
                     if isSearching && hasSearchPanelContent {
                         searchOverlay
@@ -422,6 +422,8 @@ struct ReaderView: View {
                         .id(verse.verseNumber)
                     }
                 }
+                .padding(.top, 12)
+                .padding(.bottom, 32)
             }
             .mask(
                 LinearGradient(

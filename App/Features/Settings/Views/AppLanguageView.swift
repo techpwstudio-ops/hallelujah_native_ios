@@ -52,7 +52,7 @@ struct AppLanguageView: View {
                 Spacer(minLength: 8)
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22))
-                    .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.35))
+                    .foregroundStyle(isSelected ? Color.black : Color.white.opacity(0.35))
             }
             .padding(Dimens.paddingLarge)
             .frame(maxWidth: .infinity)

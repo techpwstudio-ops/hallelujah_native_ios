@@ -2,7 +2,7 @@
 // Mirrors AppConfig._testDomain / _testProxyDomain from the Flutter app.
 
 APP_ENVIRONMENT = development
-APP_BUNDLE_ID_SUFFIX = .dev
+APP_BUNDLE_ID_SUFFIX =
 APP_DISPLAY_NAME = $(APP_NAME_BASE) Dev
 
 // Hosts are scheme-less; AppConfiguration composes the URL. Empty port = default.

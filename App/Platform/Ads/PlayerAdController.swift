@@ -115,6 +115,7 @@ final class PlayerAdController {
     @ObservationIgnored private var songID: String?
     @ObservationIgnored private var playing = false
     @ObservationIgnored private var heldOff = false
+    @ObservationIgnored private var optionsOpen = false
     /// The surfaces on screen that can draw the ad.
     @ObservationIgnored private var surfaces: Set<UUID> = []
     /// Cached `source.canServe()`, refreshed once per self-driven tick.
@@ -261,6 +262,11 @@ final class PlayerAdController {
         syncTimer()
     }
 
+    /// The ad's ⋮ menu opened or closed. While it is open the ad stays up.
+    func setOptionsOpen(_ open: Bool) {
+        optionsOpen = open
+    }
+
     /// The listener sent the ad away — its ⋮ menu, or a swipe on the cover. The
     /// cover comes back for the gap, and then there is a new ad.
     func dismiss() {
@@ -274,6 +280,9 @@ final class PlayerAdController {
     /// called directly in a test.
     func tick() {
         guard isRunning, canServe else { return }
+        // The listener has the ⋮ menu open on this ad: its clock stands still,
+        // or the ad (and the sheet hosted by its button) would vanish mid-read.
+        if optionsOpen { return }
 
         if retryIn > 0 { retryIn -= 1 }
 

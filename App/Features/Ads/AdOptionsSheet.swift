@@ -1,5 +1,18 @@
 import SwiftUI
 
+private struct AdOptionsPresentationKey: EnvironmentKey {
+    nonisolated(unsafe) static let defaultValue: (Bool) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    /// Called with true when an ad's ⋮ sheet opens and false when it closes, so
+    /// a surface whose ad is on a timer can hold it while the sheet is read.
+    var adOptionsPresentationChanged: (Bool) -> Void {
+        get { self[AdOptionsPresentationKey.self] }
+        set { self[AdOptionsPresentationKey.self] = newValue }
+    }
+}
+
 /// The ⋮ button behind every ad (`AdOptionsButton`,
 /// `lib/widgets/ads/ad_options_button.dart`). `plain` is a bare glyph for an
 /// app bar; `overlay` a translucent disc for a button on the creative itself.
@@ -14,6 +27,7 @@ struct AdOptionsButton: View {
     var overlaySize: CGFloat = 32
 
     @State private var isPresented = false
+    @Environment(\.adOptionsPresentationChanged) private var presentationChanged
 
     var body: some View {
         Button { isPresented = true } label: {
@@ -31,6 +45,8 @@ struct AdOptionsButton: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Ad options")
         .adOptionsSheet(isPresented: $isPresented, ad: ad, onDismissAd: onDismissAd)
+        .onChange(of: isPresented) { _, open in presentationChanged(open) }
+        .onDisappear { if isPresented { presentationChanged(false) } }
     }
 }
 

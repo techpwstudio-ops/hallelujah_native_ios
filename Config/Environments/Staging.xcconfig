@@ -2,7 +2,7 @@
 // Mirrors AppConfig.isDev == true from the Flutter app.
 
 APP_ENVIRONMENT = staging
-APP_BUNDLE_ID_SUFFIX = .staging
+APP_BUNDLE_ID_SUFFIX =
 APP_DISPLAY_NAME = $(APP_NAME_BASE) QA
 
 API_SCHEME = https

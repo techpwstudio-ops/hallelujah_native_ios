@@ -197,7 +197,7 @@ struct HomeSongTypeBar: View {
         } label: {
             Text(item.name)
                 .font(.custom(Typography.fontFamily, size: 14, relativeTo: .body).weight(.medium))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(isSelected ? Color.black : Color.white)
                 .padding(.horizontal, Dimens.spacing8)
                 .frame(maxWidth: .infinity, minHeight: 35, maxHeight: 35)
                 .frame(minWidth: 90)

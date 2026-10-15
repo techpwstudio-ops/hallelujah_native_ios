@@ -58,9 +58,7 @@ private struct ParityNavTitle<TitleContent: View>: ViewModifier {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: leading ? .topBarLeading : .principal) {
-                    titleContent
-                }
+                ParityTitleToolbar(leading: leading, titleContent: titleContent)
             }
     }
 }
@@ -372,7 +370,7 @@ struct ParityTextField: View {
                     .lineLimit(lineLimit)
                     .font(AccountParity.bodyLarge)
                     .foregroundStyle(enabled ? AccountParity.white : Color.white.opacity(0.38))
-                    .tint(Color.yellow)
+                    .tint(Color.white)
                     .keyboardType(keyboard)
                     .textContentType(contentType)
                     .textInputAutocapitalization(capitalization)
@@ -581,5 +579,28 @@ private struct ParitySheetButtonSurface: ViewModifier {
                 RoundedRectangle(cornerRadius: radius, style: .continuous).fill(fillColor)
             )
         }
+    }
+}
+
+
+/// Title toolbar item that is never truncated ("L…") and, on iOS 26, drops the
+/// glass capsule the system would otherwise wrap around a leading title.
+private struct ParityTitleToolbar<TitleContent: View>: ToolbarContent {
+    let leading: Bool
+    let titleContent: TitleContent
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: leading ? .topBarLeading : .principal) { title }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: leading ? .topBarLeading : .principal) { title }
+        }
+    }
+
+    private var title: some View {
+        titleContent
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
     }
 }

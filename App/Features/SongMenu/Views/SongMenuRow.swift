@@ -32,7 +32,7 @@ struct SongMenuRow<Trailing: View>: View {
 
     private static var iconSize: CGFloat { 20 }
     /// `titleMedium` w500 (`SheetMenuItem`).
-    private static let titleToken = TypographyToken(size: 16, weight: .medium, lineHeightMultiple: 1.4)
+    private static var titleToken: TypographyToken { TypographyToken(size: 16, weight: .medium, lineHeightMultiple: 1.4) }
 }
 
 extension SongMenuRow where Trailing == EmptyView {
