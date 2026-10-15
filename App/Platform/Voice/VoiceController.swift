@@ -119,7 +119,7 @@ final class VoiceController {
     private var frameWatchdogTask: Task<Void, Never>?
     private var interruptionRetryTask: Task<Void, Never>?
 
-    private var lifecycleObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var lifecycleObserver: NSObjectProtocol?
 
     // MARK: - Init
 

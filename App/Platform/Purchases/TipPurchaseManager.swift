@@ -78,7 +78,7 @@ final class TipPurchaseManager {
 
     private var pendingOrderID: String?
     private var pendingProductID: String?
-    private var updatesTask: Task<Void, Never>?
+    nonisolated(unsafe) private var updatesTask: Task<Void, Never>?
 
     init(tipRepository: any TipRepository) {
         self.tipRepository = tipRepository
@@ -125,7 +125,7 @@ final class TipPurchaseManager {
         switch result {
         case let .success(verification):
             let transaction = try checkVerified(verification)
-            try await finalize(transaction: transaction, orderId: order.orderId)
+            try await finalize(transaction: transaction, jws: verification.jwsRepresentation, orderId: order.orderId)
             status = .completed
             return true
         case .userCancelled, .pending:
@@ -145,7 +145,7 @@ final class TipPurchaseManager {
 
         status = .purchasing
         do {
-            try await finalize(transaction: transaction, orderId: orderID)
+            try await finalize(transaction: transaction, jws: result.jwsRepresentation, orderId: orderID)
             status = .completed
         } catch {
             status = .idle
@@ -154,11 +154,11 @@ final class TipPurchaseManager {
         }
     }
 
-    private func finalize(transaction: Transaction, orderId: String) async throws {
+    private func finalize(transaction: Transaction, jws: String, orderId: String) async throws {
         do {
             try await tipRepository.verifyTip(
                 orderId: orderId,
-                receiptData: transaction.jwsRepresentation,
+                receiptData: jws,
                 productId: transaction.productID
             )
             await transaction.finish()

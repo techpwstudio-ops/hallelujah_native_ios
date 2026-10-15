@@ -99,14 +99,14 @@ final class AudioEngine {
     private static let residentWindowAhead = 2
 
     private var wasPlayingBeforeInterruption = false
-    private var keepAliveTask: Task<Void, Never>?
+    nonisolated(unsafe) private var keepAliveTask: Task<Void, Never>?
 
-    private var interruptionObserver: NSObjectProtocol?
-    private var routeChangeObserver: NSObjectProtocol?
-    private var itemFailureObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var interruptionObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var routeChangeObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var itemFailureObserver: NSObjectProtocol?
     private var currentItemObservation: NSKeyValueObservation?
     private var timeControlStatusObservation: NSKeyValueObservation?
-    private var timeObserverToken: Any?
+    nonisolated(unsafe) private var timeObserverToken: Any?
 
     init(
         proxyBaseURL: URL,
@@ -541,7 +541,7 @@ final class AudioEngine {
         var options: [String: Any] = [:]
         if resolved.requiresAuthHeader {
             let token = await tokenProvider.currentAccessToken() ?? ""
-            options[AVURLAssetHTTPHeaderFieldsKey] = [
+            options["AVURLAssetHTTPHeaderFieldsKey"] = [
                 "Content-Type": "application/json",
                 "Authorization": "Bearer \(token)",
             ]

@@ -96,6 +96,13 @@ struct HomeView: View {
             }
         }
         .coordinateSpace(name: Self.scrollSpace)
+        // Opaque cover for the status-bar area, so the feed doesn't scroll
+        // visibly behind the clock / Dynamic Island above the pinned bar.
+        .overlay(alignment: .top) {
+            Color.clear
+                .frame(height: 0)
+                .background(HomeColors.background.ignoresSafeArea(edges: .top))
+        }
         .background(HomeColors.background.ignoresSafeArea())
         .refreshable {
             // A new feed session: rail ads are forgotten (`RailAdStore.reset`).

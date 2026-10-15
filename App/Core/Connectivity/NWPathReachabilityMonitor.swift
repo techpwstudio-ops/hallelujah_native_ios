@@ -25,7 +25,7 @@ import Network
 /// existing, already-verified API surface elsewhere in this codebase.
 @MainActor
 final class NWPathReachabilityMonitor: ReachabilityMonitoring {
-    private static let probeTimeout: TimeInterval = 3
+    private nonisolated static let probeTimeout: TimeInterval = 3
 
     private let configuration: AppConfiguration
     private let monitorQueue = DispatchQueue(label: "today.hallelujah.reachability")

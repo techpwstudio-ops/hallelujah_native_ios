@@ -36,6 +36,8 @@ private struct FAQDTO: Decodable {
     let question: String
     let answer: String
 
+    private enum CodingKeys: String, CodingKey { case id, question, answer }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = (try? container.decode(String.self, forKey: .id)) ?? ""

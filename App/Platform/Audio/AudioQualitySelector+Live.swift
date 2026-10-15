@@ -6,7 +6,7 @@ extension AudioQualitySelector {
     /// `keyValueStore`), so call sites that need an effective quality — the
     /// player's download button, the song menu — build one on demand instead
     /// of sharing an instance.
-    static func live(keyValueStore: any KeyValueStoring) -> AudioQualitySelector {
+    @MainActor static func live(keyValueStore: any KeyValueStoring) -> AudioQualitySelector {
         AudioQualitySelector(
             keyValueStore: keyValueStore,
             batteryMonitor: UIDeviceBatteryLevelMonitor(),

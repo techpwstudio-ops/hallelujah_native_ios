@@ -3,6 +3,7 @@ import Foundation
 /// `AppErrorParser.parse` (`lib/utils/app_error_parser.dart`): maps low-level
 /// failures to the user-facing strings the AI screens toast. An empty string
 /// means a silently cancelled request (callers skip the toast).
+@MainActor
 enum AIErrorParser {
     static let genericMessage = "Something went wrong. Please try again."
 

@@ -89,6 +89,7 @@ final class AVEngineVoiceMicCapture: VoiceMicCapture {
     /// The in-flight `start()`, so `stop()` can wait for it instead of
     /// racing it.
     private var startTask: Task<Void, Error>?
+    private var startTaskID: UUID?
     /// Set by `stop()` while a `start()` is still in flight. `start()`
     /// checks it after every await and unwinds rather than leaving the
     /// engine running behind a caller that already believes the
@@ -115,8 +116,10 @@ final class AVEngineVoiceMicCapture: VoiceMicCapture {
 
         stopRequested = false
         let task = Task { try await self.performStart() }
+        let taskID = UUID()
         startTask = task
-        defer { if startTask === task { startTask = nil } }
+        startTaskID = taskID
+        defer { if startTaskID == taskID { startTask = nil; startTaskID = nil } }
         try await task.value
     }
 

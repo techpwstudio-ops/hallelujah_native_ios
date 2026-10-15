@@ -48,7 +48,7 @@ final class SocialAuthViewModel {
             state = .error(message: "Authentication with google failed, please try another method")
         } catch {
             logger.warning("google sign-in failed: \(error)")
-            state = .error(message: "Unexpected error occur")
+            state = .error(message: "Google sign-in did not complete. Please try again.")
         }
     }
 
@@ -63,7 +63,7 @@ final class SocialAuthViewModel {
             state = .error(message: "Apple sign-in failed. Please try again.")
         } catch {
             logger.warning("apple sign-in failed: \(error)")
-            state = .error(message: "Unexpected error from Apple")
+            state = .error(message: "Apple sign-in did not complete. Please try again.")
         }
     }
 
@@ -79,7 +79,7 @@ final class SocialAuthViewModel {
             state = .error(message: error.message)
         } catch {
             logger.warning("social auth verify failed: \(error)")
-            state = .error(message: "Internet error, please check your internet")
+            state = .error(message: UserFacingError.message(for: error))
         }
     }
 }

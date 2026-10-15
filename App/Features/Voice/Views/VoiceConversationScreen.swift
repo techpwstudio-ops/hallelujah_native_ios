@@ -76,14 +76,12 @@ struct VoiceConversationScreen: View {
         VoiceOverlayView(
             phase: voice.state.phase,
             audioLevel: voice.state.level,
-            transcript: voice.state.partialTranscript.isEmpty
-                ? voice.state.transcript
-                : voice.state.partialTranscript,
+            transcript: transcriptText,
             replyPreview: voice.state.replyText,
             notice: notice,
             onStop: closeNow,
             onClose: closeNow,
-            onTapOrb: voice.state.phase == .speaking ? voice.interrupt : nil
+            onTapOrb: orbTapAction
         )
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
@@ -102,6 +100,16 @@ struct VoiceConversationScreen: View {
                 closeWithNotice(voice.state.error?.message ?? voice.state.notice)
             }
         }
+    }
+
+    private var transcriptText: String {
+        let partial = voice.state.partialTranscript
+        return partial.isEmpty ? voice.state.transcript : partial
+    }
+
+    private var orbTapAction: (() -> Void)? {
+        guard voice.state.phase == .speaking else { return nil }
+        return { voice.interrupt() }
     }
 
     /// Ports `_notice(state)`.

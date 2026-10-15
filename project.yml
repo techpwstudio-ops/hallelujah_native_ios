@@ -59,8 +59,22 @@ targets:
     # its own, so CODE_SIGN_ENTITLEMENTS was never set and the associated
     # domains in it did nothing. No `properties:` sub-key here — the file's
     # contents are hand-authored, not XcodeGen-generated.
+    # `properties:` is REQUIRED: with only `path:`, every `xcodegen generate`
+    # rewrites the file as an empty <dict/>, silently dropping CarPlay, Siri,
+    # push, Sign in with Apple and associated domains.
     entitlements:
       path: App/Resources/GHallelujah.entitlements
+      properties:
+        com.apple.developer.carplay-audio: true
+        com.apple.developer.siri: true
+        aps-environment: development
+        com.apple.developer.applesignin: [Default]
+        com.apple.developer.associated-domains:
+          - applinks:hallelujah.today
+          - applinks:qa.hallelujah.today
+          - applinks:qa.link.hallelujah.today
+          - applinks:link.hallelujah.today
+        com.apple.developer.devicecheck.appattest-environment: production
     configFiles:
       Debug: Config/Shared/App.xcconfig
       Staging: Config/Shared/App.xcconfig

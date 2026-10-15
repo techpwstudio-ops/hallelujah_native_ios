@@ -80,7 +80,7 @@ final class StoreKitPurchaseManager {
 
     private var pendingOrderID: String?
     private var pendingProductID: String?
-    private var updatesTask: Task<Void, Never>?
+    nonisolated(unsafe) private var updatesTask: Task<Void, Never>?
 
     private static let orderIDKey = "storeKitPendingOrderID"
     private static let productIDKey = "storeKitPendingProductID"
@@ -136,7 +136,7 @@ final class StoreKitPurchaseManager {
         switch result {
         case let .success(verification):
             let transaction = try checkVerified(verification)
-            let membership = try await finalizePurchase(transaction: transaction, orderId: order.orderId)
+            let membership = try await finalizePurchase(transaction: transaction, jws: verification.jwsRepresentation, orderId: order.orderId)
             status = .purchased
             return membership
         case .userCancelled, .pending:
@@ -167,7 +167,7 @@ final class StoreKitPurchaseManager {
 
         for await result in Transaction.currentEntitlements {
             guard let transaction = try? checkVerified(result), transaction.productID == productID else { continue }
-            let membership = try await finalizePurchase(transaction: transaction, orderId: orderID)
+            let membership = try await finalizePurchase(transaction: transaction, jws: result.jwsRepresentation, orderId: orderID)
             status = .purchased
             return membership
         }
@@ -188,7 +188,7 @@ final class StoreKitPurchaseManager {
 
         status = .purchasing
         do {
-            _ = try await finalizePurchase(transaction: transaction, orderId: orderID)
+            _ = try await finalizePurchase(transaction: transaction, jws: result.jwsRepresentation, orderId: orderID)
             status = .purchased
         } catch {
             status = .idle
@@ -197,11 +197,11 @@ final class StoreKitPurchaseManager {
         }
     }
 
-    private func finalizePurchase(transaction: Transaction, orderId: String) async throws -> Membership? {
+    private func finalizePurchase(transaction: Transaction, jws: String, orderId: String) async throws -> Membership? {
         do {
             let membership = try await subscriptionRepository.verifyPurchase(
                 orderId: orderId,
-                receiptData: transaction.jwsRepresentation
+                receiptData: jws
             )
             await transaction.finish()
             if let membership {

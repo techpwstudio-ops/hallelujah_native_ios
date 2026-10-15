@@ -91,6 +91,10 @@ final class AppNavigationCoordinator {
         presentedFullScreen = .aiAudioConversation(conversationID: conversationID)
     }
 
+    func setPlayerPath(_ path: [PlayerRoute]) {
+        playerPath = path
+    }
+
     func pushInPlayer(_ route: PlayerRoute) {
         playerPath.append(route)
     }

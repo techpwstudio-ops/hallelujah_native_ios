@@ -76,7 +76,7 @@ final class EmailAuthViewModel {
             state = .error(message: error.message, code: error.code)
         } catch {
             logger.warning("send email OTP failed: \(error)")
-            state = .error(message: error.localizedDescription, code: nil)
+            state = .error(message: UserFacingError.message(for: error), code: nil)
         }
     }
 
@@ -103,7 +103,7 @@ final class EmailAuthViewModel {
             state = .error(message: error.message, code: error.code)
         } catch {
             logger.warning("verify email OTP failed: \(error)")
-            state = .error(message: error.localizedDescription, code: nil)
+            state = .error(message: UserFacingError.message(for: error), code: nil)
         }
     }
 }

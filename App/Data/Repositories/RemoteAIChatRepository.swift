@@ -18,7 +18,7 @@ final class RemoteAIChatRepository: AIChatRepository {
 
     func getConversations(cursor: String?, page: Int) async throws -> Paginated<AIConversation> {
         let response = try await client.send(.aiConversations(cursor: cursor, page: page))
-        guard response.statusCode == 200 else {
+        guard (200...299).contains(response.statusCode) else {
             throw AIChatRepositoryError.unexpectedStatus(response.statusCode)
         }
         let decoded = try JSONDecoder().decode(AIConversationsResponseDTO.self, from: response.data)
@@ -29,7 +29,7 @@ final class RemoteAIChatRepository: AIChatRepository {
         let payload: [String: String] = title.map { ["title": $0] } ?? [:]
         let body = try JSONEncoder().encode(payload)
         let response = try await client.send(.createAIConversation, body: body)
-        guard response.statusCode == 200 else {
+        guard (200...299).contains(response.statusCode) else {
             throw AIChatRepositoryError.unexpectedStatus(response.statusCode)
         }
         let decoded = try JSONDecoder().decode(AIConversationResponseDTO.self, from: response.data)
@@ -47,7 +47,7 @@ final class RemoteAIChatRepository: AIChatRepository {
 
     func getMessages(conversationID: String, cursor: String?) async throws -> Paginated<AIMessage> {
         let response = try await client.send(.aiMessages(conversationID: conversationID, cursor: cursor))
-        guard response.statusCode == 200 else {
+        guard (200...299).contains(response.statusCode) else {
             throw AIChatRepositoryError.unexpectedStatus(response.statusCode)
         }
         let decoded = try JSONDecoder().decode(AIMessagesResponseDTO.self, from: response.data)
@@ -57,7 +57,7 @@ final class RemoteAIChatRepository: AIChatRepository {
     func sendMessage(conversationID: String, payload: AISendPayload) async throws -> (userMessage: AIMessage, aiMessage: AIMessage) {
         let body = try JSONEncoder().encode(AISendMessageRequestDTO(payload: payload))
         let response = try await client.send(.sendAIMessage(conversationID: conversationID), body: body)
-        guard response.statusCode == 200 else {
+        guard (200...299).contains(response.statusCode) else {
             throw AIChatRepositoryError.unexpectedStatus(response.statusCode)
         }
         let decoded = try JSONDecoder().decode(AISendMessageResponseDTO.self, from: response.data)
@@ -66,7 +66,7 @@ final class RemoteAIChatRepository: AIChatRepository {
 
     func getSuggestions() async throws -> [AISuggestion] {
         let response = try await client.send(.aiSuggestions)
-        guard response.statusCode == 200 else {
+        guard (200...299).contains(response.statusCode) else {
             throw AIChatRepositoryError.unexpectedStatus(response.statusCode)
         }
         let decoded = try JSONDecoder().decode(AISuggestionsResponseDTO.self, from: response.data)

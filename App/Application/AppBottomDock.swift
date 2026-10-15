@@ -203,7 +203,7 @@ struct MiniPlayerDockView: View {
         // build, same "flag on first real build" posture `GlassSurface`'s
         // own Q1 doc comment already established for its iOS 26 Glass API
         // surface.
-        .matchedTransitionSource(id: Self.transitionID, in: namespace)
+        .playerZoomSource(id: Self.transitionID, in: namespace)
     }
 
     private var isEpisode: Bool { song?.isEpisode ?? false }

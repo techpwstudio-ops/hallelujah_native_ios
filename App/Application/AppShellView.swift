@@ -41,6 +41,9 @@ struct AppShellView: View {
                                 AppRouteDestinationView(route: route)
                             }
                     }
+                    // Must sit on each tab's content: on iOS 18/26 hiding it on
+                    // the TabView alone leaves the system bar under the dock.
+                    .toolbar(.hidden, for: .tabBar)
                     .tabItem {
                         Label {
                             Text(tab.titleKey)
@@ -118,7 +121,9 @@ private struct TabRootView: View {
             .navigationTitle(Text(tab.titleKey))
             .navigationBarTitleDisplayMode(.inline)
             // Home draws its own profile header; Flutter has no app bar there.
-            .toolbar(tab == .home ? .hidden : .automatic, for: .navigationBar)
+            // Emet draws its own "Emet" header row too — a second system title
+            // above it duplicated the name.
+            .toolbar(tab == .home || tab == .aiAssistant ? .hidden : .automatic, for: .navigationBar)
     }
 
     @ViewBuilder
@@ -129,7 +134,11 @@ private struct TabRootView: View {
         case .search:
             BrowseView()
         case .aiAssistant:
+            // Keeps the input bar and suggestions above the floating dock.
             AIChatHomeView()
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    Color.clear.frame(height: Spacing.tabBarHeight + Spacing.dockBottomInset + Spacing.sm)
+                }
         case .library:
             LibraryHomeView()
         case .read:
@@ -310,7 +319,7 @@ private struct FullScreenDestinationView: View {
         switch destination {
         case .player:
             FullPlayerView()
-                .navigationTransition(.zoom(sourceID: MiniPlayerDockView.transitionID, in: playerTransitionNamespace))
+                .playerZoomTransition(sourceID: MiniPlayerDockView.transitionID, in: playerTransitionNamespace)
         case let .aiAudioConversation(conversationID):
             VoiceConversationScreen(conversationID: conversationID)
         case .aiVoiceOverlay:
@@ -327,7 +336,7 @@ private struct FullScreenDestinationView: View {
         guard destination == .player else { return .constant([]) }
         return Binding(
             get: { coordinator.playerPath },
-            set: { coordinator.playerPath = $0 }
+            set: { coordinator.setPlayerPath($0) }
         )
     }
 }

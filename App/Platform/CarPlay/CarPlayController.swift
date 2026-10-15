@@ -432,7 +432,7 @@ final class CarPlayController {
             completion()
             MainActor.assumeIsolated {
                 guard let self, rows.indices.contains(index) else { return }
-                activate(rows[index], in: rail.group)
+                self.activate(rows[index], in: rail.group)
             }
         }
         item.handler = { [weak self] _, completion in

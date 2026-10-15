@@ -15,6 +15,9 @@ final class SongMetaSectionsViewModel {
     private(set) var song: Song?
     private(set) var related: RelatedContent = .empty
     private(set) var isLoadingRelated = false
+    /// True while the detail for the current track is in flight, so the view
+    /// can hold the creator card's space instead of collapsing and popping in.
+    private(set) var isLoadingSong = false
     /// creatorId -> optimistic follow state, overriding what the payload said.
     private(set) var followOverrides: [String: Bool] = [:]
 
@@ -31,6 +34,7 @@ final class SongMetaSectionsViewModel {
     /// Re-run on every song change, so the rail tracks the current track.
     func load(songId: String, excludeId: String?) async {
         song = nil
+        isLoadingSong = true
         followOverrides = [:]
         if let cached = relatedService.cached(for: songId, excludeId: excludeId) {
             related = cached
@@ -45,6 +49,7 @@ final class SongMetaSectionsViewModel {
         song = loadedSong
         related = loadedRelated
         isLoadingRelated = false
+        isLoadingSong = false
     }
 
     var mainCreatorID: String? { song.flatMap(SongMenuViewModel.artistID(of:)) }
@@ -106,10 +111,20 @@ struct SongMetaSections: View {
                 creatorCard(song).padding(.vertical, 16)
                 creditsCard
                 Spacer().frame(height: Dimens.spacing16)
+            } else if viewModel.isLoadingSong {
+                // Same footprint as the creator card, so swiping to the next
+                // track doesn't make everything below jump when it arrives.
+                RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .circular)
+                    .fill(Color.white.opacity(0.06))
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                Spacer().frame(height: Dimens.spacing16)
             }
             if let middle { middle }
             relatedRail
         }
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isLoadingSong)
         .task(id: Trigger(songId: songId, excludeId: excludeId)) {
             await viewModel.load(songId: songId, excludeId: excludeId)
         }

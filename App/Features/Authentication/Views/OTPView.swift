@@ -137,14 +137,7 @@ struct OTPView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    isBackConfirmationPresented = true
-                } label: {
-                    theme.icon(.back)
-                        .foregroundStyle(.white)
-                }
-            }
+            AppBackToolbarItem { isBackConfirmationPresented = true }
         }
         .onAppear { countdown.start() }
         .onDisappear { countdown.stop() }

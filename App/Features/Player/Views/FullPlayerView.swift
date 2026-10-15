@@ -45,6 +45,14 @@ struct FullPlayerView: View {
             && !isSleepTimerSheetPresented && menuSong == nil
     }
 
+    @ViewBuilder
+    private var moreButton: some View {
+        if song != nil {
+            // `Icons.more_vert`.
+            AppToolbarCircleButton(systemName: "ellipsis", label: "More", rotation: .degrees(90)) { menuSong = song }
+        }
+    }
+
     private var subtitle: String {
         [song?.primaryArtists, song?.featuredArtists]
             .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
@@ -145,6 +153,11 @@ struct FullPlayerView: View {
                 .padding(.horizontal, PlayerStyle.pageSidePadding)
                 .padding(.bottom, 8)
             }
+            // Pin the content to the scroll view's width. Something inside
+            // (the paging artwork) proposed a wider ideal width, which pushed
+            // the whole column ~24pt past the screen and swallowed the 20pt
+            // side padding.
+            .containerRelativeFrame(.horizontal)
         }
         .scrollBounceBehavior(.always)
         .background(PlayerStyle.black.ignoresSafeArea())
@@ -153,32 +166,15 @@ struct FullPlayerView: View {
             AdCompanionBanner(pacing: adPacing)
         }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { coordinator.dismissFullScreen() } label: {
-                    theme.icon(.back)
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(PlayerStyle.white)
-                        .frame(width: 44, height: 44, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityLabel("Back")
-            }
+            AppBackToolbarItem { coordinator.dismissFullScreen() }
             ToolbarItem(placement: .principal) {
                 PlayingFromTitle(queueController: queueController, song: song)
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                if song != nil {
-                    Button { menuSong = song } label: {
-                        // `Icons.more_vert`.
-                        Image(systemName: "ellipsis")
-                            .rotationEffect(.degrees(90))
-                            .font(.system(size: 22))
-                            .foregroundStyle(PlayerStyle.white)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("More")
-                }
+            if #available(iOS 26.0, *) {
+                ToolbarItem(placement: .topBarTrailing) { moreButton }
+                    .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .topBarTrailing) { moreButton }
             }
         }
         .navigationBarTitleDisplayMode(.inline)

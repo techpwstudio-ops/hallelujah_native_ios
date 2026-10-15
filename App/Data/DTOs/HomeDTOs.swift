@@ -243,3 +243,12 @@ extension HomeFeedResponseDTO {
         )
     }
 }
+
+private func sanitized(_ value: String?) -> String? {
+    guard let value else { return nil }
+    let trimmed = value.trimmingCharacters(in: .whitespaces)
+    if trimmed.isEmpty { return nil }
+    let lower = trimmed.lowercased()
+    if lower == "null" || lower == "undefined" { return nil }
+    return trimmed
+}

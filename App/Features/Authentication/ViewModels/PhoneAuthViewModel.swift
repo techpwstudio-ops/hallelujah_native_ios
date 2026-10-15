@@ -84,7 +84,7 @@ final class PhoneAuthViewModel {
             state = .error(message: error.message, code: error.code, fallbackChannel: error.fallbackChannel)
         } catch {
             logger.warning("send OTP failed: \(error)")
-            state = .error(message: error.localizedDescription, code: nil, fallbackChannel: nil)
+            state = .error(message: UserFacingError.message(for: error), code: nil, fallbackChannel: nil)
         }
     }
 
@@ -113,7 +113,7 @@ final class PhoneAuthViewModel {
             state = .error(message: error.message, code: error.code, fallbackChannel: error.fallbackChannel)
         } catch {
             logger.warning("verify OTP failed: \(error)")
-            state = .error(message: error.localizedDescription, code: nil, fallbackChannel: nil)
+            state = .error(message: UserFacingError.message(for: error), code: nil, fallbackChannel: nil)
         }
     }
 }

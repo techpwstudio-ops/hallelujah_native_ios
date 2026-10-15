@@ -98,9 +98,16 @@ final class NowPlayingCoordinator {
             guard let self, let image = await self.resolveArtworkImage(for: song) else { return }
             guard self.engine.currentSong?.id == publishedSongID else { return }
             var updated = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-            updated[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            updated[MPMediaItemPropertyArtwork] = Self.makeArtwork(image)
             MPNowPlayingInfoCenter.default().nowPlayingInfo = updated
         }
+    }
+
+    /// Built in a nonisolated context: MediaPlayer invokes the request handler
+    /// on its own queue, and a closure formed in a main-actor method traps the
+    /// runtime isolation check there.
+    private nonisolated static func makeArtwork(_ image: UIImage) -> MPMediaItemArtwork {
+        MPMediaItemArtwork(boundsSize: image.size) { _ in image }
     }
 
     /// `artUri`/`artHeaders` (`audio_service.dart:638-645`): a proxy URL

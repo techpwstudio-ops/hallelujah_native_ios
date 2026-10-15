@@ -138,7 +138,8 @@ final class VoiceAudioSessionOwner {
             object: session,
             queue: nil
         ) { [weak self] notification in
-            Task { @MainActor in self?.handleInterruption(notification) }
+            let typeValue = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            Task { @MainActor in self?.handleInterruption(typeValue: typeValue) }
         }
 
         routeChangeObserver = NotificationCenter.default.addObserver(
@@ -146,7 +147,8 @@ final class VoiceAudioSessionOwner {
             object: session,
             queue: nil
         ) { [weak self] notification in
-            Task { @MainActor in self?.handleRouteChange(notification) }
+            let reasonValue = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
+            Task { @MainActor in self?.handleRouteChange(reasonValue: reasonValue) }
         }
     }
 
@@ -161,10 +163,9 @@ final class VoiceAudioSessionOwner {
         }
     }
 
-    private func handleInterruption(_ notification: Notification) {
+    private func handleInterruption(typeValue: UInt?) {
         guard
-            let info = notification.userInfo,
-            let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+            let typeValue,
             let type = AVAudioSession.InterruptionType(rawValue: typeValue)
         else { return }
 
@@ -178,10 +179,9 @@ final class VoiceAudioSessionOwner {
         }
     }
 
-    private func handleRouteChange(_ notification: Notification) {
+    private func handleRouteChange(reasonValue: UInt?) {
         guard
-            let info = notification.userInfo,
-            let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
+            let reasonValue,
             let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue)
         else { return }
 

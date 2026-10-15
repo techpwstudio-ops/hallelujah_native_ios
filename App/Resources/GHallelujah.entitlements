@@ -2,18 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- T48 — CarPlay scene setup. Key/value copied verbatim from
-	     ios/Runner/Runner.entitlements. Provisioning-profile approval for
-	     this entitlement is an infra concern outside this task's scope. -->
-	<key>com.apple.developer.carplay-audio</key>
-	<true/>
-	<!-- Siri voice play ("play <song> in Hallelujah"); pairs with the
-	     SiriIntentsExtension target and NSUserActivityTypes in Info.plist. -->
-	<key>com.apple.developer.siri</key>
-	<true/>
-	<!-- Same keys as ios/Runner/Runner.entitlements: push, Sign in with Apple,
-	     universal links, App Attest (Firebase App Check). Xcode rewrites
-	     aps-environment to production for distribution builds. -->
 	<key>aps-environment</key>
 	<string>development</string>
 	<key>com.apple.developer.applesignin</key>
@@ -27,7 +15,11 @@
 		<string>applinks:qa.link.hallelujah.today</string>
 		<string>applinks:link.hallelujah.today</string>
 	</array>
+	<key>com.apple.developer.carplay-audio</key>
+	<true/>
 	<key>com.apple.developer.devicecheck.appattest-environment</key>
 	<string>production</string>
+	<key>com.apple.developer.siri</key>
+	<true/>
 </dict>
 </plist>

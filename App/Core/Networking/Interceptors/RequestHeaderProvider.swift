@@ -37,10 +37,7 @@ final class AppCheckTokenCache: @unchecked Sendable {
         guard let activeSource else { return storedToken() }
 
         if let fetched = await activeSource.currentToken(), !fetched.isEmpty {
-            lock.lock()
-            token = fetched
-            cachedAt = now
-            lock.unlock()
+            store(token: fetched, at: now)
             return fetched
         }
         return storedToken()
@@ -61,6 +58,13 @@ final class AppCheckTokenCache: @unchecked Sendable {
             return (source, token)
         }
         return (source, nil)
+    }
+
+    private func store(token fetched: String, at now: Date) {
+        lock.lock()
+        defer { lock.unlock() }
+        token = fetched
+        cachedAt = now
     }
 
     private func storedToken() -> String? {

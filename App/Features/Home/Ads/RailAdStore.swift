@@ -137,7 +137,8 @@ final class RailAdStore {
         entry.ad = nil
 
         let task = Task { [weak self] in
-            await self?.fetch(slotId, entry)
+            guard let self else { return }
+            await self.fetch(slotId, entry)
         }
         entry.inFlight = task
         await task.value

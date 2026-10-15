@@ -12,6 +12,32 @@ struct BibleChapterResponseDTO: Decodable {
     let verses: [BibleVerseDTO]
     let notes: [VerseNoteDTO]?
     let highlights: [VerseHighlightDTO]?
+
+    private enum CodingKeys: String, CodingKey {
+        case message, chapterNumber, languageName, bookNumber, verses, notes, highlights
+    }
+
+    /// The server echoes `chapterNumber`/`bookNumber` straight from the query
+    /// string, so they can arrive as `"1"` instead of `1` — accept both.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        message = try c.decode(String.self, forKey: .message)
+        chapterNumber = try Self.lenientInt(c, .chapterNumber)
+        languageName = try c.decode(String.self, forKey: .languageName)
+        bookNumber = try Self.lenientInt(c, .bookNumber)
+        verses = try c.decode([BibleVerseDTO].self, forKey: .verses)
+        notes = try c.decodeIfPresent([VerseNoteDTO].self, forKey: .notes)
+        highlights = try c.decodeIfPresent([VerseHighlightDTO].self, forKey: .highlights)
+    }
+
+    private static func lenientInt(_ c: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) throws -> Int {
+        if let n = try? c.decode(Int.self, forKey: key) { return n }
+        let str = try c.decode(String.self, forKey: key)
+        guard let n = Int(str.trimmingCharacters(in: .whitespaces)) else {
+            throw DecodingError.dataCorruptedError(forKey: key, in: c, debugDescription: "Not an integer: \(str)")
+        }
+        return n
+    }
 }
 
 /// The wire's per-verse row carries no `bookNumber`/`languageName` of its

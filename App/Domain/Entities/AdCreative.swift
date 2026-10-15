@@ -14,7 +14,7 @@ import Foundation
 /// `assetVariantUrls` is NOT modeled — grepped the whole ad break screen
 /// surface (`ad_break_screen.dart`) for it: zero reads. It's a home-feed-only
 /// field this task's player-only scope has no consumer for.
-struct AdCreative {
+struct AdCreative: Sendable {
     let adId: String
     let campaignId: String
     let placement: String
@@ -95,7 +95,7 @@ struct AdCreative {
 /// `creator`, `playlist`, `userPlaylist`, `companyPlaylist`, `verseOfDay`)
 /// for in-app content, `subscription` for the paywall, or `external` — see
 /// `openAdAction(_:coordinator:)` for the fallback rule on anything else.
-struct AdAction {
+struct AdAction: @unchecked Sendable {
     let type: String
     /// Same free-form shape as `DeepLinkService.openShareable`'s own `item`
     /// parameter — only ever present alongside a `ShareableType` `type`.
