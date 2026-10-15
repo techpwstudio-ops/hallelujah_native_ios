@@ -9,6 +9,36 @@
             "state": "translated",
             "value": "Hallelujah needs the camera so you can take a profile photo."
           }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्रोफ़ाइल फ़ोटो लेने के लिए Hallelujah को कैमरे की आवश्यकता है।"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಪ್ರೊಫೈಲ್ ಫೋಟೋ ತೆಗೆಯಲು Hallelujah ಗೆ ಕ್ಯಾಮೆರಾ ಬೇಕು."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "പ്രൊഫൈൽ ഫോട്ടോ എടുക്കാൻ Hallelujah-ന് ക്യാമറ ആവശ്യമാണ്."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "சுயவிவரப் புகைப்படம் எடுக்க Hallelujah-க்குக் கேமரா தேவை."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ప్రొఫైల్ ఫోటో తీయడానికి Hallelujahకు కెమెరా అవసరం."
+          }
         }
       }
     },
@@ -19,6 +49,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hallelujah uses Face ID to confirm it is really you before a sensitive account action. For example, when you request permanent deletion of your account, Face ID verifies your identity so no one else can delete your account and listening history."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "खाते से जुड़ी किसी संवेदनशील क्रिया से पहले Hallelujah यह पुष्टि करने के लिए Face ID का उपयोग करता है कि वह वास्तव में आप ही हैं। उदाहरण के लिए, जब आप अपना खाता हमेशा के लिए हटाने का अनुरोध करते हैं, तो Face ID आपकी पहचान सत्यापित करता है ताकि कोई और आपका खाता और सुनने का इतिहास न हटा सके।"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಸೂಕ್ಷ್ಮ ಖಾತೆ ಕ್ರಿಯೆಗೂ ಮೊದಲು ಅದು ನೀವೇ ಎಂದು ಖಚಿತಪಡಿಸಲು Hallelujah Face ID ಬಳಸುತ್ತದೆ. ಉದಾಹರಣೆಗೆ, ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಲು ವಿನಂತಿಸಿದಾಗ, ಬೇರೆ ಯಾರೂ ನಿಮ್ಮ ಖಾತೆ ಮತ್ತು ಆಲಿಸುವ ಇತಿಹಾಸವನ್ನು ಅಳಿಸದಂತೆ Face ID ನಿಮ್ಮ ಗುರುತನ್ನು ಪರಿಶೀಲಿಸುತ್ತದೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "അക്കൗണ്ട് സംബന്ധിച്ച പ്രധാന നടപടിക്ക് മുമ്പ് അത് നിങ്ങൾ തന്നെയാണെന്ന് ഉറപ്പാക്കാൻ Hallelujah Face ID ഉപയോഗിക്കുന്നു. ഉദാഹരണത്തിന്, അക്കൗണ്ട് എന്നെന്നേക്കുമായി ഇല്ലാതാക്കാൻ അഭ്യർത്ഥിക്കുമ്പോൾ, മറ്റാർക്കും നിങ്ങളുടെ അക്കൗണ്ടും ശ്രവണ ചരിത്രവും ഇല്ലാതാക്കാൻ കഴിയാതിരിക്കാൻ Face ID നിങ്ങളുടെ ഐഡന്റിറ്റി സ്ഥിരീകരിക്കുന്നു."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "முக்கியமான கணக்குச் செயலுக்கு முன் நீங்கள்தான் என்பதை உறுதிசெய்ய Hallelujah Face ID-ஐப் பயன்படுத்துகிறது. உதாரணமாக, உங்கள் கணக்கை நிரந்தரமாக நீக்கக் கோரும்போது, வேறு யாரும் உங்கள் கணக்கையும் கேட்டல் வரலாற்றையும் நீக்க முடியாதபடி Face ID உங்கள் அடையாளத்தைச் சரிபார்க்கிறது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ముఖ్యమైన ఖాతా చర్యకు ముందు అది నిజంగా మీరేనని నిర్ధారించడానికి Hallelujah Face IDని ఉపయోగిస్తుంది. ఉదాహరణకు, మీ ఖాతాను శాశ్వతంగా తొలగించమని అభ్యర్థించినప్పుడు, మీ ఖాతాను, శ్రవణ చరిత్రను మరెవరూ తొలగించకుండా Face ID మీ గుర్తింపును ధృవీకరిస్తుంది."
           }
         }
       }
@@ -31,6 +91,36 @@
             "state": "translated",
             "value": "Hallelujah needs microphone access so you can speak instead of type. For example, you can hold the microphone button in AI Chat and ask \"play worship songs in Telugu\" out loud, or tap the microphone in Search and say the song, artist or playlist you are looking for."
           }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "टाइप करने के बजाय बोलने के लिए Hallelujah को माइक्रोफ़ोन की अनुमति चाहिए। उदाहरण के लिए, आप AI चैट में माइक्रोफ़ोन बटन दबाकर बोल सकते हैं \"तेलुगु में आराधना गीत चलाओ\", या खोज में माइक्रोफ़ोन पर टैप करके उस गीत, कलाकार या प्लेलिस्ट का नाम बोल सकते हैं जो आप ढूँढ रहे हैं।"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಟೈಪ್ ಮಾಡುವ ಬದಲು ನೀವು ಮಾತನಾಡಲು Hallelujah ಗೆ ಮೈಕ್ರೊಫೋನ್ ಪ್ರವೇಶ ಬೇಕು. ಉದಾಹರಣೆಗೆ, AI ಚಾಟ್‌ನಲ್ಲಿ ಮೈಕ್ರೊಫೋನ್ ಬಟನ್ ಒತ್ತಿ ಹಿಡಿದು \"play worship songs in Telugu\" ಎಂದು ಧ್ವನಿಯಲ್ಲಿ ಕೇಳಬಹುದು, ಅಥವಾ ಹುಡುಕಾಟದಲ್ಲಿ ಮೈಕ್ರೊಫೋನ್ ಟ್ಯಾಪ್ ಮಾಡಿ ನೀವು ಹುಡುಕುತ್ತಿರುವ ಹಾಡು, ಕಲಾವಿದ ಅಥವಾ ಪ್ಲೇಲಿಸ್ಟ್ ಹೆಸರನ್ನು ಹೇಳಬಹುದು."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ടൈപ്പ് ചെയ്യുന്നതിന് പകരം സംസാരിക്കാൻ Hallelujah-ന് മൈക്രോഫോൺ ആക്‌സസ് ആവശ്യമാണ്. ഉദാഹരണത്തിന്, AI ചാറ്റിൽ മൈക്രോഫോൺ ബട്ടൺ അമർത്തിപ്പിടിച്ച് \"play worship songs in Telugu\" എന്ന് ഉറക്കെ ചോദിക്കാം, അല്ലെങ്കിൽ തിരയലിൽ മൈക്രോഫോണിൽ ടാപ്പ് ചെയ്ത് നിങ്ങൾ അന്വേഷിക്കുന്ന ഗാനം, കലാകാരൻ, അല്ലെങ്കിൽ പ്ലേലിസ്റ്റ് പറയാം."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "தட்டச்சு செய்வதற்குப் பதிலாகப் பேச Hallelujah-க்கு மைக்ரோஃபோன் அணுகல் தேவை. உதாரணமாக, AI Chat-இல் மைக்ரோஃபோன் பொத்தானை அழுத்திப் பிடித்து \"play worship songs in Telugu\" என்று சத்தமாகக் கேட்கலாம், அல்லது Search-இல் மைக்ரோஃபோனைத் தட்டி நீங்கள் தேடும் பாடல், கலைஞர் அல்லது பிளேலிஸ்ட்டைச் சொல்லலாம்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "టైప్ చేయడానికి బదులు మీరు మాట్లాడగలిగేలా Hallelujahకు మైక్రోఫోన్ యాక్సెస్ అవసరం. ఉదాహరణకు, AI చాట్‌లో మైక్రోఫోన్ బటన్‌ను నొక్కి ఉంచి \"తెలుగులో ఆరాధన పాటలు ప్లే చేయి\" అని గట్టిగా అడగవచ్చు, లేదా శోధనలో మైక్రోఫోన్‌ను నొక్కి మీరు వెతుకుతున్న పాట, కళాకారుడు లేదా ప్లేలిస్ట్ పేరు చెప్పవచ్చు."
+          }
         }
       }
     },
@@ -41,6 +131,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hallelujah needs permission to save images to your photo library. For example, when you tap \"Save Image\" on a song, verse or AI answer share card, the picture is saved to your Photos so you can post or send it later."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चित्र आपकी फ़ोटो लाइब्रेरी में सहेजने के लिए Hallelujah को अनुमति चाहिए। उदाहरण के लिए, जब आप किसी गीत, वचन या AI उत्तर के शेयर कार्ड पर \"चित्र सहेजें\" पर टैप करते हैं, तो चित्र आपकी फ़ोटो में सहेज लिया जाता है ताकि आप उसे बाद में पोस्ट या भेज सकें।"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಚಿತ್ರಗಳನ್ನು ನಿಮ್ಮ ಫೋಟೋ ಲೈಬ್ರರಿಗೆ ಉಳಿಸಲು Hallelujah ಗೆ ಅನುಮತಿ ಬೇಕು. ಉದಾಹರಣೆಗೆ, ಹಾಡು, ವಚನ ಅಥವಾ AI ಉತ್ತರದ ಹಂಚಿಕೆ ಕಾರ್ಡ್‌ನಲ್ಲಿ \"Save Image\" ಟ್ಯಾಪ್ ಮಾಡಿದಾಗ, ಚಿತ್ರವು ನಿಮ್ಮ ಫೋಟೋಗಳಿಗೆ ಉಳಿಯುತ್ತದೆ, ನಂತರ ಅದನ್ನು ಪೋಸ್ಟ್ ಮಾಡಬಹುದು ಅಥವಾ ಕಳುಹಿಸಬಹುದು."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "നിങ്ങളുടെ ഫോട്ടോ ലൈബ്രറിയിൽ ചിത്രങ്ങൾ സേവ് ചെയ്യാൻ Hallelujah-ന് അനുമതി ആവശ്യമാണ്. ഉദാഹരണത്തിന്, ഒരു ഗാനത്തിലോ വചനത്തിലോ AI ഉത്തരത്തിന്റെ ഷെയർ കാർഡിലോ \"Save Image\" ടാപ്പ് ചെയ്യുമ്പോൾ, ചിത്രം നിങ്ങളുടെ ഫോട്ടോകളിൽ സേവ് ചെയ്യപ്പെടും, പിന്നീട് പോസ്റ്റ് ചെയ്യാനോ അയയ്ക്കാനോ കഴിയും."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "படங்களை உங்கள் புகைப்பட நூலகத்தில் சேமிக்க Hallelujah-க்கு அனுமதி தேவை. உதாரணமாக, பாடல், வசனம் அல்லது AI பதில் பகிர்வு அட்டையில் \"Save Image\" என்பதைத் தட்டும்போது, படம் உங்கள் Photos-இல் சேமிக்கப்படும், பிறகு அதை இடுகையிடலாம் அல்லது அனுப்பலாம்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "చిత్రాలను మీ ఫోటో లైబ్రరీలో సేవ్ చేయడానికి Hallelujahకు అనుమతి అవసరం. ఉదాహరణకు, పాట, వచనం లేదా AI సమాధాన షేర్ కార్డ్‌పై \"చిత్రాన్ని సేవ్ చేయండి\" నొక్కినప్పుడు, ఆ చిత్రం మీ ఫోటోలలో సేవ్ అవుతుంది, తద్వారా మీరు తర్వాత పోస్ట్ చేయవచ్చు లేదా పంపవచ్చు."
           }
         }
       }
@@ -53,6 +173,36 @@
             "state": "translated",
             "value": "Hallelujah needs access to your photo library so you can pick an existing image from it. For example, you can choose a photo from your library to set as your profile picture, or attach an image to a message in AI Chat."
           }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आपकी फ़ोटो लाइब्रेरी से कोई मौजूदा चित्र चुनने के लिए Hallelujah को उस तक पहुँच चाहिए। उदाहरण के लिए, आप अपनी लाइब्रेरी से कोई फ़ोटो प्रोफ़ाइल चित्र के रूप में चुन सकते हैं, या AI चैट में संदेश के साथ कोई चित्र संलग्न कर सकते हैं।"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ನಿಮ್ಮ ಫೋಟೋ ಲೈಬ್ರರಿಯಿಂದ ಈಗಾಗಲೇ ಇರುವ ಚಿತ್ರವನ್ನು ಆರಿಸಲು Hallelujah ಗೆ ಪ್ರವೇಶ ಬೇಕು. ಉದಾಹರಣೆಗೆ, ಪ್ರೊಫೈಲ್ ಚಿತ್ರವಾಗಿ ಹೊಂದಿಸಲು ಅಥವಾ AI ಚಾಟ್‌ನ ಸಂದೇಶಕ್ಕೆ ಲಗತ್ತಿಸಲು ನಿಮ್ಮ ಲೈಬ್ರರಿಯಿಂದ ಫೋಟೋ ಆರಿಸಬಹುದು."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഫോട്ടോ ലൈബ്രറിയിൽ നിന്ന് നിലവിലുള്ള ചിത്രം തിരഞ്ഞെടുക്കാൻ Hallelujah-ന് ആക്‌സസ് ആവശ്യമാണ്. ഉദാഹരണത്തിന്, പ്രൊഫൈൽ ചിത്രമായി സജ്ജമാക്കാൻ ലൈബ്രറിയിൽ നിന്ന് ഒരു ഫോട്ടോ തിരഞ്ഞെടുക്കാം, അല്ലെങ്കിൽ AI ചാറ്റിലെ സന്ദേശത്തിൽ ഒരു ചിത്രം അറ്റാച്ച് ചെയ്യാം."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "உங்கள் புகைப்பட நூலகத்திலிருந்து ஏற்கனவே உள்ள படத்தைத் தேர்ந்தெடுக்க Hallelujah-க்கு அணுகல் தேவை. உதாரணமாக, சுயவிவரப் படமாக அமைக்க உங்கள் நூலகத்திலிருந்து ஒரு புகைப்படத்தைத் தேர்ந்தெடுக்கலாம், அல்லது AI Chat-இல் செய்தியுடன் படத்தை இணைக்கலாம்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "మీ ఫోటో లైబ్రరీ నుండి ఇప్పటికే ఉన్న చిత్రాన్ని ఎంచుకోవడానికి Hallelujahకు యాక్సెస్ అవసరం. ఉదాహరణకు, ప్రొఫైల్ చిత్రంగా పెట్టడానికి మీ లైబ్రరీ నుండి ఫోటోను ఎంచుకోవచ్చు, లేదా AI చాట్‌లో సందేశానికి చిత్రాన్ని జత చేయవచ్చు."
+          }
         }
       }
     },
@@ -63,6 +213,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hallelujah sends notifications about new songs and albums from artists you follow, reminders for your daily Bible reading, and updates about your subscription, such as when it is about to renew."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hallelujah आपके फ़ॉलो किए कलाकारों के नए गीतों और एल्बमों, आपके दैनिक बाइबिल पठन की याद दिलाने और आपकी सदस्यता से जुड़ी जानकारी, जैसे नवीनीकरण की तिथि निकट होने पर, की सूचनाएँ भेजता है।"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ನೀವು ಫಾಲೋ ಮಾಡುವ ಕಲಾವಿದರ ಹೊಸ ಹಾಡುಗಳು ಮತ್ತು ಆಲ್ಬಮ್‌ಗಳ ಬಗ್ಗೆ, ನಿಮ್ಮ ದೈನಂದಿನ ಬೈಬಲ್ ಓದಿನ ಜ್ಞಾಪನೆಗಳು, ಮತ್ತು ನಿಮ್ಮ ಚಂದಾದಾರಿಕೆ ನವೀಕರಣಗೊಳ್ಳಲಿರುವಂತಹ ಮಾಹಿತಿಗಳ ಬಗ್ಗೆ Hallelujah ಅಧಿಸೂಚನೆಗಳನ್ನು ಕಳುಹಿಸುತ್ತದೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "നിങ്ങൾ പിന്തുടരുന്ന കലാകാരന്മാരുടെ പുതിയ ഗാനങ്ങളും ആൽബങ്ങളും, ദിവസേനയുള്ള ബൈബിൾ വായനയുടെ ഓർമ്മപ്പെടുത്തലുകൾ, സബ്സ്ക്രിപ്ഷൻ പുതുക്കാറാകുമ്പോൾ പോലുള്ള അപ്ഡേറ്റുകൾ എന്നിവയെക്കുറിച്ച് Hallelujah അറിയിപ്പുകൾ അയയ്ക്കുന്നു."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "நீங்கள் பின்தொடரும் கலைஞர்களின் புதிய பாடல்கள் மற்றும் ஆல்பங்கள், தினசரி பைபிள் வாசிப்பு நினைவூட்டல்கள், மற்றும் உங்கள் சந்தா புதுப்பிக்கப்படப் போகும் நேரம் போன்ற சந்தா அறிவிப்புகளை Hallelujah அனுப்புகிறது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "మీరు ఫాలో అయ్యే కళాకారుల కొత్త పాటలు, ఆల్బమ్‌ల గురించి, మీ రోజువారీ బైబిల్ పఠన రిమైండర్‌ల గురించి, మరియు మీ సబ్‌స్క్రిప్షన్ పునరుద్ధరణకు దగ్గరపడినప్పుడు వంటి అప్‌డేట్‌ల గురించి Hallelujah నోటిఫికేషన్‌లు పంపుతుంది."
           }
         }
       }
@@ -75,6 +255,36 @@
             "state": "translated",
             "value": "Hallelujah uses Siri so you can say \"Hey Siri, play [song] in Hallelujah\" from CarPlay or your phone to start playing a song by voice."
           }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CarPlay या अपने फ़ोन से आवाज़ द्वारा गीत चलाने के लिए Hallelujah, Siri का उपयोग करता है, ताकि आप कह सकें \"Hey Siri, play [song] in Hallelujah\"।"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CarPlay ಅಥವಾ ನಿಮ್ಮ ಫೋನ್‌ನಿಂದ \"Hey Siri, play [song] in Hallelujah\" ಎಂದು ಹೇಳಿ ಧ್ವನಿಯ ಮೂಲಕ ಹಾಡು ಪ್ಲೇ ಮಾಡಲು Hallelujah Siri ಬಳಸುತ್ತದೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CarPlay-യിൽ നിന്നോ ഫോണിൽ നിന്നോ \"Hey Siri, play [song] in Hallelujah\" എന്ന് പറഞ്ഞ് ശബ്ദത്തിലൂടെ ഗാനം പ്ലേ ചെയ്യാൻ Hallelujah Siri ഉപയോഗിക്കുന്നു."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CarPlay அல்லது உங்கள் ஃபோனிலிருந்து \"Hey Siri, play [song] in Hallelujah\" என்று சொல்லி குரல் மூலம் பாடலை இயக்க Hallelujah Siri-ஐப் பயன்படுத்துகிறது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CarPlay లేదా మీ ఫోన్ నుండి \"Hey Siri, play [song] in Hallelujah\" అని చెప్పి వాయిస్‌తో పాటను ప్లే చేయడానికి Hallelujah Siriని ఉపయోగిస్తుంది."
+          }
         }
       }
     },
@@ -86,6 +296,36 @@
             "state": "translated",
             "value": "Hallelujah uses speech recognition to turn what you say into text, so the in-app AI assistant can answer your spoken questions and so you can search for songs, artists and playlists by voice."
           }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आपकी बोली को टेक्स्ट में बदलने के लिए Hallelujah वाक् पहचान का उपयोग करता है, ताकि ऐप का AI सहायक आपके बोले गए प्रश्नों का उत्तर दे सके और आप आवाज़ से गीत, कलाकार और प्लेलिस्ट खोज सकें।"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ನೀವು ಹೇಳಿದ್ದನ್ನು ಪಠ್ಯವಾಗಿ ಪರಿವರ್ತಿಸಲು Hallelujah ಧ್ವನಿ ಗುರುತಿಸುವಿಕೆಯನ್ನು ಬಳಸುತ್ತದೆ, ಇದರಿಂದ ಆ್ಯಪ್‌ನ AI ಸಹಾಯಕ ನಿಮ್ಮ ಮಾತಿನ ಪ್ರಶ್ನೆಗಳಿಗೆ ಉತ್ತರಿಸಬಹುದು ಮತ್ತು ನೀವು ಧ್ವನಿಯ ಮೂಲಕ ಹಾಡುಗಳು, ಕಲಾವಿದರು ಮತ್ತು ಪ್ಲೇಲಿಸ್ಟ್‌ಗಳನ್ನು ಹುಡುಕಬಹುದು."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "നിങ്ങൾ പറയുന്നത് ടെക്സ്റ്റാക്കി മാറ്റാൻ Hallelujah സ്പീച്ച് റെക്കഗ്നിഷൻ ഉപയോഗിക്കുന്നു, അതിലൂടെ ആപ്പിലെ AI അസിസ്റ്റന്റിന് നിങ്ങളുടെ സംസാര ചോദ്യങ്ങൾക്ക് ഉത്തരം നൽകാനും ശബ്ദത്തിലൂടെ ഗാനങ്ങൾ, കലാകാരന്മാർ, പ്ലേലിസ്റ്റുകൾ എന്നിവ തിരയാനും കഴിയും."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "நீங்கள் பேசுவதை உரையாக மாற்ற Hallelujah பேச்சு அறிதலைப் பயன்படுத்துகிறது; இதனால் செயலியின் AI உதவியாளர் உங்கள் பேசிய கேள்விகளுக்குப் பதிலளிக்கவும், பாடல்கள், கலைஞர்கள் மற்றும் பிளேலிஸ்ட்களைக் குரல் மூலம் தேடவும் முடியும்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "మీరు చెప్పే మాటలను టెక్స్ట్‌గా మార్చడానికి Hallelujah స్పీచ్ రికగ్నిషన్‌ను ఉపయోగిస్తుంది, తద్వారా యాప్‌లోని AI అసిస్టెంట్ మీ మాటల ప్రశ్నలకు సమాధానం ఇవ్వగలదు, మరియు మీరు పాటలు, కళాకారులు, ప్లేలిస్ట్‌లను వాయిస్‌తో శోధించగలరు."
+          }
         }
       }
     },
@@ -96,6 +336,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "This lets us personalize your experience and measure how our marketing performs. Your data is never sold."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इससे हम आपके अनुभव को व्यक्तिगत बना सकते हैं और अपनी मार्केटिंग का प्रदर्शन माप सकते हैं। आपका डेटा कभी बेचा नहीं जाता।"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಇದು ನಿಮ್ಮ ಅನುಭವವನ್ನು ವೈಯಕ್ತೀಕರಿಸಲು ಮತ್ತು ನಮ್ಮ ಮಾರ್ಕೆಟಿಂಗ್ ಹೇಗೆ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತಿದೆ ಎಂದು ಅಳೆಯಲು ನಮಗೆ ಸಹಾಯ ಮಾಡುತ್ತದೆ. ನಿಮ್ಮ ಡೇಟಾವನ್ನು ಎಂದಿಗೂ ಮಾರಾಟ ಮಾಡಲಾಗುವುದಿಲ್ಲ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഇത് നിങ്ങളുടെ അനുഭവം വ്യക്തിഗതമാക്കാനും ഞങ്ങളുടെ മാർക്കറ്റിംഗ് എത്രത്തോളം ഫലപ്രദമെന്ന് അളക്കാനും ഞങ്ങളെ സഹായിക്കുന്നു. നിങ്ങളുടെ ഡാറ്റ ഒരിക്കലും വിൽക്കില്ല."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இது உங்கள் அனுபவத்தைத் தனிப்பயனாக்கவும், எங்கள் சந்தைப்படுத்தல் எவ்வாறு செயல்படுகிறது என்பதை அளவிடவும் உதவுகிறது. உங்கள் தரவு ஒருபோதும் விற்கப்படாது."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఇది మీ అనుభవాన్ని వ్యక్తిగతీకరించడానికి, మా మార్కెటింగ్ పనితీరును కొలవడానికి మాకు సహాయపడుతుంది. మీ డేటా ఎప్పటికీ అమ్మబడదు."
           }
         }
       }
