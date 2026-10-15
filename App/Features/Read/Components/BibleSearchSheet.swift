@@ -25,16 +25,9 @@ struct BibleSearchPanel: View {
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: Dimens.cornerRadiusLarge, style: .continuous)
-                .fill(ReadPalette.darkSurface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: Dimens.cornerRadiusLarge, style: .continuous)
-                .strokeBorder(ReadPalette.lyricsBorder, lineWidth: 1)
-        )
+        .glassRounded(24, interactive: false)
         .frame(maxHeight: maxHeight)
-        .padding(EdgeInsets(top: Dimens.spacing4, leading: Dimens.screenPadding, bottom: Dimens.screenPadding, trailing: Dimens.screenPadding))
+        .padding(EdgeInsets(top: Dimens.spacing12, leading: Dimens.screenPadding, bottom: Dimens.screenPadding, trailing: Dimens.screenPadding))
     }
 
     @ViewBuilder
@@ -116,7 +109,7 @@ struct BibleSearchPanel: View {
                     .frame(height: 24, alignment: .top)
                 Text(highlightedString(result.numberedText, query: highlightQuery))
                     .lineSpacing(14 * 0.4)
-                    .lineLimit(2)
+                    .lineLimit(3)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, Dimens.spacing4)
@@ -134,17 +127,17 @@ struct BibleSearchPanel: View {
                 }
             }
             Text(result.dotReference)
-                .readText(Typography.bodyMedium, weight: .bold)
-                .frame(maxWidth: .infinity, alignment: .center)
+                .readText(Typography.bodySmall, weight: .bold, color: ReadPalette.white70)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(Dimens.paddingLarge)
         .background(
             RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous)
-                .fill(ReadPalette.black)
+                .fill(Color.white.opacity(0.07))
         )
         .overlay(
             RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous)
-                .strokeBorder(ReadPalette.lyricsBorder, lineWidth: 1)
+                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
         )
         .contentShape(Rectangle())
         .onTapGesture {
