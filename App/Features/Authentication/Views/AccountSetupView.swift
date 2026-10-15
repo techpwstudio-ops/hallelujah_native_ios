@@ -278,7 +278,7 @@ struct AccountSetupView: View {
     }
 
     private func nameField(
-        label: String, hint: String, text: Binding<String>, error: String?,
+        label: LocalizedStringKey, hint: LocalizedStringKey, text: Binding<String>, error: String?,
         field: Field, autofill: UITextContentType
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -330,7 +330,7 @@ struct AccountSetupView: View {
                 isDatePickerPresented = true
             } label: {
                 HStack {
-                    Text(dateOfBirth.map(Self.displayFormatter.string(from:)) ?? "Enter Date Of Birth")
+                    (dateOfBirth.map { Text(verbatim: Self.displayFormatter.string(from: $0)) } ?? Text("Enter Date Of Birth"))
                         .typography(Typography.bodyMedium)
                         .fontWeight(.medium)
                         .foregroundStyle(dateOfBirth == nil ? AuthColors.hint : .white)
@@ -409,7 +409,7 @@ struct AccountSetupView: View {
 
     /// `Radio` (48pt tap target, 18pt circle, grey when active, `white60`
     /// outline otherwise) followed by the label.
-    private func genderOption(label: String, value: String) -> some View {
+    private func genderOption(label: LocalizedStringKey, value: String) -> some View {
         Button {
             gender = value
         } label: {
@@ -426,7 +426,7 @@ struct AccountSetupView: View {
         .buttonStyle(.plain)
     }
 
-    private func requiredLabel(_ text: String, labelTypography: TypographyToken) -> some View {
+    private func requiredLabel(_ text: LocalizedStringKey, labelTypography: TypographyToken) -> some View {
         HStack(spacing: 0) {
             Text(text)
                 .typography(labelTypography)
@@ -455,7 +455,7 @@ struct AccountSetupView: View {
     /// toast is surfaced from here.
     private func toggleLanguage(_ name: String) {
         guard !languageViewModel.toggleLanguage(name) else { return }
-        toastCenter.show("You can select up to \(LanguageViewModel.maxSelectableLanguages) languages. Remove one to add another.")
+        toastCenter.show(String(localized: "You can select up to \(LanguageViewModel.maxSelectableLanguages) languages. Remove one to add another."))
     }
 
     /// `_finishLanguages` — saves the pick and enters the app.
@@ -477,8 +477,8 @@ struct AccountSetupView: View {
         fNameError = nil
         lNameError = nil
         if !isAppleProvider {
-            fNameError = Self.validateName(fName, hint: "Enter First Name")
-            lNameError = Self.validateName(lName, hint: "Last Name")
+            fNameError = Self.validateName(fName, hint: String(localized: "Enter First Name"))
+            lNameError = Self.validateName(lName, hint: String(localized: "Last Name"))
             guard fNameError == nil, lNameError == nil else { return }
         }
 
@@ -510,7 +510,7 @@ struct AccountSetupView: View {
     private static func validateName(_ value: String, hint: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty { return hint }
-        if value.count < 2 { return "Please enter at least 2 characters." }
+        if value.count < 2 { return String(localized: "Please enter at least 2 characters.") }
         return nil
     }
 
@@ -529,8 +529,8 @@ struct AccountSetupView: View {
     /// `dd/MM/yyyy` — `dateInput`'s own `displayText` formatting.
     private static let displayFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "dd/MM/yyyy"
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("ddMMyyyy")
         return formatter
     }()
 

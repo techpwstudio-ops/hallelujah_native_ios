@@ -6,7 +6,7 @@ import SwiftUI
 /// this design system's `Spacing` scale — Dart doesn't route this widget
 /// through `AppSpacing` either.
 struct TextDividerView: View {
-    let text: String
+    let text: LocalizedStringKey
 
     var body: some View {
         HStack(spacing: 0) {

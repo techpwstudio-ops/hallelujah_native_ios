@@ -111,7 +111,7 @@ struct GenreSongsView: View {
         let songs = viewModel.songs
         Task {
             let added = await queueController.addToQueue(songs, source: attribution(genreID: genreID))
-            toastCenter.show(added > 0 ? "Added to queue" : "Already in your queue")
+            toastCenter.show(added > 0 ? String(localized: "Added to queue") : String(localized: "Already in your queue"))
         }
     }
 

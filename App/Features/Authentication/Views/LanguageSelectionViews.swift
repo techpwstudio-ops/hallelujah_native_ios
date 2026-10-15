@@ -94,7 +94,7 @@ struct LanguageSelectionItemView: View {
         HStack(spacing: 4) {
             Image(systemName: "checkmark")
                 .font(.system(size: 12))
-            Text(isPrimary ? "PRIMARY" : "SECONDARY")
+            Text(isPrimary ? LocalizedStringKey("PRIMARY") : LocalizedStringKey("SECONDARY"))
                 .typography(Typography.labelSmall)
                 .fontWeight(.bold)
                 .tracking(0.4)

@@ -132,6 +132,15 @@
 	<string>Hallelujah uses Siri so you can say "Hey Siri, play [song] in Hallelujah" from CarPlay or your phone to start playing a song by voice.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Hallelujah uses speech recognition to turn what you say into text, so the in-app AI assistant can answer your spoken questions and so you can search for songs, artists and playlists by voice.</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>hi</string>
+		<string>te</string>
+		<string>ta</string>
+		<string>kn</string>
+		<string>ml</string>
+	</array>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.music</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

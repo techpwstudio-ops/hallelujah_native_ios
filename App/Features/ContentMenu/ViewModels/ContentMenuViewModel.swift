@@ -48,7 +48,7 @@ enum ContentMenuTarget: Identifiable, Equatable, Sendable {
                 title: playlist.title
             )
         case .creator(let creator):
-            QueueAttribution(playerType: .creator, id: creator.creatorId, title: creator.name ?? "this artist")
+            QueueAttribution(playerType: .creator, id: creator.creatorId, title: creator.name ?? String(localized: "this artist"))
         }
     }
 }
@@ -95,9 +95,9 @@ final class ContentMenuViewModel {
         isBusy = true
         defer { isBusy = false }
         let songs = await fetchSongs()
-        guard !songs.isEmpty else { return .message("Nothing to add") }
+        guard !songs.isEmpty else { return .message(String(localized: "Nothing to add")) }
         let added = await queueController.addToQueue(songs, source: target.queueSource)
-        return .message(added > 0 ? "Added to queue" : "Already in your queue")
+        return .message(added > 0 ? String(localized: "Added to queue") : String(localized: "Already in your queue"))
     }
 
     /// Follow / unfollow an artist — the creator menu's "Add to library".
@@ -112,10 +112,10 @@ final class ContentMenuViewModel {
                 try await creators.follow(creatorId: id)
             }
             isFollowing.toggle()
-            return .message(isFollowing ? "Added to library" : "Removed from library")
+            return .message(isFollowing ? String(localized: "Added to library") : String(localized: "Removed from library"))
         } catch {
             logger.warning("follow toggle failed: \(error)")
-            return .message("Network error")
+            return .message(String(localized: "Network error"))
         }
     }
 
