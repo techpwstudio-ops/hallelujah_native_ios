@@ -137,7 +137,7 @@ struct AddSongsToPlaylistView: View {
                         .padding(.horizontal, Dimens.screenPadding)
                         .padding(.vertical, Dimens.spacing4)
                     }
-                    Color.clear.frame(height: 96)
+                    Color.clear.frame(height: 16)
                 }
             }
             .scrollDismissesKeyboard(.immediately)

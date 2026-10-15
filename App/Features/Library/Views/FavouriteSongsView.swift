@@ -115,7 +115,7 @@ struct FavouriteSongsView: View {
                     if viewModel.isLoadingSongs {
                         ParitySpinner()
                     }
-                    Color.clear.frame(height: 168)
+                    Color.clear.frame(height: 16)
                 }
                 // `ImplicitlyAnimatedList`: 300ms fade/slide on insert and remove.
                 .animation(.easeOut(duration: 0.3), value: viewModel.songs.map { $0.id })

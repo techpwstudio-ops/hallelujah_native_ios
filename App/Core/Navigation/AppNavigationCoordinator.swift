@@ -136,6 +136,12 @@ final class AppNavigationCoordinator {
     /// (`DashboardNavBloc._hideNavBarForAdBreak`) is covered for free here:
     /// player-owned routes all live behind `FullScreenDestination.player`,
     /// which already covers this dock completely regardless of this value.
+    /// Route-only half of `isTabBarVisible` for the system tab bar, which a
+    /// presented sheet already covers by itself (`hidesTabBar` per route).
+    func routeAllowsTabBar(for tab: AppTab) -> Bool {
+        tabPaths[tab]?.last?.hidesTabBar != true
+    }
+
     var isTabBarVisible: Bool {
         guard openSheetCount == 0 else { return false }
         return tabPaths[selectedTab]?.last?.hidesTabBar != true

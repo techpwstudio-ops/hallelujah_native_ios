@@ -57,9 +57,9 @@ enum HomeMetrics {
     /// Bottom spacer under the feed: `Dimens.bottomSpacerHeight` plus
     /// `Ios26BottomSpacing(multiply: 3)` over a 56pt toolbar (the floating
     /// dock overlays the scroll view natively exactly as it does on Flutter).
-    static let feedBottomSpacing: CGFloat = Dimens.bottomSpacerHeight + 3 * toolbarHeight
+    static let feedBottomSpacing: CGFloat = 16
     /// `Ios26BottomSpacing(multiply: 3)` on its own (sub-pages).
-    static let pageBottomSpacing: CGFloat = 3 * toolbarHeight
+    static let pageBottomSpacing: CGFloat = 16
 
     /// `HomeCardTitle.lineHeight` (`AppTextStyles.homeCardTitleHeight`).
     static let cardTitleToken = TypographyToken(size: 14, weight: .semibold, lineHeightMultiple: 1.3)

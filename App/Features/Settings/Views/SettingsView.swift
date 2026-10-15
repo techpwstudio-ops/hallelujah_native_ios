@@ -172,7 +172,7 @@ struct SettingsView: View {
                         Spacer()
                     }
                 }
-                Spacer().frame(height: 96)
+                Spacer().frame(height: 16)
             }
             .padding(.vertical, Dimens.screenPaddingAll)
             .padding(.horizontal, Dimens.screenPaddingAll * 1.5)

@@ -133,7 +133,7 @@ struct UserPlaylistDetailView: View {
                 } else {
                     ParityEmptyText(text: "No songs yet")
                 }
-                Color.clear.frame(height: 168)
+                Color.clear.frame(height: 16)
             }
         }
         .refreshable { await viewModel.refresh() }

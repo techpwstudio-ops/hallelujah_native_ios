@@ -40,7 +40,7 @@ struct CreatorGridView: View {
                 .padding(.vertical, Dimens.screenPaddingAll)
                 if viewModel.isLoading { ParitySpinner() }
             }
-            Color.clear.frame(height: 168)
+            Color.clear.frame(height: 16)
         }
         .refreshable { await viewModel.refresh() }
         .background(Color.black)

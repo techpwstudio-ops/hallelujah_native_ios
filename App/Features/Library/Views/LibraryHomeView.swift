@@ -39,7 +39,7 @@ struct LibraryHomeView: View {
                 itemList
 
                 // `BottomSizeBar` (96) + `Ios26BottomSpacing` (56) over the floating dock.
-                Color.clear.frame(height: 152)
+                Color.clear.frame(height: 16)
             }
             .padding(.horizontal, Dimens.screenPaddingAll)
         }

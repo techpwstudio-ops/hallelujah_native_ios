@@ -41,7 +41,8 @@ struct ReaderView: View {
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
 
-    private static let bottomDockSpacing: CGFloat = Spacing.tabBarHeight + Spacing.dockBottomInset
+    // The system tab bar / mini player inset already reserve the bottom space.
+    private static let bottomDockSpacing: CGFloat = 0
 
     var body: some View {
         ZStack {

@@ -5,14 +5,11 @@ import SwiftUI
 /// (`FullScreenDestination`) that sit above all of them. `RootView` shows
 /// this for `LaunchDestination.app`.
 ///
-/// The system `TabView` chrome is hidden (`.toolbar(.hidden, for: .tabBar)`)
-/// in favor of `AppBottomDockView` (T17) — the "Glass UI" non-negotiable
-/// requires the tab bar to go through `GlassSurface` like every other raised
-/// surface, so it's a custom overlay rather than the system bar, even though
-/// `.tabItem`/`.tag` still drive `TabView`'s own selection/state-preservation
-/// machinery underneath. Every tab's root content is a placeholder — nothing
-/// here builds a real feature screen, only somewhere for one to eventually
-/// be pushed to and popped from.
+/// The tab bar is the system `TabView` bar (D13): real Liquid Glass on iOS 26,
+/// the standard translucent bar below. The floating mini player
+/// (`MiniPlayerInsetView`) is a bottom safe-area inset of each tab's stack, so
+/// scrolling content always clears both bars. Routes that hide the tab bar
+/// (`AppRoute.hidesTabBar`) toggle it per stack.
 struct AppShellView: View {
     @State private var coordinator = AppNavigationCoordinator()
     @State private var networkStatus = NetworkStatusStore()
@@ -32,32 +29,36 @@ struct AppShellView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            TabView(selection: $coordinator.selectedTab) {
-                ForEach(AppTab.allCases) { tab in
-                    NavigationStack(path: coordinator.path(for: tab)) {
-                        TabRootView(tab: tab)
-                            .navigationDestination(for: AppRoute.self) { route in
-                                AppRouteDestinationView(route: route)
-                            }
-                    }
-                    // Must sit on each tab's content: on iOS 18/26 hiding it on
-                    // the TabView alone leaves the system bar under the dock.
-                    .toolbar(.hidden, for: .tabBar)
-                    .tabItem {
-                        Label {
-                            Text(tab.titleKey)
-                        } icon: {
-                            theme.icon(tab.icon)
+        // The system `TabView` tab bar: real Liquid Glass on iOS 26 (the look
+        // Flutter embeds natively), the standard translucent bar below. The
+        // mini player rides as a bottom safe-area inset of each tab's stack, so
+        // every scroll view (root and pushed) gets its bottom padding for free
+        // and nothing is hidden behind the bars.
+        TabView(selection: $coordinator.selectedTab) {
+            ForEach(AppTab.allCases) { tab in
+                NavigationStack(path: coordinator.path(for: tab)) {
+                    TabRootView(tab: tab)
+                        .navigationDestination(for: AppRoute.self) { route in
+                            AppRouteDestinationView(route: route)
                         }
-                    }
-                    .tag(tab)
                 }
+                .toolbar(coordinator.routeAllowsTabBar(for: tab) ? .visible : .hidden, for: .tabBar)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if tab == coordinator.selectedTab {
+                        MiniPlayerInsetView(playerTransitionNamespace: playerTransitionNamespace)
+                    }
+                }
+                .tabItem {
+                    Label {
+                        Text(tab.titleKey)
+                    } icon: {
+                        theme.icon(tab.icon)
+                    }
+                }
+                .tag(tab)
             }
-            .toolbar(.hidden, for: .tabBar)
-
-            AppBottomDockView(playerTransitionNamespace: playerTransitionNamespace)
         }
+        .tint(.white)
         .toastOverlay()
         .appInfrastructureHost()
         .environment(coordinator)
@@ -151,7 +152,7 @@ private struct TabRootView: View {
             // Keeps the input bar and suggestions above the floating dock.
             AIChatHomeView()
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    Color.clear.frame(height: Spacing.tabBarHeight + Spacing.dockBottomInset + Spacing.sm)
+                    Color.clear.frame(height: Spacing.sm)
                 }
         case .library:
             LibraryHomeView()

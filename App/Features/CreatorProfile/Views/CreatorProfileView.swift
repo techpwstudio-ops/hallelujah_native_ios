@@ -119,7 +119,7 @@ struct CreatorProfileView: View {
 
                 tabContent
                     .padding(Dimens.screenPaddingAll)
-                Color.clear.frame(height: 168)
+                Color.clear.frame(height: 16)
             }
         }
         .coordinateSpace(name: "creatorScroll")

@@ -50,7 +50,7 @@ struct GenreSongsView: View {
                 )
                 titleRow
                 songList
-                Color.clear.frame(height: 168)
+                Color.clear.frame(height: 16)
             }
         }
         .coordinateSpace(name: "genreScroll")

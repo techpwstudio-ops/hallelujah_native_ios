@@ -28,7 +28,7 @@ struct EpisodesView: View {
 
                     content
 
-                    Color.clear.frame(height: 108)
+                    Color.clear.frame(height: 16)
                 }
             }
         }

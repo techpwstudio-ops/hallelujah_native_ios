@@ -1,96 +1,40 @@
 import SwiftUI
 import UIKit
 
-/// The floating glass dock T17 adds above `AppShellView`'s (T16) plain
-/// system `TabView` chrome. The "Glass UI" non-negotiable in `progress.md`
-/// requires every raised surface — tab bar included — to go through
-/// `GlassSurface`, so this replaces the system tab bar entirely rather than
-/// reskinning it; `AppShellView` hides the native bar
-/// (`.toolbar(.hidden, for: .tabBar)`) and overlays this instead. That also
-/// sidesteps a real finding from research: iOS 26's system `TabView` already
-/// renders as native Liquid Glass for free, but the non-negotiable applies
-/// regardless of OS version, so a hand-built pill is required either way.
-///
-/// Two independent floating pills stacked vertically — `MusicPlayerBottomIos26`
-/// and `_AnimatedNavBar` (`lib/widgets/navigation/our_adaptive_scaffold.dart`)
-/// are genuinely separate widgets in Dart too, not one merged shape, each
-/// animating in/out on its own. Both stay mounted at all times and animate via
-/// opacity/offset rather than conditional insertion — Dart's own comment on
-/// `MusicPlayerBottomIos26` warns against conditionally mounting/unmounting
-/// this ("that would cause the liquid-glass pill to flash on route changes").
-struct AppBottomDockView: View {
+/// The mini player (and its ad strip) as a bottom safe-area inset above the
+/// system tab bar. The tab bar itself is the system `TabView` bar (Liquid
+/// Glass on iOS 26); this only hosts the floating mini player pill, shown per
+/// `canShowMusicPlayerBottom` (`coordinator.isMiniPlayerVisible`).
+struct MiniPlayerInsetView: View {
     @Environment(AppNavigationCoordinator.self) private var coordinator
-    @State private var isKeyboardVisible = false
-    // T34 — captured shared instances (T31/T33's own `AppComposition`
-    // registrations), resolved once here rather than inside
-    // `MiniPlayerDockView` itself so the dock is the one place that bridges
-    // playback state to `AppNavigationCoordinator`, matching the pattern
-    // `RootView` already established for `SignOutSignal`.
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
-    // T44 — resolved here (not inside `MiniPlayerDockView`) for the same
-    // "dock is the one bridging point" reasoning as `audioEngine`/
-    // `queueController` above.
     @State private var favouriteRepository: any FavouriteRepository = DependencyContainer.current.resolve()
-    // `MiniPlayerAdSlot`'s two ad sources (`AdPacingController`'s break,
-    // `PlayerAdController`'s image takeover), resolved here for the same
-    // "dock is the one bridging point" reasoning as above.
     @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
     @State private var playerAd: PlayerAdController = DependencyContainer.current.resolve()
-    // T35 — shared with `FullScreenDestinationView`'s `.player` presentation
-    // via `AppShellView`, letting the full player's `.navigationTransition(
-    // .zoom(...))` originate from this exact pill's on-screen frame.
+    /// Shared with `FullScreenDestinationView`'s `.player` presentation, so
+    /// the full player's zoom transition originates from this pill's frame.
     let playerTransitionNamespace: Namespace.ID
 
     var body: some View {
         VStack(spacing: Spacing.sm) {
-            // Rides above the pill, inset to the same margin, and only where
-            // the mini player is shown (`MiniPlayerAdSlot`), so a break the
-            // listener has backed out of still says so wherever they went.
             if coordinator.isMiniPlayerVisible {
                 MiniPlayerAdSlot(pacing: adPacing, playerAd: playerAd)
+                MiniPlayerDockView(
+                    isVisible: true,
+                    engine: audioEngine,
+                    queueController: queueController,
+                    favouriteRepository: favouriteRepository,
+                    namespace: playerTransitionNamespace,
+                    onExpand: { coordinator.presentPlayer() }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            MiniPlayerDockView(
-                isVisible: coordinator.isMiniPlayerVisible,
-                engine: audioEngine,
-                queueController: queueController,
-                favouriteRepository: favouriteRepository,
-                namespace: playerTransitionNamespace,
-                onExpand: { coordinator.presentPlayer() }
-            )
-            GlassTabBarView(
-                selectedTab: coordinator.selectedTab,
-                isVisible: coordinator.isTabBarVisible && !isKeyboardVisible,
-                onSelect: { tab in
-                    if tab == coordinator.selectedTab {
-                        coordinator.popToRoot(in: tab)
-                    } else {
-                        coordinator.selectedTab = tab
-                    }
-                }
-            )
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.bottom, Spacing.dockBottomInset)
-        // Hides the tab bar (not the mini player — Dart doesn't gate that on
-        // the keyboard either) while a text field's keyboard is up: the
-        // floating pill sits over the body rather than pushing it up the way
-        // `Scaffold.bottomNavigationBar` would, so leaving it up parks it on
-        // top of the keyboard's accessory row (`our_adaptive_scaffold.dart`,
-        // `_Ios26BodyWrapper`'s comment). No screen with a text field is
-        // reachable from inside the shell yet, so this can't be exercised
-        // today, but it costs nothing to wire now against the day one is.
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-            isKeyboardVisible = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            isKeyboardVisible = false
-        }
-        // T34 — `AppNavigationCoordinator.isPlaybackActive`'s own doc
-        // comment named this exact task as the one that starts flipping it;
-        // mirrors `DashboardNavBloc._canShowPlayer`'s own trigger
-        // (`PlayerVisibilityChangedEvent`, fired whenever `songId` goes
-        // nil<->non-nil).
+        .padding(.bottom, coordinator.isMiniPlayerVisible ? Spacing.sm : 0)
+        .animation(MotionCurve.dockShow, value: coordinator.isMiniPlayerVisible)
+        // `DashboardNavBloc._canShowPlayer`: playback present <-> player shown.
         .onChange(of: audioEngine.currentSong) { _, newValue in
             coordinator.isPlaybackActive = (newValue != nil)
         }

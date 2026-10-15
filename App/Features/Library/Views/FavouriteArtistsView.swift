@@ -57,7 +57,7 @@ struct FavouriteArtistsView: View {
                 if viewModel.isLoadingCreators {
                     ParitySpinner()
                 }
-                Color.clear.frame(height: 168)
+                Color.clear.frame(height: 16)
             }
             .refreshable { await viewModel.refresh() }
         }

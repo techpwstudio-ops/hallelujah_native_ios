@@ -75,7 +75,7 @@ struct NotificationSettingsView: View {
         .font(AccountParity.bodySmall)
         .lineSpacing(12 * 0.5)
         .foregroundStyle(AccountParity.grey)
-        Spacer().frame(height: 96)
+        Spacer().frame(height: 16)
     }
 
     /// `_topicSubtitle`.

@@ -97,7 +97,7 @@ struct DownloadsView: View {
                     ForEach(tasks) { task in
                         row(for: task)
                     }
-                    Color.clear.frame(height: 168)
+                    Color.clear.frame(height: 16)
                 }
                 .padding(.top, 8)
             }

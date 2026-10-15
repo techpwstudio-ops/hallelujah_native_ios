@@ -34,7 +34,7 @@ struct GenreSearchView: View {
                     } else {
                         resultsSection
                     }
-                    Color.clear.frame(height: 168)
+                    Color.clear.frame(height: 16)
                 }
             }
         }
