@@ -114,7 +114,7 @@ struct ParityIconButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(tooltip)
+        .accessibilityLabel(LocalizedStringKey(tooltip))
     }
 }
 
