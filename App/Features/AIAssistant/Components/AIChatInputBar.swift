@@ -80,12 +80,9 @@ struct AIChatInputBar: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
         }
-        .background {
-            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(AIColors.fill)
-        }
+        .glassRounded(20, interactive: true)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(AIColors.background)
     }
 
     // MARK: - Right action

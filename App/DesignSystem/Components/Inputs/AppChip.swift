@@ -44,12 +44,26 @@ struct AppChip: View {
                 .frame(height: Self.height)
         }
         .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .fill(isSelected ? theme.color(.textPrimary) : theme.color(.surfacePrimary))
-        }
+        .modifier(AppChipSurface(isSelected: isSelected, selectedFill: theme.color(.textPrimary)))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.5)
         .animation(MotionCurve.fast, value: isSelected)
+    }
+}
+
+/// Selected keeps the solid ink fill (Flutter); unselected is interactive glass.
+private struct AppChipSurface: ViewModifier {
+    let isSelected: Bool
+    let selectedFill: Color
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isSelected {
+            content.background {
+                RoundedRectangle(cornerRadius: Radius.md, style: .continuous).fill(selectedFill)
+            }
+        } else {
+            content.glassRounded(Radius.md, interactive: true)
+        }
     }
 }

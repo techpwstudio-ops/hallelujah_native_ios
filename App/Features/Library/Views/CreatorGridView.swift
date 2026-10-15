@@ -68,10 +68,11 @@ struct CreatorGridView: View {
             } label: {
                 Text("Done")
                     .typography(Typography.labelLarge)
-                    .foregroundStyle(Color.black)
+                    .foregroundStyle(Color.white)
                     .padding(.horizontal, 24)
-                    .frame(height: 40)
-                    .background(Capsule().fill(Color.white))
+                    .frame(height: 44)
+                    .glassCapsule(.tinted(.brandPrimary), interactive: true)
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .disabled(viewModel.isSaving)

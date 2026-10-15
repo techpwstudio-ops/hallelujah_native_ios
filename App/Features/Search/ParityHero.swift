@@ -66,7 +66,8 @@ struct ParityShuffleButton: View {
                 .foregroundStyle(isOn ? Color.white : ParityColor.grey)
                 .frame(width: 24, height: 24)
                 .padding(12)
-                .background(Circle().fill(Color.white.opacity(0.06)))
+                .glassCircle(interactive: true)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Shuffle")
@@ -83,9 +84,10 @@ struct ParityPlayPauseButton: View {
         Button(action: action) {
             Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                 .font(.system(size: 22))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(Color.white)
                 .frame(width: 48, height: 48)
-                .background(Circle().fill(Color.white))
+                .glassCircle(interactive: true)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isPlaying ? "Pause" : "Play")

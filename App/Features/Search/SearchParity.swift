@@ -224,10 +224,7 @@ struct ParityFakeSearchBar: View {
                 Spacer(minLength: 0)
             }
             .padding(Dimens.spacing8)
-            .background(
-                RoundedRectangle(cornerRadius: Dimens.cornerRadius, style: .continuous)
-                    .fill(ParityColor.fill)
-            )
+            .glassRounded(Dimens.cornerRadius, interactive: true)
             .padding(Dimens.spacing8)
             .contentShape(Rectangle())
         }
@@ -250,13 +247,11 @@ struct ParityTypeButton: View {
         Button(action: action) {
             Text(title)
                 .typography(Self.label)
-                .foregroundStyle(isSelected ? Color.black : Color.white)
+                .foregroundStyle(Color.white)
                 .padding(.horizontal, Dimens.spacing8)
                 .frame(maxWidth: .infinity, minHeight: 36, maxHeight: 36)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isSelected ? Color.white : ParityColor.fill)
-                )
+                .glassRounded(8, isSelected ? .tinted(.brandPrimary) : .regular, interactive: true)
+                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }

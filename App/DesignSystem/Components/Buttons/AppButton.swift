@@ -83,16 +83,7 @@ struct AppButton: View {
             .frame(height: Spacing.buttonHeight)
         }
         .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                .fill(backgroundColor)
-        }
-        .overlay {
-            if let borderColor {
-                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: 1)
-            }
-        }
+        .modifier(AppButtonSurface(variant: variant, fill: backgroundColor, border: borderColor))
         .disabled(isDisabled)
         .animation(MotionCurve.fast, value: isDisabled)
     }
@@ -121,6 +112,35 @@ struct AppButton: View {
         switch variant {
         case .secondary: Color.white.opacity(0.24)
         case .primary, .ghost: nil
+        }
+    }
+}
+
+/// Primary keeps Flutter's solid fill; secondary is a glass capsule-ish
+/// rounded surface (real Liquid Glass on iOS 26, material fallback below).
+private struct AppButtonSurface: ViewModifier {
+    let variant: AppButtonVariant
+    let fill: Color
+    let border: Color?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if variant == .secondary {
+            content
+                .glassRounded(Radius.lg, interactive: true)
+                .contentShape(RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+        } else {
+            content
+                .background {
+                    RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                        .fill(fill)
+                }
+                .overlay {
+                    if let border {
+                        RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                            .strokeBorder(border, lineWidth: 1)
+                    }
+                }
         }
     }
 }

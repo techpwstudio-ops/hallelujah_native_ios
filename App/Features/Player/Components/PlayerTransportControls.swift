@@ -20,6 +20,7 @@ struct PlayerTransportControls: View {
     private var isLoading: Bool { engine.status == .loading }
 
     var body: some View {
+        GlassContainer(spacing: Spacing.sm) {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
             shuffleButton
@@ -37,6 +38,7 @@ struct PlayerTransportControls: View {
             loopButton
             Spacer(minLength: 0)
         }
+        }
         .frame(maxWidth: .infinity)
     }
 
@@ -46,8 +48,8 @@ struct PlayerTransportControls: View {
                 width: PlayerStyle.toggleGlyphSize + PlayerStyle.controlGlyphPadding * 2,
                 height: PlayerStyle.toggleGlyphSize + PlayerStyle.controlGlyphPadding * 2
             )
-            .background(PlayerStyle.whiteAlpha(PlayerStyle.shadowOpacity), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .contentShape(Rectangle())
+            .glassCircle(interactive: true)
+            .contentShape(Circle())
     }
 
     private var shuffleButton: some View {

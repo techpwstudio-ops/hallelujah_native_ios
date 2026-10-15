@@ -65,10 +65,7 @@ struct AdCompanionBanner: View {
                 .accessibilityLabel("Close")
             }
             .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(red: 28.0 / 255, green: 28.0 / 255, blue: 30.0 / 255))
-            )
+            .glassRounded(14)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .contentShape(RoundedRectangle(cornerRadius: 14))
             .onTapGesture { pacing.openAction(for: ad, coordinator: coordinator) }

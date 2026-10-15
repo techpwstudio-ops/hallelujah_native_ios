@@ -208,25 +208,34 @@ struct ReaderView: View {
                 .readText(Typography.titleLarge, weight: .semibold)
                 .padding(.leading, 16)
             Spacer(minLength: 0)
-            Button(action: openSearch) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 20))
-                    .foregroundStyle(ReadPalette.white)
-                    .frame(width: 48, height: 48)
-                    .contentShape(Rectangle())
+            GlassContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    Button(action: openSearch) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 18))
+                            .foregroundStyle(ReadPalette.white)
+                            .frame(width: 44, height: 44)
+                            .glassCircle(interactive: true)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Search")
+                    Button {
+                        showMenu = true
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 18, weight: .bold))
+                            .rotationEffect(.degrees(90))
+                            .foregroundStyle(ReadPalette.white)
+                            .frame(width: 44, height: 44)
+                            .glassCircle(interactive: true)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("More")
+                }
             }
-            .buttonStyle(.plain)
-            Button {
-                showMenu = true
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 20, weight: .bold))
-                    .rotationEffect(.degrees(90))
-                    .foregroundStyle(ReadPalette.white)
-                    .frame(width: 48, height: 48)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            .padding(.trailing, 8)
         }
         .frame(height: 56)
     }
@@ -260,10 +269,7 @@ struct ReaderView: View {
             .buttonStyle(.plain)
         }
         .frame(height: 44)
-        .background(
-            RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous)
-                .fill(ReadPalette.searchBar)
-        )
+        .glassCapsule(interactive: true)
         .padding(.horizontal, Dimens.screenPadding)
         .frame(height: 56)
     }
@@ -388,8 +394,9 @@ struct ReaderView: View {
             }
             .foregroundStyle(ReadPalette.white)
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
+            .padding(.vertical, 12)
+            .glassCapsule(interactive: true)
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }
@@ -481,6 +488,9 @@ struct ReaderView: View {
                 }
             }
         }
+        .padding(.horizontal, 16)
+        .glassCapsule()
+        .padding(.horizontal, 12)
     }
 
     private func navIcon(systemName: String, action: @escaping () -> Void) -> some View {

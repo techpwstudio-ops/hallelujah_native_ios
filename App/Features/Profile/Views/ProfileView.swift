@@ -189,7 +189,8 @@ private struct ProfileContentView: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Color.white)
                     .frame(width: 40, height: 40)
-                    .background(Circle().fill(AccountParity.darkFill))
+                    .glassCircle(interactive: true)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .padding(8)

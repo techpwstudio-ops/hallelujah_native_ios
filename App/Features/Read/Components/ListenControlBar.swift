@@ -51,7 +51,8 @@ struct ListenControlBar: View {
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.sm)
-        .background(theme.color(.brandPrimary))
+        .glassCapsule(.tinted(.brandPrimary), interactive: true)
+        .padding(.horizontal, Spacing.md)
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 

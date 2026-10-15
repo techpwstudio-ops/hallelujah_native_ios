@@ -50,7 +50,6 @@ struct SleepTimerBadge: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(PlayerStyle.whiteAlpha(0.54))
                     .frame(width: 28, height: 28)
-                    .background(Circle().fill(PlayerStyle.whiteAlpha(0.1)))
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
@@ -58,11 +57,7 @@ struct SleepTimerBadge: View {
             .accessibilityLabel("Turn off sleep timer")
         }
         .padding(EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 6))
-        .background(PlayerStyle.whiteAlpha(0.08), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .strokeBorder(PlayerStyle.whiteAlpha(0.12), lineWidth: 1)
-        }
+        .glassCapsule()
     }
 
     private func ring(remaining: TimeInterval) -> some View {

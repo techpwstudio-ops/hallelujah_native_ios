@@ -34,10 +34,7 @@ struct AISuggestionChip: View {
             }
             .padding(10)
             .frame(width: 160, height: height, alignment: .topLeading)
-            .background {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(AIColors.fill)
-            }
+            .glassRounded(14, interactive: true)
         }
         .buttonStyle(.plain)
     }

@@ -172,11 +172,13 @@ struct HomeSongTypeBar: View {
     ]
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(items) { item in
-                button(item)
-                    .padding(.horizontal, 4)
-                    .frame(maxWidth: .infinity)
+        GlassContainer(spacing: 8) {
+            HStack(spacing: 0) {
+                ForEach(items) { item in
+                    button(item)
+                        .padding(.horizontal, 4)
+                        .frame(maxWidth: .infinity)
+                }
             }
         }
         .padding(.horizontal, Dimens.screenPaddingAll * 1.5)
@@ -195,13 +197,14 @@ struct HomeSongTypeBar: View {
         } label: {
             Text(item.name)
                 .font(.custom(Typography.fontFamily, size: 14, relativeTo: .body).weight(.medium))
-                .foregroundStyle(isSelected ? Color.black : Color.white)
+                .foregroundStyle(Color.white)
                 .padding(.horizontal, Dimens.spacing8)
                 .frame(maxWidth: .infinity, minHeight: 35, maxHeight: 35)
                 .frame(minWidth: 90)
-                .background(
-                    isSelected ? Color.white : HomeColors.fill,
-                    in: RoundedRectangle(cornerRadius: 8, style: .circular)
+                .glassBackground(
+                    isSelected ? .tinted(.brandPrimary) : .regular,
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous),
+                    interactive: true
                 )
                 .contentShape(Rectangle())
         }

@@ -171,7 +171,8 @@ struct HomeShuffleButton: View {
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(queueController.isShuffled ? Color.white : Color.gray)
                 .frame(width: 48, height: 48)
-                .background(Color.white.opacity(0.06), in: Circle())
+                .glassCircle(interactive: true)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
     }

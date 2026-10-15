@@ -159,7 +159,8 @@ struct HomeView: View {
                         .foregroundStyle(Color.white)
                         .padding(.horizontal, Dimens.spacing24)
                         .frame(minHeight: 40)
-                        .background(HomeColors.darkFill, in: Capsule())
+                        .glassCapsule(interactive: true)
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }

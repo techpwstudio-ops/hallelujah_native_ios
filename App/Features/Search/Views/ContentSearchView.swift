@@ -105,11 +105,7 @@ struct ContentSearchView: View {
             Spacer().frame(width: Dimens.spacing4)
         }
         .frame(height: Dimens.buttonHeight)
-        .background(
-            RoundedRectangle(cornerRadius: Dimens.cornerRadiusSmall + 2, style: .continuous)
-                .fill(ParityColor.searchBar)
-                .shadow(color: Color.black.opacity(0.3), radius: Dimens.spacing8 / 2, x: 0, y: 2)
-        )
+        .glassRounded(Dimens.cornerRadiusSmall + 2)
         .padding(.leading, Dimens.screenPadding)
         .padding(.trailing, Dimens.screenPadding)
         .padding(.top, Dimens.spacing8)
@@ -523,18 +519,10 @@ private struct SearchFilterChip: View {
         Button(action: action) {
             Text(label)
                 .typography(isSelected ? Self.selectedStyle : Self.normalStyle)
-                .foregroundStyle(isSelected ? Color.black : ParityColor.white70)
+                .foregroundStyle(isSelected ? Color.white : ParityColor.white70)
                 .padding(.horizontal, Dimens.spacing16)
                 .frame(maxHeight: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous)
-                        .fill(isSelected ? Color.white : Color.clear)
-                        .shadow(color: isSelected ? ParityColor.darkGold.opacity(0.35) : Color.clear, radius: 4, x: 0, y: 2)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous)
-                        .stroke(isSelected ? Color.white : ParityColor.greyDark, lineWidth: 1)
-                )
+                .glassRounded(Dimens.cornerRadiusMedium, isSelected ? .tinted(.brandPrimary) : .regular, interactive: true)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

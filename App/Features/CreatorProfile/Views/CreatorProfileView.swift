@@ -177,7 +177,8 @@ struct CreatorProfileView: View {
                 .foregroundStyle(Color.white)
                 .padding(.horizontal, 24)
                 .frame(height: 36)
-                .background(Capsule().fill(ParityColor.darkFill))
+                .glassCapsule(creator.isFollowing == true ? .regular : .tinted(.brandPrimary), interactive: true)
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .disabled(viewModel.isTogglingFollow)

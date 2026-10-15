@@ -86,10 +86,7 @@ private struct ToastOverlay: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, Spacing.md)
                     .padding(.vertical, Spacing.sm)
-                    .background {
-                        RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                            .fill(theme.color(.surfaceSecondary))
-                    }
+                    .glassRounded(Radius.lg)
                     .padding(.horizontal, Spacing.xl)
                     .padding(.bottom, Spacing.xl)
                     .transition(.move(edge: .bottom).combined(with: .opacity))

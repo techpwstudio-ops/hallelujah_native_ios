@@ -118,17 +118,14 @@ struct AIChatHomeView: View {
 
             Spacer(minLength: 0)
 
-            Button {
+            GlassIconButton(
+                systemName: "clock.arrow.circlepath",
+                size: 44,
+                iconSize: 20,
+                accessibilityLabel: "History"
+            ) {
                 coordinator.push(.aiHistory)
-            } label: {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 22))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 48, height: 48)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("History")
 
             Spacer().frame(width: 4)
 
@@ -146,13 +143,9 @@ struct AIChatHomeView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous).fill(AIColors.fill)
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(Color.white, lineWidth: 0.5)
-                    }
+                    .frame(minHeight: 44)
+                    .glassCapsule(interactive: true)
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .padding(.trailing, 12)
@@ -160,7 +153,6 @@ struct AIChatHomeView: View {
         }
         .padding(.leading, 16)
         .frame(height: 56)
-        .background(AIColors.background)
     }
 
     // MARK: - Empty state

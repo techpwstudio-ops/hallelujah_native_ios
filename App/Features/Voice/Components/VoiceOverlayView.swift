@@ -236,8 +236,9 @@ private struct CloseButtonView: View {
             Image(systemName: "xmark")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .background(Circle().fill(.white.opacity(0.12)))
+                .frame(width: 44, height: 44)
+                .glassCircle(interactive: true)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Close")
@@ -361,11 +362,8 @@ private struct StopButtonView: View {
                     .font(.system(size: 30))
                     .foregroundStyle(.white)
                     .frame(width: 64, height: 64)
-                    .background(
-                        Circle()
-                            .fill(.white.opacity(0.12))
-                            .overlay(Circle().stroke(.white.opacity(0.24), lineWidth: 1.5))
-                    )
+                    .glassCircle(interactive: true)
+                    .contentShape(Circle())
 
                 Text("Stop")
                     .font(AIColors.font(13))

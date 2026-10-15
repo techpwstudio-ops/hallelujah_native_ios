@@ -52,21 +52,7 @@ struct AITtsBar: View {
             .buttonStyle(.plain)
         }
         .padding(Dimens.spacing6)
-        .background {
-            ZStack {
-                Capsule().fill(.ultraThinMaterial)
-                Capsule().fill(
-                    LinearGradient(
-                        colors: [AIColors.white12, AIColors.gold.opacity(0.10)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            }
-        }
-        .overlay {
-            Capsule().strokeBorder(AIColors.white24, lineWidth: Dimens.borderWidth)
-        }
+        .glassCapsule(.regular, interactive: true)
         .padding(.top, Dimens.spacing8)
         .padding(.bottom, Dimens.spacing4)
         .padding(.horizontal, Dimens.spacing12)

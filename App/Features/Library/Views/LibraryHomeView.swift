@@ -68,14 +68,12 @@ struct LibraryHomeView: View {
                 Text("Create")
                     .typography(Typography.labelLarge)
             }
-            .foregroundStyle(Color.black)
+            .foregroundStyle(Color.white)
             .padding(.leading, 12)
             .padding(.trailing, 16)
             .frame(height: 32)
-            .background(
-                RoundedRectangle(cornerRadius: Dimens.cornerRadius, style: .continuous)
-                    .fill(Color.white)
-            )
+            .glassCapsule(interactive: true)
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }

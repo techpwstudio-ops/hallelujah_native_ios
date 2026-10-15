@@ -141,10 +141,7 @@ struct PlanOptionCard: View {
                 indicator
             }
             .padding(Dimens.paddingLarge)
-            .background(
-                RoundedRectangle(cornerRadius: Dimens.cornerRadiusLarge, style: .continuous)
-                    .fill(isSelected ? Self.accentFill : AccountParity.fill)
-            )
+            .modifier(PlanCardSurface(isSelected: isSelected, unselectedFill: AccountParity.fill))
             .overlay(
                 RoundedRectangle(cornerRadius: Dimens.cornerRadiusLarge, style: .continuous)
                     .strokeBorder(isSelected ? AccountParity.white : AccountParity.white12, lineWidth: 1.5)
@@ -430,5 +427,22 @@ struct ParityExpandableText: View {
         }
         .hidden()
         .allowsHitTesting(false)
+    }
+}
+
+/// Selected plan card floats on interactive glass; unselected stays flat.
+private struct PlanCardSurface: ViewModifier {
+    let isSelected: Bool
+    let unselectedFill: Color
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isSelected {
+            content.glassRounded(Dimens.cornerRadiusLarge, interactive: true)
+        } else {
+            content.background(
+                RoundedRectangle(cornerRadius: Dimens.cornerRadiusLarge, style: .continuous).fill(unselectedFill)
+            )
+        }
     }
 }

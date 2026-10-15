@@ -80,10 +80,7 @@ struct GenreSearchView: View {
             }
         }
         .padding(Dimens.spacing8)
-        .background(
-            RoundedRectangle(cornerRadius: Dimens.cornerRadius, style: .continuous)
-                .fill(ParityColor.fill)
-        )
+        .glassRounded(Dimens.cornerRadius)
         .padding(Dimens.spacing8)
         .padding(.horizontal, Dimens.screenPaddingAll)
     }

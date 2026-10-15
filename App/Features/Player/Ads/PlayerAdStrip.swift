@@ -121,9 +121,7 @@ private struct PlayerAdStripCard: View {
             bottom: Dimens.spacing8,
             trailing: Dimens.spacing2
         ))
-        .background(
-            RoundedRectangle(cornerRadius: Dimens.cornerRadius).fill(Self.fill)
-        )
+        .glassRounded(Dimens.cornerRadius)
         .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadius))
         .contentShape(RoundedRectangle(cornerRadius: Dimens.cornerRadius))
         .onTapGesture {

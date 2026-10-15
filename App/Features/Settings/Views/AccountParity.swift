@@ -281,14 +281,7 @@ struct ParityConfirmationDialog: View {
                 .frame(height: 58)
             }
             .frame(maxWidth: 420)
-            .background(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(AccountParity.sheetBackground.opacity(0.96))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
-            )
+            .glassRounded(28)
             .shadow(color: Color.black.opacity(0.45), radius: 30, x: 0, y: 16)
             .padding(.horizontal, 22)
             .scaleEffect(shown ? 1 : 0.95)
@@ -534,14 +527,9 @@ struct ParitySheetButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, verticalPadding)
-            .background(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(style == .filled ? fillColor : Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(style == .outlined ? borderColor : Color.clear, lineWidth: 1)
-            )
+            .modifier(ParitySheetButtonSurface(
+                outlined: style == .outlined, radius: radius, fillColor: fillColor
+            ))
             .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -574,6 +562,24 @@ struct ParitySheetIcon: View {
                 .font(.system(size: size * 0.8))
                 .foregroundStyle(AccountParity.white)
                 .frame(width: size, height: size)
+        }
+    }
+}
+
+/// Filled keeps Flutter's solid fill; outlined becomes interactive glass.
+private struct ParitySheetButtonSurface: ViewModifier {
+    let outlined: Bool
+    let radius: CGFloat
+    let fillColor: Color
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if outlined {
+            content.glassRounded(radius, interactive: true)
+        } else {
+            content.background(
+                RoundedRectangle(cornerRadius: radius, style: .continuous).fill(fillColor)
+            )
         }
     }
 }
