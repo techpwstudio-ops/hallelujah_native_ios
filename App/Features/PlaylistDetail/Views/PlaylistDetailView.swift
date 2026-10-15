@@ -88,7 +88,7 @@ struct PlaylistDetailView: View {
             .homeHeroChrome {
                 HomeFadingTitle(title: playlist.title, state: scroll, opacity: { offset in
                     offset > geometry.size.width - 150 ? 1 : 0
-                }, animated: true)
+                }, animated: true, weight: .semibold)
             }
         }
     }

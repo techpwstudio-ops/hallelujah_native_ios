@@ -128,10 +128,12 @@ struct HomeFadingTitle: View {
     let state: HomeScrollState
     let opacity: (CGFloat) -> Double
     var animated = false
+    var weight: Font.Weight?
 
     var body: some View {
         Text(title)
             .typography(Typography.titleMedium)
+            .fontWeight(weight)
             .foregroundStyle(Color.white)
             .lineLimit(1)
             .opacity(opacity(state.offset))

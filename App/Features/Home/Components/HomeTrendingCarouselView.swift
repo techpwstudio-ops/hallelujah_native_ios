@@ -55,10 +55,14 @@ struct HomeTrendingCarouselView: View {
     var body: some View {
         GeometryReader { proxy in
             let viewport = max(proxy.size.width, 1)
-            ZStack {
-                ForEach(visibleOffsets, id: \.self) { offset in
-                    cardLayer(offset: offset)
-                }
+            HomeTrendingStack(
+                page: page,
+                count: ordered.count,
+                spread: Self.cardSpread,
+                scaleStep: Self.scaleStep,
+                minScale: Self.minCardScale
+            ) { index, isFront in
+                card(song: ordered[index], isFront: isFront)
             }
             .frame(width: proxy.size.width, height: railHeight)
             .clipped()
@@ -67,22 +71,6 @@ struct HomeTrendingCarouselView: View {
             .onTapGesture(perform: playFront)
         }
         .frame(height: railHeight)
-    }
-
-    private var visibleOffsets: [Int] { ordered.isEmpty ? [] : [-2, -1, 0, 1, 2] }
-
-    private func cardLayer(offset: Int) -> some View {
-        let count = ordered.count
-        let centerIndex = Int(page.rounded())
-        let virtualIndex = centerIndex + offset
-        let realIndex = ((virtualIndex % count) + count) % count
-        let difference = Double(virtualIndex) - page
-        let absDiff = abs(difference)
-        let scale = max(Double(Self.minCardScale), 1 - absDiff * Double(Self.scaleStep))
-        return card(song: ordered[realIndex], isFront: absDiff < 0.5)
-            .scaleEffect(CGFloat(scale))
-            .offset(x: CGFloat(difference) * Self.cardSpread)
-            .zIndex(-absDiff)
     }
 
     private func card(song: Song, isFront: Bool) -> some View {
@@ -145,5 +133,62 @@ struct HomeTrendingCarouselView: View {
             source: HomePlayback.homeAttribution(uiId: uiId),
             coordinator: coordinator
         )
+    }
+}
+
+/// The five visible cards, laid out from a (possibly fractional) page. Conforms
+/// to `Animatable` so a settle animation interpolates `page` itself, frame by
+/// frame, like the PageView's scroll position, instead of cross-fading between
+/// two card assignments.
+private struct HomeTrendingStack<Card: View>: View, Animatable {
+    var page: Double
+    let count: Int
+    let spread: CGFloat
+    let scaleStep: CGFloat
+    let minScale: CGFloat
+    let card: (Int, Bool) -> Card
+
+    init(
+        page: Double,
+        count: Int,
+        spread: CGFloat,
+        scaleStep: CGFloat,
+        minScale: CGFloat,
+        @ViewBuilder card: @escaping (Int, Bool) -> Card
+    ) {
+        self.page = page
+        self.count = count
+        self.spread = spread
+        self.scaleStep = scaleStep
+        self.minScale = minScale
+        self.card = card
+    }
+
+    var animatableData: Double {
+        get { page }
+        set { page = newValue }
+    }
+
+    var body: some View {
+        ZStack {
+            if count > 0 {
+                ForEach([-2, -1, 0, 1, 2], id: \.self) { offset in
+                    layer(offset: offset)
+                }
+            }
+        }
+    }
+
+    private func layer(offset: Int) -> some View {
+        let centerIndex = Int(page.rounded())
+        let virtualIndex = centerIndex + offset
+        let realIndex = ((virtualIndex % count) + count) % count
+        let difference = Double(virtualIndex) - page
+        let absDiff = abs(difference)
+        let scale = max(Double(minScale), 1 - absDiff * Double(scaleStep))
+        return card(realIndex, absDiff < 0.5)
+            .scaleEffect(CGFloat(scale))
+            .offset(x: CGFloat(difference) * spread)
+            .zIndex(-absDiff)
     }
 }

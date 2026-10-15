@@ -15,6 +15,7 @@ struct GenreSongsView: View {
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
     @State private var showsMore = false
+    @State private var showsCollapsedTitle = false
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
@@ -39,14 +40,40 @@ struct GenreSongsView: View {
                     ),
                     aspect: 4.0 / 3.0
                 )
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: GenreHeroMaxYKey.self,
+                            value: proxy.frame(in: .named("genreScroll")).maxY
+                        )
+                    }
+                )
                 titleRow
                 songList
                 Color.clear.frame(height: 168)
             }
         }
+        .coordinateSpace(name: "genreScroll")
+        .onPreferenceChange(GenreHeroMaxYKey.self) { maxY in
+            // `offset > expandedHeight - kToolbarHeight - 40`.
+            let shouldShow = maxY < 150
+            if shouldShow != showsCollapsedTitle { showsCollapsedTitle = shouldShow }
+        }
         .background(Color.black)
         .ignoresSafeArea(.container, edges: .top)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackground(showsCollapsedTitle ? .visible : .hidden, for: .navigationBar)
+        .toolbarBackground(Color.black, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(viewModel.genreName ?? "")
+                    .font(.custom(Typography.fontFamily, size: 16).weight(.semibold))
+                    .foregroundStyle(Color.white)
+                    .lineLimit(1)
+                    .opacity(showsCollapsedTitle ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.2), value: showsCollapsedTitle)
+            }
+        }
         .task { await viewModel.onAppear() }
         .appSheet(isPresented: $showsMore, detents: [.medium]) {
             VStack(alignment: .leading, spacing: 0) {
@@ -164,5 +191,12 @@ struct GenreSongsView: View {
             }
             .padding(.horizontal, Dimens.screenPaddingAll)
         }
+    }
+}
+
+private struct GenreHeroMaxYKey: PreferenceKey {
+    static let defaultValue: CGFloat = .greatestFiniteMagnitude
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

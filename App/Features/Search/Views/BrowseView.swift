@@ -16,22 +16,32 @@ struct BrowseView: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                ParityFakeSearchBar {
-                    coordinator.push(.contentSearch(userPlaylistID: nil, tags: [], checkedContent: [], isSelect: false))
-                }
-                .padding(.horizontal, Dimens.screenPaddingAll)
-
-                Spacer().frame(height: Dimens.verticalSpacing)
-
-                contentTypeToggle
-                    .padding(.horizontal, Dimens.screenPaddingAll + 8)
-
-                Spacer().frame(height: Dimens.verticalSpacing)
-
-                genreGrid
+        VStack(spacing: 0) {
+            // `SliverPersistentHeader(pinned: true)`: the bar stays under the
+            // title while the rest scrolls.
+            ParityFakeSearchBar {
+                coordinator.push(.contentSearch(userPlaylistID: nil, tags: [], checkedContent: [], isSelect: false))
             }
+            .padding(.horizontal, Dimens.screenPaddingAll)
+            .frame(maxWidth: .infinity)
+            .background(Color.black)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Spacer().frame(height: Dimens.verticalSpacing)
+
+                    contentTypeToggle
+                        .padding(.horizontal, Dimens.screenPaddingAll + 8)
+
+                    Spacer().frame(height: Dimens.verticalSpacing)
+
+                    genreGrid
+
+                    // `Ios26BottomSpacing(multiply: 3)` over the floating dock.
+                    Color.clear.frame(height: 168)
+                }
+            }
+            .scrollDismissesKeyboard(.immediately)
         }
         .background(Color.black)
         .task { await viewModel.onAppear() }

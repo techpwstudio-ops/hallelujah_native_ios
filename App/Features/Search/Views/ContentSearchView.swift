@@ -84,13 +84,6 @@ struct ContentSearchView: View {
             .submitLabel(.search)
             .autocorrectionDisabled()
 
-            VoiceSearchButton(
-                onResult: { text, _ in viewModel.queryChanged(text) },
-                onListeningChanged: { listening in
-                    isListening = listening
-                    if listening { isFieldFocused = false }
-                }
-            )
             if !viewModel.searchFieldText.isEmpty {
                 Button { viewModel.clearButtonTapped() } label: {
                     Image(systemName: "xmark")
@@ -102,6 +95,13 @@ struct ContentSearchView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear search")
             }
+            VoiceSearchButton(
+                onResult: { text, _ in viewModel.queryChanged(text) },
+                onListeningChanged: { listening in
+                    isListening = listening
+                    if listening { isFieldFocused = false }
+                }
+            )
             Spacer().frame(width: Dimens.spacing4)
         }
         .frame(height: Dimens.buttonHeight)

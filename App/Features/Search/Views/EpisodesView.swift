@@ -14,22 +14,31 @@ struct EpisodesView: View {
     @Environment(AppNavigationCoordinator.self) private var coordinator
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                ParityFakeSearchBar {
-                    coordinator.push(.contentSearch(userPlaylistID: nil, tags: [], checkedContent: [], isSelect: false))
+        VStack(spacing: 0) {
+            // App-bar `bottom`: the search bar stays pinned under the title.
+            ParityFakeSearchBar {
+                coordinator.push(.contentSearch(userPlaylistID: nil, tags: [], checkedContent: [], isSelect: false))
+            }
+            .padding(.horizontal, Dimens.screenPaddingAll)
+            .background(Color.black)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Spacer().frame(height: 12)
+
+                    content
+
+                    Color.clear.frame(height: 108)
                 }
-                .padding(.horizontal, Dimens.screenPaddingAll)
-
-                Spacer().frame(height: 12)
-
-                content
-
-                Color.clear.frame(height: 108)
             }
         }
         .background(Color.black)
-        .navigationTitle("Podcasts")
+        .parityNavTitle {
+            Text("Podcasts")
+                .font(AccountParity.titleLarge)
+                .fontWeight(.bold)
+                .foregroundStyle(Color.white)
+        }
         .task { await viewModel.onAppear() }
     }
 

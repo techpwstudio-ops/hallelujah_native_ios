@@ -22,20 +22,24 @@ struct GenreSearchView: View {
     private var query: String { viewModel.searchFieldText }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                searchBar
-                Spacer().frame(height: Dimens.verticalSpacing)
-                if query.isEmpty {
-                    genresSection
-                } else {
-                    resultsSection
+        VStack(spacing: 0) {
+            // Pinned `SliverPersistentHeader` under the app bar.
+            searchBar
+                .background(Color.black)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Spacer().frame(height: Dimens.verticalSpacing)
+                    if query.isEmpty {
+                        genresSection
+                    } else {
+                        resultsSection
+                    }
+                    Color.clear.frame(height: 168)
                 }
-                Color.clear.frame(height: 168)
             }
         }
         .background(Color.black)
-        .navigationTitle("Search Music")
+        .parityNavTitle("Search Music", leading: true)
         .scrollDismissesKeyboard(.immediately)
         .task { await browse.onAppear() }
     }
