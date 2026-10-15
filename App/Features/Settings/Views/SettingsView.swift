@@ -112,6 +112,9 @@ struct SettingsView: View {
                 tile(icon: "globe", title: "Content Languages", subtitle: contentLanguagesSubtitle) {
                     coordinator.push(.contentLanguage(label: "Choose Content Language", canPop: true))
                 }
+                tile(icon: "character.bubble", title: "App Language", subtitle: Text(verbatim: AppLanguageStore.shared.selected.nativeName)) {
+                    coordinator.push(.appLanguage)
+                }
                 if isPremium {
                     tile(
                         icon: "waveform",

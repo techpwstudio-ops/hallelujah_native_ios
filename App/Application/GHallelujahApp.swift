@@ -22,6 +22,9 @@ struct GHallelujahApp: App {
         WindowGroup {
             RootView()
                 .environment(\.appTheme, .standard)
+                // In-app language (Settings → App Language): SwiftUI text
+                // follows this locale the moment it changes.
+                .environment(\.locale, AppLanguageStore.shared.locale)
                 // `themeMode: ThemeMode.dark` (`launch_app.dart`) plus the light
                 // status-bar icons `main()` sets: the Flutter app is dark-only
                 // whatever the device appearance is (D5). Also keeps system

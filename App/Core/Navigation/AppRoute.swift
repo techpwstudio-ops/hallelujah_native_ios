@@ -58,6 +58,8 @@ enum AppRoute: Hashable, Sendable {
     case manageFamilyMembers
     case deleteAccount
     case contentLanguage(label: String, canPop: Bool)
+    /// In-app UI language (English, Hindi, Telugu, Tamil, Kannada, Malayalam).
+    case appLanguage
 
     // MARK: Help / support
 
@@ -157,7 +159,7 @@ extension AppRoute {
              .manageFamilyMembers, .helpSupportDashboard, .profile, .notificationSettings,
              .createPlaylist, .faqs, .deleteAccount, .feedback, .aiChat, .bibleVerseShare:
             true
-        case .settings, .contentLanguage, .episodes, .aiHistory, .downloads, .storageSettings,
+        case .settings, .contentLanguage, .appLanguage, .episodes, .aiHistory, .downloads, .storageSettings,
              .creatorGrid, .creatorSongs, .userPlaylistSongs, .playlistDetail,
              .favouriteSongs, .favouriteArtists, .genreSongs,
              .recentSongs, .seeAllSongs, .seeAllArtists:
@@ -175,7 +177,7 @@ extension AppRoute {
         case .cropCompressImage, .contentSearch, .genreSearch, .subscriptionPlans,
              .manageFamilyMembers, .helpSupportDashboard, .profile, .notificationSettings,
              .createPlaylist, .faqs, .deleteAccount, .feedback, .aiChat, .bibleVerseShare,
-             .contentLanguage, .creatorGrid:
+             .contentLanguage, .appLanguage, .creatorGrid:
             true
         case .settings, .episodes, .aiHistory, .downloads, .storageSettings, .creatorSongs,
              .userPlaylistSongs, .playlistDetail, .favouriteSongs,

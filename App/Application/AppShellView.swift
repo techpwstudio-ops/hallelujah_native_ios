@@ -265,6 +265,8 @@ private struct AppRouteDestinationView: View {
             AccountDeletionView()
         case let .contentLanguage(label, canPop):
             ContentLanguageView(label: label, canPop: canPop)
+        case .appLanguage:
+            AppLanguageView()
         case .profile:
             ProfileView()
         case .settings:
@@ -368,6 +370,7 @@ private extension AppRoute {
         case .manageFamilyMembers: String(localized: "Manage Family Members")
         case .deleteAccount: String(localized: "Delete Account")
         case .contentLanguage: String(localized: "Content Language")
+        case .appLanguage: String(localized: "App Language")
         case .helpSupportDashboard: String(localized: "Help & Support")
         case .faqs: String(localized: "FAQs")
         case .feedback: String(localized: "Feedback")
