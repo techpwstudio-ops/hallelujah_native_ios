@@ -133,7 +133,14 @@ struct ReaderView: View {
                 pendingAfterDismiss = { chapterGridBook = book }
             }
         }
-        .readSheet(item: $chapterGridBook, onDismiss: runPendingAction, detents: [.fraction(0.7)]) { book in
+        .readSheet(
+            item: $chapterGridBook,
+            onDismiss: runPendingAction,
+            detents: [.height(ChapterGridSheet.sheetHeight(
+                chapterCount: chapterGridBook?.chapters ?? 0,
+                screenHeight: UIScreen.main.bounds.height
+            ))]
+        ) { book in
             ChapterGridSheet(
                 book: book,
                 language: viewModel.currentLanguage,

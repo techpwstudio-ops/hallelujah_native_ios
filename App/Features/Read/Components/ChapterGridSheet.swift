@@ -70,24 +70,44 @@ struct ChapterGridSheet: View {
         .padding(8)
     }
 
+    /// Flutter's grid cell is `(width - 16 - 40) / 6` square and the tile in it
+    /// is a fixed 48x48 `MyContainer`, centred — so the tile never hugs its
+    /// number.
     private func cell(for chapter: Int) -> some View {
         let isCurrent = isCurrentBook && chapter == currentChapter
         return Button {
             onSelect(chapter)
         } label: {
-            Text("\(chapter)")
-                .readText(
-                    Typography.titleMedium,
-                    weight: .bold,
-                    color: isCurrent ? ReadPalette.black : ReadPalette.white
-                )
-                .frame(maxWidth: .infinity)
+            Color.clear
                 .aspectRatio(1, contentMode: .fit)
-                .background(
+                .overlay {
                     RoundedRectangle(cornerRadius: Dimens.chapterNumberBoxRadius, style: .continuous)
                         .fill(isCurrent ? ReadPalette.white : ReadPalette.chapterBox)
-                )
+                        .frame(width: Self.tileSize, height: Self.tileSize)
+                        .overlay {
+                            Text("\(chapter)")
+                                .readText(
+                                    Typography.titleMedium,
+                                    weight: .bold,
+                                    color: isCurrent ? ReadPalette.black : ReadPalette.white
+                                )
+                        }
+                }
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private static let tileSize: CGFloat = 48
+
+    /// Flutter caps the sheet at 70% of the screen but lets it shrink to its
+    /// content: drag handle + back row + gap + grid rows. Mirrors that so a
+    /// 21-chapter book doesn't open as a mostly empty 70% panel.
+    static func sheetHeight(chapterCount: Int, screenHeight: CGFloat) -> CGFloat {
+        let rows = CGFloat((max(chapterCount, 1) + columnCount - 1) / columnCount)
+        let cell = (UIScreen.main.bounds.width - 16 - 40) / CGFloat(columnCount)
+        let grid = rows * cell + (rows - 1) * 8
+        let chrome: CGFloat = 8 + 28 + 24 + Dimens.bottomPadding + 8 + 34
+        return min(chrome + grid, screenHeight * 0.7)
     }
 }
