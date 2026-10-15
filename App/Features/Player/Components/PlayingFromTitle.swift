@@ -17,11 +17,11 @@ struct PlayingFromTitle: View {
         let name = source.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, source.id != nil else { return nil }
         switch source.playerType {
-        case .companyPlaylist, .userPlaylist: return "PLAYING FROM PLAYLIST"
-        case .album: return "PLAYING FROM ALBUM"
-        case .season: return "PLAYING FROM SEASON"
-        case .genre: return "PLAYING FROM GENRE"
-        case .creator: return (song?.isEpisode ?? false) ? "PLAYING FROM PODCAST" : "PLAYING FROM ARTIST"
+        case .companyPlaylist, .userPlaylist: return String(localized: "PLAYING FROM PLAYLIST")
+        case .album: return String(localized: "PLAYING FROM ALBUM")
+        case .season: return String(localized: "PLAYING FROM SEASON")
+        case .genre: return String(localized: "PLAYING FROM GENRE")
+        case .creator: return (song?.isEpisode ?? false) ? String(localized: "PLAYING FROM PODCAST") : String(localized: "PLAYING FROM ARTIST")
         case .home, .search, .download, .favourite, .invite: return nil
         }
     }

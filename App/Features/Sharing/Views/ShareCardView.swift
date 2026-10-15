@@ -13,11 +13,11 @@ enum ShareCardTheme: CaseIterable, Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .dark: "Dark"
-        case .crimson: "Crimson"
-        case .cosmic: "Cosmic"
-        case .forest: "Forest"
-        case .ocean: "Ocean"
+        case .dark: String(localized: "Dark")
+        case .crimson: String(localized: "Crimson")
+        case .cosmic: String(localized: "Cosmic")
+        case .forest: String(localized: "Forest")
+        case .ocean: String(localized: "Ocean")
         }
     }
 

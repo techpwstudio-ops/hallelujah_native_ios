@@ -375,7 +375,7 @@ final class AudioEngine {
 
         let currentSongToLoad = logicalQueue[logicalIndex]
         guard let item = await makePlayerItem(for: currentSongToLoad) else {
-            status = .failed("Couldn't load this song")
+            status = .failed(String(localized: "Couldn't load this song"))
             return
         }
 
@@ -581,14 +581,14 @@ final class AudioEngine {
 
         guard !retriedViaProxy.contains(song.id) else {
             logger.warning("playback failed again after proxy retry for song \(song.id)")
-            status = .failed("Couldn't play this song")
+            status = .failed(String(localized: "Couldn't play this song"))
             return
         }
         retriedViaProxy.insert(song.id)
         logger.warning("playback item failed for song \(song.id); retrying via proxy")
 
         guard let retryItem = await makePlayerItem(for: song, forceProxy: true) else {
-            status = .failed("Couldn't play this song")
+            status = .failed(String(localized: "Couldn't play this song"))
             return
         }
         itemSongIDs[ObjectIdentifier(retryItem)] = song.id

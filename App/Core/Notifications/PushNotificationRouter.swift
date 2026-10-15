@@ -181,14 +181,14 @@ final class PushNotificationRouter {
             else {
                 logger.warning("push tap: \(shareableType) \(id) fetch returned an unusable payload")
                 ToastCenter.shared.show(shareableType == ShareableType.companyPlaylist.rawValue
-                    ? "This playlist is no longer available."
-                    : "This album is no longer available.")
+                    ? String(localized: "This playlist is no longer available.")
+                    : String(localized: "This album is no longer available."))
                 return
             }
             DeepLinkService.shared.openShareable(shareableType: shareableType, item: playlist, coordinator: coordinator)
         } catch {
             logger.warning("push tap: \(shareableType) \(id) fetch failed: \(error)")
-            ToastCenter.shared.show("Unable to open this notification. Please try again.")
+            ToastCenter.shared.show(String(localized: "Unable to open this notification. Please try again."))
         }
     }
 

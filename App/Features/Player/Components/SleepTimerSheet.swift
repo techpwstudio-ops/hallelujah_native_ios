@@ -59,9 +59,9 @@ struct SleepTimerSheet: View {
 
     private var subtitle: String {
         if let minutes = controller.selectedMinutes {
-            return "Active · \(minutes)m selected"
+            return String(localized: "Active · \(minutes)m selected")
         }
-        return "Stops playback after selected time"
+        return String(localized: "Stops playback after selected time")
     }
 
     private func optionRow(_ minutes: Int) -> some View {
@@ -69,7 +69,7 @@ struct SleepTimerSheet: View {
         return Button {
             controller.start(minutes: minutes)
             // `_onSetSleepTimer`'s snackbar.
-            toastCenter.show("Sleep timer set for \(minutes) minutes")
+            toastCenter.show(String(localized: "Sleep timer set for \(minutes) minutes"))
             onDismiss()
         } label: {
             HStack {

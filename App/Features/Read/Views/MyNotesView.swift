@@ -45,7 +45,7 @@ struct MyNotesView: View {
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "dd/MM/yyyy"
+        formatter.setLocalizedDateFormatFromTemplate("ddMMyyyy")
         return formatter
     }()
 
@@ -94,7 +94,7 @@ struct MyNotesView: View {
         let base = "\(bookName(for: entry)) \(entry.chapterNumber)"
         guard let language = entry.languageName, !language.isEmpty,
               language.lowercased() != (currentLanguage ?? "").lowercased() else { return base }
-        return "\(base) \u{00B7} \(language)"
+        return String(localized: "\(base) \u{00B7} \(language)")
     }
 
     private func bookName(for entry: BibleNoteEntry) -> String {

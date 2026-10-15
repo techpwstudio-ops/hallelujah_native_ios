@@ -178,7 +178,7 @@ extension View {
 /// Flutter `Empty` (`lib/widgets/empty.dart`): centred, w600 default-size
 /// text, 16pt padding.
 struct ReadEmptyText: View {
-    let text: String
+    let text: LocalizedStringKey
 
     var body: some View {
         Text(text)

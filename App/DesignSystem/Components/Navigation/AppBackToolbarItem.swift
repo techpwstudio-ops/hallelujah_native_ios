@@ -37,6 +37,6 @@ struct AppToolbarCircleButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        .accessibilityLabel(L10n.tr(label))
     }
 }

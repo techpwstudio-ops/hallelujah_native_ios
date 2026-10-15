@@ -268,7 +268,7 @@ struct FullPlayerView: View {
         if let song {
             VStack(alignment: .leading, spacing: 0) {
                 PlayerLyricsPreviewCard(song: song, currentPosition: engine.currentPosition) {
-                    coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? "Lyrics"))
+                    coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? String(localized: "Lyrics")))
                 }
                 // Creator card, credits, then the description, then the
                 // "More like this" rail (`SongMetaDataUi` order).

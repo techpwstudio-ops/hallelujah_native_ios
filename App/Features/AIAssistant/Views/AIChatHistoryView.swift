@@ -119,7 +119,7 @@ struct AIChatHistoryView: View {
                     .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 0) {
-                    Text((conversation.title ?? "").isEmpty ? "Conversation" : (conversation.title ?? ""))
+                    Text((conversation.title ?? "").isEmpty ? String(localized: "Conversation") : (conversation.title ?? ""))
                         .font(AIColors.font(14, .medium))
                         .foregroundStyle(Color.white)
                         .lineLimit(1)
@@ -166,11 +166,10 @@ struct AIChatHistoryView: View {
     private static func formattedDate(_ date: Date?) -> String {
         guard let date else { return "" }
         let diffDays = Int(Date().timeIntervalSince(date) / 86_400)
-        if diffDays == 0 { return "Today" }
-        if diffDays == 1 { return "Yesterday" }
-        if diffDays < 7 { return "\(diffDays)d ago" }
-        let parts = Calendar.current.dateComponents([.day, .month, .year], from: date)
-        return "\(parts.day ?? 0)/\(parts.month ?? 0)/\(parts.year ?? 0)"
+        if diffDays == 0 { return String(localized: "Today") }
+        if diffDays == 1 { return String(localized: "Yesterday") }
+        if diffDays < 7 { return String(localized: "\(diffDays)d ago") }
+        return date.formatted(date: .numeric, time: .omitted)
     }
 
     // MARK: - Delete dialog

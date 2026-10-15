@@ -265,7 +265,7 @@ final class VoiceController {
             await channel.connect(conversationID: conversationID, ttsLocale: ttsLocale)
         } catch {
             guard !stale(myGeneration) else { return }
-            failFatal(code: "start_failed", message: "Could not start the conversation.")
+            failFatal(code: "start_failed", message: String(localized: "Could not start the conversation."))
         }
     }
 
@@ -341,7 +341,7 @@ final class VoiceController {
             let ready = await deviceStt.initialize()
             guard !disposed else { return }
             guard ready else {
-                failFatal(code: VoiceErrorCode.sttUnavailable, message: "Speech recognition is not available on this device.")
+                failFatal(code: VoiceErrorCode.sttUnavailable, message: String(localized: "Speech recognition is not available on this device."))
                 return
             }
             await deviceStt.start(localeId: state.sttLocale)
@@ -351,7 +351,7 @@ final class VoiceController {
                 try await mic.start()
             } catch {
                 micOpen = false
-                failFatal(code: "mic_failed", message: "Microphone unavailable.")
+                failFatal(code: "mic_failed", message: String(localized: "Microphone unavailable."))
                 return
             }
             micOpen = true
@@ -413,7 +413,7 @@ final class VoiceController {
         logger.warning("Restarting voice capture (\(reason)), attempt \(self.captureRestarts).")
 
         if captureRestarts > Self.maxCaptureRestarts {
-            failFatal(code: "mic_lost", message: "Lost the microphone. Please try again.")
+            failFatal(code: "mic_lost", message: String(localized: "Lost the microphone. Please try again."))
             return
         }
 
@@ -672,10 +672,10 @@ final class VoiceController {
         if isDeviceEngine {
             logger.warning("Voice session \(payload.sessionId ?? "?") fell back to on-device speech recognition: sidecar unreachable.")
             if !Self.allowDeviceSttFallback {
-                failFatal(code: VoiceErrorCode.sttUnavailable, message: "Speech recognition is unavailable right now.")
+                failFatal(code: VoiceErrorCode.sttUnavailable, message: String(localized: "Speech recognition is unavailable right now."))
                 return
             }
-            state.notice = "Speech recognition is running on this device."
+            state.notice = String(localized: "Speech recognition is running on this device.")
         }
 
         // `openCapture()` is THE only place capture opens; `ready` is fired
@@ -718,7 +718,7 @@ final class VoiceController {
 
     private func localeNotice(reason: String?, ttsLocale: String?) -> String? {
         guard let reason, !reason.isEmpty, let ttsLocale else { return nil }
-        return "Switched to \(ttsLocale)."
+        return String(localized: "Switched to \(ttsLocale).")
     }
 
     private func handleCancelled(_ payload: VoiceCancelledPayload) {
@@ -799,7 +799,7 @@ final class VoiceController {
             Task { [speech] in await speech.stopAll() }
             Task { [weak self] in await self?.closeCapture() }
             fire(.interruptionBegan)
-            state.notice = "Audio was interrupted."
+            state.notice = String(localized: "Audio was interrupted.")
             startInterruptionRetry()
 
         case .ducked:
@@ -849,7 +849,7 @@ final class VoiceController {
             stopInterruptionRetry()
         } else if interruptionRetryCount >= Self.maxInterruptionRetries {
             stopInterruptionRetry()
-            failFatal(code: "audio_unavailable", message: "Could not resume audio after the interruption.")
+            failFatal(code: "audio_unavailable", message: String(localized: "Could not resume audio after the interruption."))
         }
     }
 
@@ -899,7 +899,7 @@ final class VoiceController {
 
     private func handleReadyTimeout(_ capturedGeneration: Int) {
         guard !stale(capturedGeneration), state.phase == .preparing else { return }
-        failFatal(code: "handshake_timeout", message: "Could not reach the voice service.")
+        failFatal(code: "handshake_timeout", message: String(localized: "Could not reach the voice service."))
     }
 
     private func touchTurnWatchdog() {
@@ -915,7 +915,7 @@ final class VoiceController {
     private func handleTurnTimeout() {
         guard state.phase == .transcribing || state.phase == .thinking else { return }
         replyDone = false
-        state.notice = "That took too long. Please try again."
+        state.notice = String(localized: "That took too long. Please try again.")
         state.replyText = ""
         state.partialTranscript = ""
         // The table maps both stalled phases back to `.listening` on this

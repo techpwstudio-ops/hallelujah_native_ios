@@ -55,10 +55,7 @@ struct AIToolResultCard: View {
     private static func formattedDate(_ raw: String?) -> String? {
         guard let raw, !raw.isEmpty else { return nil }
         guard let date = Date.parseFlexibleISO8601(raw) else { return nil }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter.string(from: date)
+        return date.formatted(.dateTime.month(.abbreviated).day().year())
     }
 
     private static let cardRadius: CGFloat = 16

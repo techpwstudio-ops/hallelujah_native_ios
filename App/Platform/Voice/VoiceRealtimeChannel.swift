@@ -139,7 +139,7 @@ final class SocketIOVoiceChannel: VoiceRealtimeChannel {
         teardownSocket()
 
         guard let token = await session.currentAccessToken(), !token.isEmpty else {
-            onEvent?(.error(VoiceErrorPayload(code: VoiceErrorCode.unauthenticated, message: "Not signed in.", fatal: true)))
+            onEvent?(.error(VoiceErrorPayload(code: VoiceErrorCode.unauthenticated, message: String(localized: "Not signed in."), fatal: true)))
             currentStatus = .closed
             return
         }
@@ -225,7 +225,7 @@ final class SocketIOVoiceChannel: VoiceRealtimeChannel {
         // error. Retrying that on a ladder is 40 seconds of the user
         // watching "Reconnecting…" for an answer that has already arrived.
         if handshake, Self.looksUnauthorized(reason) {
-            giveUp(code: VoiceErrorCode.unauthenticated, message: "Your session has expired. Please sign in again.")
+            giveUp(code: VoiceErrorCode.unauthenticated, message: String(localized: "Your session has expired. Please sign in again."))
             return
         }
 
@@ -248,7 +248,7 @@ final class SocketIOVoiceChannel: VoiceRealtimeChannel {
         if policy.atCeiling {
             ceilingAttempts += 1
             if ceilingAttempts > Self.maxCeilingAttempts {
-                giveUp(code: VoiceErrorCode.netDown, message: "Lost connection. Please check your network and try again.")
+                giveUp(code: VoiceErrorCode.netDown, message: String(localized: "Lost connection. Please check your network and try again."))
                 return
             }
         }
@@ -386,7 +386,7 @@ final class SocketIOVoiceChannel: VoiceRealtimeChannel {
         lastSlowReport = now
         onEvent?(.error(VoiceErrorPayload(
             code: VoiceErrorCode.netSlow,
-            message: "Network is too slow to send audio — \(droppedFrameCount) frames dropped.",
+            message: String(localized: "Network is too slow to send audio — \(droppedFrameCount) frames dropped."),
             fatal: false
         )))
     }

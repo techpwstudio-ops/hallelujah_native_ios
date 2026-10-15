@@ -78,7 +78,7 @@ final class SubscriptionPlansViewModel {
             loadState = .failed(error.message)
         } catch {
             logger.warning("fetch plans failed: \(error)")
-            loadState = .failed("Something went wrong. Please try again.")
+            loadState = .failed(String(localized: "Something went wrong. Please try again."))
         }
     }
 
@@ -156,13 +156,13 @@ final class SubscriptionPlansViewModel {
 
     /// `_getButtonText` (`plans_screen.dart:634-650`), ported verbatim.
     var primaryButtonTitle: String {
-        guard isPremiumUser else { return selectedPlan?.freeTrial != nil ? "Activate Free Trial" : "Subscribe" }
+        guard isPremiumUser else { return selectedPlan?.freeTrial != nil ? String(localized: "Activate Free Trial") : String(localized: "Subscribe") }
         if isCancelled {
-            if isCurrentSelectedPlan { return "Reactivate" }
-            return isUpgrade ? "Upgrade to Family" : "Switch Plan"
+            if isCurrentSelectedPlan { return String(localized: "Reactivate") }
+            return isUpgrade ? String(localized: "Upgrade to Family") : String(localized: "Switch Plan")
         }
-        if isUpgrade { return "Upgrade to Family" }
-        return isCurrentSelectedPlan ? "Subscribed" : "Switch Plan"
+        if isUpgrade { return String(localized: "Upgrade to Family") }
+        return isCurrentSelectedPlan ? String(localized: "Subscribed") : String(localized: "Switch Plan")
     }
 
     var primaryAction: PrimaryAction {
@@ -246,6 +246,6 @@ final class SubscriptionPlansViewModel {
     private static func message(for error: any Error) -> String {
         if let error = error as? StoreKitPurchaseManager.PurchaseError { return error.displayMessage }
         if let error = error as? SubscriptionError { return error.message }
-        return "Something went wrong. Please try again."
+        return String(localized: "Something went wrong. Please try again.")
     }
 }

@@ -53,7 +53,7 @@ final class AccountDeletionPendingCoordinator {
             return result.message
         } catch {
             logger.warning("cancel account deletion failed: \(error)")
-            return "Something went wrong, please check your internet"
+            return String(localized: "Something went wrong, please check your internet")
         }
     }
 }

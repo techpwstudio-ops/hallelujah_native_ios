@@ -190,10 +190,10 @@ private enum VoiceDisplayPhase: Equatable {
 
     var label: String {
         switch self {
-        case .starting: "Starting..."
-        case .listening: "Listening..."
-        case .thinking: "Thinking..."
-        case .speaking: "Speaking..."
+        case .starting: String(localized: "Starting...")
+        case .listening: String(localized: "Listening...")
+        case .thinking: String(localized: "Thinking...")
+        case .speaking: String(localized: "Speaking...")
         }
     }
 }

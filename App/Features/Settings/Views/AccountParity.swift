@@ -105,7 +105,7 @@ struct ParityHeading: View {
 /// a 1pt `borderColor` bottom rule, 17/w600 title, grey subtitle.
 struct ParityListTile<Leading: View, Trailing: View>: View {
     let title: LocalizedStringKey
-    var subtitle: LocalizedStringKey? = nil
+    var subtitle: Text? = nil
     var onTap: (() -> Void)? = nil
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var trailing: () -> Trailing
@@ -120,7 +120,7 @@ struct ParityListTile<Leading: View, Trailing: View>: View {
                     .font(AccountParity.font(17, .semibold))
                     .foregroundStyle(AccountParity.white)
                 if let subtitle {
-                    Text(subtitle)
+                    subtitle
                         .font(AccountParity.bodyMedium)
                         .foregroundStyle(AccountParity.grey)
                 }

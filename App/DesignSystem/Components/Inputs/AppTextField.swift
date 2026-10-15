@@ -37,7 +37,7 @@ struct AppTextField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             if let label {
-                Text(label)
+                Text(L10n.tr(label))
                     .typography(Typography.labelLarge)
                     .foregroundStyle(theme.color(.textPrimary))
             }
@@ -81,7 +81,7 @@ struct AppTextField: View {
             .opacity(enabled ? 1 : 0.5)
 
             if let errorMessage {
-                Text(errorMessage)
+                Text(L10n.tr(errorMessage))
                     .typography(Typography.labelSmall)
                     .foregroundStyle(theme.color(.statusError))
             }

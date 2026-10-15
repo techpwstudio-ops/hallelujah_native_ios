@@ -7,7 +7,7 @@ import SwiftUI
 struct HelpView: View {
     @State private var selectedIndex: Int
 
-    private static let titles = ["FAQ", "Feedback", "Delete Account"]
+    private static let titles: [LocalizedStringKey] = ["FAQ", "Feedback", "Delete Account"]
 
     init(initialIndex: Int = 0) {
         _selectedIndex = State(initialValue: initialIndex)

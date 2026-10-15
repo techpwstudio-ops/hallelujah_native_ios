@@ -37,7 +37,7 @@ struct AIChatDetailView: View {
                 AIChatConversationView(conversationID: resolvedConversationID, initialMessage: initialMessage)
             } else if let resolutionError {
                 ErrorStateView(
-                    title: "Couldn't start this chat",
+                    title: String(localized: "Couldn't start this chat"),
                     message: resolutionError,
                     onRetry: { Task { await resolve() } }
                 )
@@ -105,7 +105,7 @@ struct AIChatDetailView: View {
             resolvedConversationID = conversation.id
         } catch let createError {
             logger.warning("create conversation for AIChatDetailView failed: \(createError)")
-            resolutionError = "Couldn't start a new conversation. Please try again."
+            resolutionError = String(localized: "Couldn't start a new conversation. Please try again.")
         }
     }
 }

@@ -31,11 +31,11 @@ struct DeleteAccountContentView: View {
     /// `reasons` (`delete_account.dart`), verbatim; "Other" carries the
     /// lowercase `"other"` sentinel.
     private static let reasons: [SupportDropdown.Item] = [
-        .init(label: "Privacy concerns", value: "Privacy concerns"),
-        .init(label: "Not useful anymore", value: "Not useful anymore"),
-        .init(label: "Too many notifications", value: "Too many notifications"),
-        .init(label: "Switching to another app", value: "Switching to another app"),
-        .init(label: "Other", value: "other"),
+        .init(label: String(localized: "Privacy concerns"), value: "Privacy concerns"),
+        .init(label: String(localized: "Not useful anymore"), value: "Not useful anymore"),
+        .init(label: String(localized: "Too many notifications"), value: "Too many notifications"),
+        .init(label: String(localized: "Switching to another app"), value: "Switching to another app"),
+        .init(label: String(localized: "Other"), value: "other"),
     ]
 
     private var isOther: Bool { selectedReason?.value == "other" }
@@ -58,7 +58,7 @@ struct DeleteAccountContentView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     SupportDropdown(
-                        hint: "Choose reason",
+                        hint: String(localized: "Choose reason"),
                         items: Self.reasons,
                         selectedValue: selectedReason?.value,
                         isDisabled: viewModel.isDeleting
@@ -135,7 +135,7 @@ struct DeleteAccountContentView: View {
         case let .response(_, message):
             toastCenter.show(message)
         case .transportError:
-            toastCenter.show("Internet error, please check your internet")
+            toastCenter.show(String(localized: "Internet error, please check your internet"))
         }
     }
 
@@ -178,8 +178,10 @@ private struct TypeDeleteDialog: View {
     @State private var shown = false
     @FocusState private var focused: Bool
 
+    private let confirmWord = String(localized: "Delete")
+
     private var canDelete: Bool {
-        text.trimmingCharacters(in: .whitespacesAndNewlines) == "Delete"
+        text.trimmingCharacters(in: .whitespacesAndNewlines) == confirmWord
     }
 
     var body: some View {
@@ -201,7 +203,7 @@ private struct TypeDeleteDialog: View {
                     .tracking(-0.3)
                     .foregroundStyle(Color.white)
                 Spacer().frame(height: 8)
-                Text("To continue, type 'Delete' exactly in the field below.")
+                Text("To continue, type '\(confirmWord)' exactly in the field below.")
                     .font(AccountParity.font(14.5))
                     .lineSpacing(14.5 * 0.45)
                     .foregroundStyle(Color.white.opacity(0.72))
@@ -210,7 +212,7 @@ private struct TypeDeleteDialog: View {
                 Spacer().frame(height: 20)
                 ZStack(alignment: .leading) {
                     if text.isEmpty {
-                        Text("Type Delete")
+                        Text("Type \(confirmWord)")
                             .font(AccountParity.font(15))
                             .foregroundStyle(Color.white.opacity(0.35))
                             .allowsHitTesting(false)

@@ -176,7 +176,7 @@ final class SFSpeechDeviceSTT: VoiceDeviceSTT {
     private func beginRecognition() throws {
         let locale = Locale(identifier: localeId ?? SpeechLocales.defaultLocale)
         guard let recognizer = SFSpeechRecognizer(locale: locale), recognizer.isAvailable else {
-            throw VoiceDeviceSTTUnavailable(message: "No recogniser available for \(locale.identifier).")
+            throw VoiceDeviceSTTUnavailable(message: String(localized: "No recogniser available for \(locale.identifier)."))
         }
 
         let request = SFSpeechAudioBufferRecognitionRequest()
@@ -194,7 +194,7 @@ final class SFSpeechDeviceSTT: VoiceDeviceSTT {
             try engine.start()
         } catch {
             inputNode.removeTap(onBus: 0)
-            throw VoiceDeviceSTTUnavailable(message: "Could not start the audio engine: \(error)")
+            throw VoiceDeviceSTTUnavailable(message: String(localized: "Could not start the audio engine: \(error.localizedDescription)"))
         }
 
         self.recognizer = recognizer

@@ -57,11 +57,11 @@ final class StoreKitPurchaseManager {
         var displayMessage: String {
             switch self {
             case .iapUnavailable:
-                "In app purchase service is not available on your device please use another option for payment"
+                String(localized: "In app purchase service is not available on your device please use another option for payment")
             case .productUnavailable:
-                "There is issue from developer side, please contact to developer"
+                String(localized: "There is issue from developer side, please contact to developer")
             case .failedVerification:
-                "This purchase could not be verified by the App Store. Please try again."
+                String(localized: "This purchase could not be verified by the App Store. Please try again.")
             }
         }
     }

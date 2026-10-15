@@ -7,29 +7,30 @@ import SwiftUI
 /// button blocked) and the default 28pt radius for the restored sheet.
 
 enum AccountDeletionCopy {
-    /// `_formatDate`: "5 Mar 2026".
+    /// `_formatDate`: "5 Mar 2026", in the user's locale.
     static func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "d MMM yyyy"
-        return formatter.string(from: date)
+        date.formatted(.dateTime.day().month(.abbreviated).year())
     }
 
     /// `_buildRemainingTimeText`.
     static func remainingTimeText(until deletionDate: Date, now: Date = Date()) -> String {
         let interval = deletionDate.timeIntervalSince(now)
         if interval < 0 {
-            return "Your account is scheduled for deletion very soon."
+            return String(localized: "Your account is scheduled for deletion very soon.")
         }
         let totalHours = Int(interval / 3600)
         let days = totalHours / 24
         let hours = totalHours % 24
         if days > 0 {
-            return "You can cancel this request within the next \(days) day\(days > 1 ? "s" : "") by logging in."
+            return days > 1
+                ? String(localized: "You can cancel this request within the next \(days) days by logging in.")
+                : String(localized: "You can cancel this request within the next \(days) day by logging in.")
         } else if hours > 0 {
-            return "You can cancel this request within the next \(hours) hour\(hours > 1 ? "s" : "")."
+            return hours > 1
+                ? String(localized: "You can cancel this request within the next \(hours) hours.")
+                : String(localized: "You can cancel this request within the next \(hours) hour.")
         }
-        return "You can cancel this request shortly before deletion."
+        return String(localized: "You can cancel this request shortly before deletion.")
     }
 }
 

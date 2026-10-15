@@ -258,7 +258,7 @@ final class AIChatViewModel {
                     let message = AIErrorParser.parse(error)
                     finalizeStreamError(
                         placeholderID: placeholder.id,
-                        message: message.isEmpty ? "Something went wrong. Please try again." : message
+                        message: message.isEmpty ? String(localized: "Something went wrong. Please try again.") : message
                     )
                 }
             }

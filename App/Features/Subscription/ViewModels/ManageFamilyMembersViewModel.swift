@@ -59,7 +59,7 @@ final class ManageFamilyMembersViewModel {
             loadState = data != nil ? .loaded : .failed(error.message)
         } catch {
             logger.warning("fetch family members failed: \(error)")
-            loadState = data != nil ? .loaded : .failed("Something went wrong. Please try again.")
+            loadState = data != nil ? .loaded : .failed(String(localized: "Something went wrong. Please try again."))
         }
     }
 
@@ -94,7 +94,7 @@ final class ManageFamilyMembersViewModel {
             return false
         } catch {
             logger.warning("send invitation failed: \(error)")
-            sendInviteErrorMessage = "Something went wrong. Please try again."
+            sendInviteErrorMessage = String(localized: "Something went wrong. Please try again.")
             return false
         }
     }
@@ -108,12 +108,12 @@ final class ManageFamilyMembersViewModel {
         do {
             let result = try await repository.resendInvitation(inviteId: invite.id)
             if let data { self.data = data.updatingInviteStatus(invite.id, status: result.status) }
-            return result.message ?? "Invite resent."
+            return result.message ?? String(localized: "Invite resent.")
         } catch let error as SubscriptionError {
             return error.message
         } catch {
             logger.warning("resend invitation failed: \(error)")
-            return "Something went wrong. Please try again."
+            return String(localized: "Something went wrong. Please try again.")
         }
     }
 
@@ -124,12 +124,12 @@ final class ManageFamilyMembersViewModel {
         do {
             let message = try await repository.cancelInvitation(inviteId: invite.id)
             if let data { self.data = data.removingInvite(invite.id) }
-            return message ?? "Invite cancelled."
+            return message ?? String(localized: "Invite cancelled.")
         } catch let error as SubscriptionError {
             return error.message
         } catch {
             logger.warning("cancel invitation failed: \(error)")
-            return "Something went wrong. Please try again."
+            return String(localized: "Something went wrong. Please try again.")
         }
     }
 
@@ -145,12 +145,12 @@ final class ManageFamilyMembersViewModel {
         do {
             let message = try await repository.removeMember(memberId: member.id)
             if let data { self.data = data.removingMember(member.id) }
-            return message ?? "Member removed."
+            return message ?? String(localized: "Member removed.")
         } catch let error as SubscriptionError {
             return error.message
         } catch {
             logger.warning("remove member failed: \(error)")
-            return "Something went wrong. Please try again."
+            return String(localized: "Something went wrong. Please try again.")
         }
     }
 }

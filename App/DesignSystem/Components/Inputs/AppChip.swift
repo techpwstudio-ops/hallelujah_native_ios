@@ -36,7 +36,7 @@ struct AppChip: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title)
+            Text(L10n.tr(title))
                 .typography(Typography.labelLarge)
                 .foregroundStyle(isSelected ? theme.color(.textInverse) : theme.color(.textPrimary))
                 .padding(.horizontal, Spacing.sm)

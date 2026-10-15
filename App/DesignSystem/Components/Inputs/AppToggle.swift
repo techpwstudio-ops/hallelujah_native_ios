@@ -17,7 +17,7 @@ struct AppToggle: View {
         Group {
             if let label {
                 Toggle(isOn: $isOn) {
-                    Text(label)
+                    Text(L10n.tr(label))
                         .typography(Typography.bodyMedium)
                         .foregroundStyle(theme.color(.textPrimary))
                 }

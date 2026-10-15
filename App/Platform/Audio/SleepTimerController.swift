@@ -95,9 +95,9 @@ final class SleepTimerController {
         let hours = seconds / 3600
         if hours >= 1 {
             let minutes = (seconds % 3600) / 60
-            return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
+            return minutes > 0 ? String(localized: "\(hours)h \(minutes)m") : String(localized: "\(hours)h")
         }
         let minutes = seconds / 60 + (seconds % 60 > 0 ? 1 : 0)
-        return "\(minutes)m"
+        return String(localized: "\(minutes)m")
     }
 }

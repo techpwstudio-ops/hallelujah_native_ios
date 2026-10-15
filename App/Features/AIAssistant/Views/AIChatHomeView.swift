@@ -31,21 +31,21 @@ struct AIChatHomeView: View {
 
     /// Flutter `_allSuggestions`; three are picked at random each time the page opens.
     private static let allSuggestions: [String] = [
-        "Why do I feel anxious all the time?",
-        "How do I know God\u{2019}s plan for my life?",
-        "How do I stop overthinking?",
-        "Why does God feel silent?",
-        "How do I make the right decision?",
-        "How do I find purpose in life?",
-        "How do I forgive someone who hurt me?",
-        "How do I grow closer to God?",
-        "What should I do when I feel lonely?",
-        "How do I deal with failure?",
-        "How do I trust God during difficult times?",
-        "How can I build stronger relationships?",
-        "How do I break bad habits?",
-        "How do I find peace in a busy life?",
-        "What does the Bible say about the situation I\u{2019}m facing?",
+        String(localized: "Why do I feel anxious all the time?"),
+        String(localized: "How do I know God\u{2019}s plan for my life?"),
+        String(localized: "How do I stop overthinking?"),
+        String(localized: "Why does God feel silent?"),
+        String(localized: "How do I make the right decision?"),
+        String(localized: "How do I find purpose in life?"),
+        String(localized: "How do I forgive someone who hurt me?"),
+        String(localized: "How do I grow closer to God?"),
+        String(localized: "What should I do when I feel lonely?"),
+        String(localized: "How do I deal with failure?"),
+        String(localized: "How do I trust God during difficult times?"),
+        String(localized: "How can I build stronger relationships?"),
+        String(localized: "How do I break bad habits?"),
+        String(localized: "How do I find peace in a busy life?"),
+        String(localized: "What does the Bible say about the situation I\u{2019}m facing?"),
     ]
 
     private static func pickFallbackSuggestions() -> [String] {
@@ -166,7 +166,7 @@ struct AIChatHomeView: View {
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 96, height: 96)
                     Spacer().frame(height: 20)
-                    AIGradientText(text: "Ask. Seek. Discover.", font: AIColors.font(26, .bold), vertical: true)
+                    AIGradientText(text: String(localized: "Ask. Seek. Discover."), font: AIColors.font(26, .bold), vertical: true)
                         .multilineTextAlignment(.center)
                     Spacer().frame(height: 12)
                     Text("Seek guidance, find verses, and understand scripture in a deeper way.")

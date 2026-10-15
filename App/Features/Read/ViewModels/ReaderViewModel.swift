@@ -180,7 +180,7 @@ final class ReaderViewModel {
     func goToNextChapter() {
         guard let currentBook else { return }
         guard currentChapterNumber < maxChapters else {
-            boundaryMessage = "This is last chapter"
+            boundaryMessage = String(localized: "This is last chapter")
             return
         }
         dispatchChapterLoad(
@@ -195,7 +195,7 @@ final class ReaderViewModel {
     func goToPreviousChapter() {
         guard let currentBook else { return }
         guard currentChapterNumber > 1 else {
-            boundaryMessage = "This is first chapter"
+            boundaryMessage = String(localized: "This is first chapter")
             return
         }
         dispatchChapterLoad(
@@ -210,7 +210,7 @@ final class ReaderViewModel {
     func goToNextBook() {
         guard let currentBook else { return }
         guard let nextBook = books.first(where: { $0.bookNumber == currentBook.bookNumber + 1 }) else {
-            boundaryMessage = "This is the last book"
+            boundaryMessage = String(localized: "This is the last book")
             return
         }
         dispatchChapterLoad(
@@ -225,7 +225,7 @@ final class ReaderViewModel {
     func goToPreviousBook() {
         guard let currentBook else { return }
         guard let previousBook = books.first(where: { $0.bookNumber == currentBook.bookNumber - 1 }) else {
-            boundaryMessage = "This is first book"
+            boundaryMessage = String(localized: "This is first book")
             return
         }
         // `previousBook` in `bible_bloc.dart` lands on the previous book's last chapter.

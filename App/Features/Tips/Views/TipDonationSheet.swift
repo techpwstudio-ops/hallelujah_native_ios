@@ -27,7 +27,11 @@ struct TipDonationSheet: View {
 
     private var title: String {
         let trimmed = artistName?.trimmingCharacters(in: .whitespaces) ?? ""
-        return trimmed.isEmpty ? "Support the Artist" : "Support \(trimmed)"
+        return trimmed.isEmpty ? String(localized: "Support the Artist") : String(localized: "Support \(trimmed)")
+    }
+
+    private func money(_ value: Int) -> String {
+        value.formatted(.currency(code: "INR").precision(.fractionLength(0)))
     }
 
     var body: some View {
@@ -50,7 +54,7 @@ struct TipDonationSheet: View {
 
                 Spacer().frame(height: 20)
 
-                Text("₹ \(amount)")
+                Text(verbatim: money(amount))
                     .font(AccountParity.font(24, .bold))
                     .foregroundStyle(AccountParity.white)
 
@@ -71,7 +75,7 @@ struct TipDonationSheet: View {
 
                 Spacer().frame(height: 20)
 
-                ParityFilledButton(title: "Send ₹ \(amount)", fillWidth: true) {
+                ParityFilledButton(title: "Send \(money(amount))", fillWidth: true) {
                     guard amount >= minAmount else { return }
                     onSend(amount, note.trimmingCharacters(in: .whitespacesAndNewlines))
                     dismiss()
@@ -115,12 +119,12 @@ struct TipDonationSheet: View {
     private var presetChips: some View {
         FlowLayout(spacing: 10, lineSpacing: 0) {
             ForEach(presets, id: \.self) { preset in
-                chip("₹ \(preset)", selected: amount == preset && !showsSlider) {
+                chip(money(preset), selected: amount == preset && !showsSlider) {
                     amount = preset
                     showsSlider = false
                 }
             }
-            chip("More", selected: showsSlider) {
+            chip(String(localized: "More"), selected: showsSlider) {
                 showsSlider = true
             }
         }
@@ -167,9 +171,9 @@ struct TipDonationSheet: View {
             )
             .tint(AccountParity.white)
             HStack {
-                Text("₹ \(minAmount)")
+                Text(verbatim: money(minAmount))
                 Spacer()
-                Text("₹ \(maxAmount)")
+                Text(verbatim: money(maxAmount))
             }
             .font(AccountParity.bodyMedium)
             .foregroundStyle(AccountParity.white)

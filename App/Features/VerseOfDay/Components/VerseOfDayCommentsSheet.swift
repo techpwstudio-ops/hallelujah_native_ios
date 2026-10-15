@@ -99,16 +99,20 @@ private func verseOfDayTimeAgo(_ date: Date?) -> String {
     let minutes = seconds / 60
     let hours = minutes / 60
     let days = hours / 24
-    if seconds < 60 { return "just now" }
-    if minutes < 60 { return "\(minutes) min" }
-    if hours < 24 { return "\(hours) hour\(hours > 1 ? "s" : "")" }
-    if days < 30 { return "\(days) day\(days > 1 ? "s" : "")" }
+    if seconds < 60 { return String(localized: "just now") }
+    if minutes < 60 { return String(localized: "\(minutes) min") }
+    if hours < 24 {
+        return hours > 1 ? String(localized: "\(hours) hours") : String(localized: "\(hours) hour")
+    }
+    if days < 30 {
+        return days > 1 ? String(localized: "\(days) days") : String(localized: "\(days) day")
+    }
     if days < 365 {
         let months = days / 30
-        return "\(months) month\(months > 1 ? "s" : "")"
+        return months > 1 ? String(localized: "\(months) months") : String(localized: "\(months) month")
     }
     let years = days / 365
-    return "\(years) year\(years > 1 ? "s" : "")"
+    return years > 1 ? String(localized: "\(years) years") : String(localized: "\(years) year")
 }
 
 /// `VerseOfDayCommentItem`: name (bodyLarge w600, "Anonymous" fallback) and
@@ -121,7 +125,7 @@ private struct VerseOfDayCommentRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
-                Text(comment.userName ?? "Anonymous")
+                Text(comment.userName ?? String(localized: "Anonymous"))
                     .readText(Typography.bodyLarge, weight: .semibold)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(verseOfDayTimeAgo(comment.createdAt))

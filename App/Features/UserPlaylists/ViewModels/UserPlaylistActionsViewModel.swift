@@ -20,7 +20,7 @@ final class UserPlaylistActionsViewModel {
     }
 
     /// `showSnackBarToast` text Dart shows when a request throws.
-    static let networkErrorMessage = "Internet error, please check your internet"
+    static var networkErrorMessage: String { String(localized: "Internet error, please check your internet") }
 
     let playlistID: String
     private(set) var isFollowing = false
@@ -72,7 +72,7 @@ final class UserPlaylistActionsViewModel {
     var isPublic: Bool { visibility == "public" }
 
     /// "Make Private" / "Make Public" (`custom_playlist.dart`).
-    var visibilityTitle: String { isPublic ? "Make Private" : "Make Public" }
+    var visibilityTitle: String { isPublic ? String(localized: "Make Private") : String(localized: "Make Public") }
 
     /// Toast text for a successful toggle; `nil` when the call failed without
     /// a server message (Dart only logs that case).
@@ -92,7 +92,7 @@ final class UserPlaylistActionsViewModel {
     }
 
     static func visibilityMessage(for visibility: String?) -> String {
-        visibility == "public" ? "Playlist is now public" : "Playlist is now private"
+        visibility == "public" ? String(localized: "Playlist is now public") : String(localized: "Playlist is now private")
     }
 
     /// Optimistic flip, reverted on failure (Dart's Realm write + revert).

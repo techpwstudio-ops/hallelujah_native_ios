@@ -53,6 +53,6 @@ struct SubscriptionError: Error, Sendable, Equatable {
         self.statusCode = statusCode
         let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
         let rawMessage = (json["message"] as? String)?.trimmingCharacters(in: .whitespaces)
-        message = (rawMessage?.isEmpty == false ? rawMessage : nil) ?? "Something went wrong. Please try again."
+        message = (rawMessage?.isEmpty == false ? rawMessage : nil) ?? String(localized: "Something went wrong. Please try again.")
     }
 }

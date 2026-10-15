@@ -227,7 +227,7 @@ private struct AdBreakControlPanel: View {
     private var advertiserRow: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(ad.headline?.isEmpty == false ? (ad.headline ?? "") : "Advertisement")
+                Text(ad.headline?.isEmpty == false ? (ad.headline ?? "") : String(localized: "Advertisement"))
                     .typography(PlayerStyle.titleMediumBold)
                     .foregroundStyle(PlayerStyle.white)
                     .lineLimit(1)
@@ -347,7 +347,7 @@ private struct AdBreakControlPanel: View {
             Button {
                 if hasCTA { pacing.openAction(coordinator: coordinator) }
             } label: {
-                Text(ad.ctaLabel?.isEmpty == false ? (ad.ctaLabel ?? "More Info") : "More Info")
+                Text(ad.ctaLabel?.isEmpty == false ? (ad.ctaLabel ?? String(localized: "More Info")) : String(localized: "More Info"))
                     .typography(Typography.titleSmall)
                     .foregroundStyle(hasCTA ? PlayerStyle.black : PlayerStyle.whiteAlpha(0.54))
                     .padding(.horizontal, 18)

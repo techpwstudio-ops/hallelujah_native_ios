@@ -23,7 +23,7 @@ final class RemoteAccountRepository: AccountRepository {
         // unconditionally with no null-coalescing, so a message-less body
         // there would hand `showSnackBarToast` a null; this fills that same
         // gap with a generic string instead of propagating an empty toast.
-        let message = decoded?.message ?? "Something went wrong. Please try again."
+        let message = decoded?.message ?? String(localized: "Something went wrong. Please try again.")
 
         guard response.statusCode == 200 else {
             return AccountDeletionResult(succeeded: false, message: message)
@@ -39,7 +39,7 @@ extension RemoteAccountRepository {
     func cancelAccountDeletion() async throws -> AccountDeletionResult {
         let response = try await client.send(.cancelAccountDeletion)
         let decoded = try? JSONDecoder().decode(CancelDeletionResponseDTO.self, from: response.data)
-        let message = decoded?.message ?? "Something went wrong. Please try again."
+        let message = decoded?.message ?? String(localized: "Something went wrong. Please try again.")
         guard response.statusCode == 200 else {
             return AccountDeletionResult(succeeded: false, message: message)
         }

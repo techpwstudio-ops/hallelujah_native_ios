@@ -125,10 +125,10 @@ struct AuthOTPError: Error, Sendable, Equatable {
 
     private static func defaultMessage(for statusCode: Int?) -> String {
         switch statusCode {
-        case 401: "Invalid or expired code. Please try again."
-        case 422: "Enter a valid email address, or a mobile number including its country code."
-        case 429: "Please wait before requesting another code."
-        default: "Something went wrong. Please try again."
+        case 401: String(localized: "Invalid or expired code. Please try again.")
+        case 422: String(localized: "Enter a valid email address, or a mobile number including its country code.")
+        case 429: String(localized: "Please wait before requesting another code.")
+        default: String(localized: "Something went wrong. Please try again.")
         }
     }
 

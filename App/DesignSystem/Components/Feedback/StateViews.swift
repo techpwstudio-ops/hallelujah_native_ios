@@ -23,12 +23,12 @@ struct EmptyStateView: View {
                     .font(.system(size: 40))
                     .foregroundStyle(theme.color(.textTertiary))
             }
-            Text(title)
+            Text(L10n.tr(title))
                 .typography(Typography.titleMedium)
                 .foregroundStyle(theme.color(.textPrimary))
                 .multilineTextAlignment(.center)
             if let message {
-                Text(message)
+                Text(L10n.tr(message))
                     .typography(Typography.bodySmall)
                     .foregroundStyle(theme.color(.textSecondary))
                     .multilineTextAlignment(.center)
@@ -50,7 +50,7 @@ struct EmptyStateView: View {
 struct ErrorStateView: View {
     var title: String
     var message: String? = nil
-    var retryTitle: String = "Try Again"
+    var retryTitle: String = String(localized: "Try Again")
     var onRetry: (() -> Void)? = nil
 
     @Environment(\.appTheme) private var theme
@@ -60,12 +60,12 @@ struct ErrorStateView: View {
             theme.icon(.warning)
                 .font(.system(size: 40))
                 .foregroundStyle(theme.color(.statusError))
-            Text(title)
+            Text(L10n.tr(title))
                 .typography(Typography.titleMedium)
                 .foregroundStyle(theme.color(.textPrimary))
                 .multilineTextAlignment(.center)
             if let message {
-                Text(message)
+                Text(L10n.tr(message))
                     .typography(Typography.bodySmall)
                     .foregroundStyle(theme.color(.textSecondary))
                     .multilineTextAlignment(.center)
@@ -96,7 +96,7 @@ struct LoadingStateView: View {
                 .controlSize(.large)
                 .tint(theme.color(.textPrimary))
             if let message {
-                Text(message)
+                Text(L10n.tr(message))
                     .typography(Typography.bodySmall)
                     .foregroundStyle(theme.color(.textSecondary))
             }

@@ -9,8 +9,7 @@ import SwiftUI
 struct PlansHero: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            (Text("Worship Without ").foregroundStyle(AccountParity.white70)
-                + Text("Interruptions").foregroundStyle(AccountParity.white))
+            Text(Self.heroTitle)
                 .font(AccountParity.font(28, .bold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.1)
@@ -31,7 +30,20 @@ struct PlansHero: View {
         }
     }
 
-    private func feature(_ icon: String, _ label: String, _ note: String?) -> some View {
+    private static var heroTitle: AttributedString {
+        var title = AttributedString(localized: "Worship Without **Interruptions**")
+        let emphasised = title.runs.compactMap { run -> Range<AttributedString.Index>? in
+            run.inlinePresentationIntent?.contains(.stronglyEmphasized) == true ? run.range : nil
+        }
+        title.foregroundColor = AccountParity.white70
+        for range in emphasised {
+            title[range].inlinePresentationIntent = nil
+            title[range].foregroundColor = AccountParity.white
+        }
+        return title
+    }
+
+    private func feature(_ icon: String, _ label: LocalizedStringKey, _ note: LocalizedStringKey?) -> some View {
         VStack(spacing: 0) {
             Image(systemName: icon)
                 .font(.system(size: Dimens.iconSize - 4))
@@ -74,12 +86,12 @@ struct PlansAppBarTitle: View {
 // MARK: - Plan card
 
 struct PlanPill: View {
-    let label: String
+    let label: Text
     let background: Color
     let foreground: Color
 
     var body: some View {
-        Text(label)
+        label
             .font(AccountParity.font(12, .bold))
             .tracking(0.1)
             .foregroundStyle(foreground)
@@ -119,10 +131,10 @@ struct PlanOptionCard: View {
                             .font(AccountParity.font(20, .bold))
                             .foregroundStyle(AccountParity.white)
                         if isCurrent {
-                            PlanPill(label: "Current Plan", background: AccountParity.white12, foreground: AccountParity.white)
+                            PlanPill(label: Text("Current Plan"), background: AccountParity.white12, foreground: AccountParity.white)
                         }
                     }
-                    Text(isIndividual ? "Music just for you" : "Music for your family")
+                    Text(isIndividual ? LocalizedStringKey("Music just for you") : LocalizedStringKey("Music for your family"))
                         .font(AccountParity.bodyMedium)
                         .foregroundStyle(AccountParity.white70)
                     Spacer().frame(height: Dimens.spacing8)
@@ -130,7 +142,7 @@ struct PlanOptionCard: View {
                     if plan.maxMembers > 1 {
                         Spacer().frame(height: Dimens.spacing8)
                         PlanPill(
-                            label: "Up to \(plan.maxMembers) members",
+                            label: Text("Up to \(plan.maxMembers) members"),
                             background: Self.accentSurface,
                             foreground: AccountParity.white70
                         )
@@ -159,7 +171,7 @@ struct PlanOptionCard: View {
         if let price = plan.price {
             let text = PlanCopy.formatPrice(price, currency: currency)
             if let trial = PlanCopy.trial(for: plan) {
-                PlanPill(label: PlanCopy.freeTrialHeadline(trial), background: AccountParity.white, foreground: AccountParity.black)
+                PlanPill(label: Text(verbatim: PlanCopy.freeTrialHeadline(trial)), background: AccountParity.white, foreground: AccountParity.black)
                 Spacer().frame(height: Dimens.spacing8)
                 Text("Then \(text) / Month")
                     .font(AccountParity.bodyMedium)
@@ -249,9 +261,9 @@ struct PaymentSummaryCard: View {
                 Image(systemName: "info.circle")
                     .font(.system(size: Dimens.iconSizeSmall + 2))
                     .foregroundStyle(AccountParity.white70)
-                Text(period == nil
-                    ? "You'll be charged \(monthly) per month. Cancel anytime before renewal."
-                    : "Free for \(periodText), then \(monthly) per month. Cancel anytime.")
+                (period == nil
+                    ? Text("You'll be charged \(monthly) per month. Cancel anytime before renewal.")
+                    : Text("Free for \(periodText), then \(monthly) per month. Cancel anytime."))
                     .font(AccountParity.bodySmall)
                     .lineSpacing(6)
                     .foregroundStyle(AccountParity.white70)
@@ -274,7 +286,7 @@ struct PaymentSummaryCard: View {
         )
     }
 
-    private func summaryRow(_ label: String, _ value: String) -> some View {
+    private func summaryRow(_ label: LocalizedStringKey, _ value: String) -> some View {
         HStack(alignment: .top, spacing: Dimens.spacing12) {
             Text(label)
                 .font(AccountParity.bodyMedium)
@@ -352,7 +364,7 @@ struct PlansFooterLinks: View {
         Rectangle().fill(AccountParity.white24).frame(width: 1, height: 12)
     }
 
-    private func link(_ label: String, _ action: @escaping () -> Void) -> some View {
+    private func link(_ label: LocalizedStringKey, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
                 .font(AccountParity.bodySmall)
@@ -378,7 +390,7 @@ private struct ExpandableHeightKey: PreferenceKey {
 /// `ExpandableText` (`verse_unit_ui.dart`): `maxLines` lines with an ellipsis
 /// and a bold "Read more" / "Read less" link only when the text overflows.
 struct ParityExpandableText: View {
-    let text: String
+    let text: LocalizedStringKey
     var font: Font = AccountParity.bodySmall
     var color: Color = AccountParity.tertiaryText
     var maxLines: Int = 3
@@ -404,7 +416,7 @@ struct ParityExpandableText: View {
                 Button {
                     expanded.toggle()
                 } label: {
-                    Text(expanded ? "Read less" : "Read more")
+                    Text(expanded ? LocalizedStringKey("Read less") : LocalizedStringKey("Read more"))
                         .font(font.bold())
                         .foregroundStyle(color)
                         .padding(.top, 4)

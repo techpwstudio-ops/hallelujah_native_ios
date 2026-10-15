@@ -451,13 +451,13 @@ final class QueueController {
         if let resolved {
             await playHandoff(resolved)
         } else if announceEmpty {
-            onNotice?("End of queue")
+            onNotice?(String(localized: "End of queue"))
         }
     }
 
     private func playHandoff(_ prepared: PreparedHandoff) async {
         // The user did not press play, so say what started and why.
-        onNotice?("Up next \u{00B7} \(prepared.title)")
+        onNotice?(String(localized: "Up next \u{00B7} \(prepared.title)"))
         await play(songs: prepared.songs, startIndex: 0, source: prepared.source, continuity: .handoff)
     }
 

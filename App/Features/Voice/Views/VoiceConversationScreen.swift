@@ -115,7 +115,7 @@ struct VoiceConversationScreen: View {
     /// Ports `_notice(state)`.
     private var notice: String? {
         if let notice = voice.state.notice, !notice.isEmpty { return notice }
-        if voice.state.phase == .reconnecting { return "Reconnecting…" }
+        if voice.state.phase == .reconnecting { return String(localized: "Reconnecting…") }
         return nil
     }
 

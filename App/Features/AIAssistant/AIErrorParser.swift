@@ -5,7 +5,7 @@ import Foundation
 /// means a silently cancelled request (callers skip the toast).
 @MainActor
 enum AIErrorParser {
-    static let genericMessage = "Something went wrong. Please try again."
+    static var genericMessage: String { String(localized: "Something went wrong. Please try again.") }
 
     static func parse(_ error: Error, isOnline: Bool? = nil) -> String {
         if error is CancellationError { return "" }
@@ -15,7 +15,7 @@ enum AIErrorParser {
             case .cancelled:
                 return ""
             case .timedOut:
-                return "Request timed out. Please try again."
+                return String(localized: "Request timed out. Please try again.")
             case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost,
                  .cannotFindHost, .dnsLookupFailed, .internationalRoamingOff:
                 return connectionMessage(isOnline: isOnline)
@@ -38,12 +38,12 @@ enum AIErrorParser {
     /// errors, so the status-specific copy is used for every code).
     static func message(forStatus code: Int) -> String {
         switch code {
-        case 400: return "Invalid request. Please try again."
-        case 401: return "Session expired. Please sign in again."
-        case 403: return "You don't have permission to do that."
-        case 404: return "Content not found."
-        case 429: return "You're sending messages too quickly. Please slow down and try again."
-        case 500, 502, 503, 504: return "Something went wrong on our end. Please try again later."
+        case 400: return String(localized: "Invalid request. Please try again.")
+        case 401: return String(localized: "Session expired. Please sign in again.")
+        case 403: return String(localized: "You don't have permission to do that.")
+        case 404: return String(localized: "Content not found.")
+        case 429: return String(localized: "You're sending messages too quickly. Please slow down and try again.")
+        case 500, 502, 503, 504: return String(localized: "Something went wrong on our end. Please try again later.")
         default: return genericMessage
         }
     }
@@ -57,7 +57,7 @@ enum AIErrorParser {
             online = reachability?.isOnline ?? true
         }
         return online
-            ? "Connection failed. Please try again."
-            : "No internet connection. Please check your connection and try again."
+            ? String(localized: "Connection failed. Please try again.")
+            : String(localized: "No internet connection. Please check your connection and try again.")
     }
 }

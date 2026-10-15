@@ -29,17 +29,17 @@ struct RelatedItem: Sendable, Equatable, Identifiable {
         switch kind {
         case .playlist:
             switch reason {
-            case "features_this_song": "Features this song"
-            case "same_artist": "Same artist"
-            case "same_genre": "Similar sound"
-            default: "More like this"
+            case "features_this_song": String(localized: "Features this song")
+            case "same_artist": String(localized: "Same artist")
+            case "same_genre": String(localized: "Similar sound")
+            default: String(localized: "More like this")
             }
         case .creator:
             switch reason {
-            case "same_genre": "Similar shows"
-            case "same_language": "Same language"
-            case "popular": "Popular show"
-            default: "More like this"
+            case "same_genre": String(localized: "Similar shows")
+            case "same_language": String(localized: "Same language")
+            case "popular": String(localized: "Popular show")
+            default: String(localized: "More like this")
             }
         }
     }

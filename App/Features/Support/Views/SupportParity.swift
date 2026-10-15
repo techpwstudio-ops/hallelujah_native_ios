@@ -4,7 +4,7 @@ import SwiftUI
 /// padding, 12pt radius, `titleSmall` w600. Primary = white / greyDark when
 /// disabled; secondary = clear with white24 border and white70 label.
 struct SupportCustomButton: View {
-    let text: String
+    let text: LocalizedStringKey
     var enabled: Bool = true
     var isSecondary: Bool = false
     var isLoading: Bool = false
@@ -92,7 +92,7 @@ struct SupportDropdown: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            (Text(hint).font(AccountParity.titleSmall).foregroundStyle(AccountParity.white)
+            (Text(verbatim: hint).font(AccountParity.titleSmall).foregroundStyle(AccountParity.white)
                 + Text(" *").font(AccountParity.titleSmall).foregroundStyle(AccountParity.red))
                 .padding(.bottom, Dimens.spacing6)
 
@@ -102,7 +102,7 @@ struct SupportDropdown: View {
                 }
             } label: {
                 HStack {
-                    Text(selectedLabel ?? "Select \(hint)")
+                    Text(verbatim: selectedLabel ?? String(localized: "Select \(hint)"))
                         .font(AccountParity.bodyMedium)
                         .foregroundStyle(selectedLabel == nil ? Color(red: 0x80 / 255, green: 0x80 / 255, blue: 0x80 / 255) : AccountParity.white)
                         .lineLimit(1)

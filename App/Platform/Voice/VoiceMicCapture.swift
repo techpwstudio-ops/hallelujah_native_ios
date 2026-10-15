@@ -27,7 +27,7 @@ enum VoiceAudioFormat {
 
 /// Thrown by `start()` when the user will not grant the microphone.
 struct VoiceMicPermissionDenied: Error {
-    var message = "Microphone permission denied."
+    var message = String(localized: "Microphone permission denied.")
 }
 
 /// Thrown when the engine itself refuses to start — device busy, another
@@ -132,7 +132,7 @@ final class AVEngineVoiceMicCapture: VoiceMicCapture {
         let inputNode = engine.inputNode
         let hardwareFormat = inputNode.outputFormat(forBus: 0)
         guard let targetFormat = AVAudioConverter(from: hardwareFormat, to: VoiceAudioFormat.format) else {
-            throw VoiceMicUnavailable(message: "Could not build a PCM16 16kHz mono converter.")
+            throw VoiceMicUnavailable(message: String(localized: "Could not build a PCM16 16kHz mono converter."))
         }
         converter = targetFormat
 
@@ -151,7 +151,7 @@ final class AVEngineVoiceMicCapture: VoiceMicCapture {
         } catch {
             inputNode.removeTap(onBus: 0)
             converter = nil
-            throw VoiceMicUnavailable(message: "Could not open the microphone: \(error)")
+            throw VoiceMicUnavailable(message: String(localized: "Could not open the microphone: \(error.localizedDescription)"))
         }
 
         // The engine IS running now, whatever the caller has since

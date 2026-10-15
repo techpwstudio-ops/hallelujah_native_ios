@@ -75,7 +75,7 @@ struct BibleSearchPanel: View {
         messageView(icon: "magnifyingglass", text: "No results found")
     }
 
-    private func messageView(icon: String, text: String) -> some View {
+    private func messageView(icon: String, text: LocalizedStringKey) -> some View {
         VStack(spacing: Dimens.spacing12) {
             Image(systemName: icon)
                 .font(.system(size: Dimens.iconSize + 12))

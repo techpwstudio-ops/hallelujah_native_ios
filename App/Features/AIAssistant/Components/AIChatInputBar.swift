@@ -25,7 +25,7 @@ struct AIChatInputBar: View {
     var onVoice: (() -> Void)? = nil
     var onAttach: (() -> Void)? = nil
     var onRemoveAttachment: ((Int) -> Void)? = nil
-    var hintText: String = "Ask anything about the Bible..."
+    var hintText: LocalizedStringKey = "Ask anything about the Bible..."
     var onSend: () -> Void
     var onStop: () -> Void
 

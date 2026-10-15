@@ -25,11 +25,11 @@ struct RemoteUploadRepository: UploadRepository {
         let presign = try await client.send(.presignedUpload, body: body)
         guard presign.statusCode == 200 else {
             let message = (try? JSONDecoder().decode(ErrorBody.self, from: presign.data))?.message
-            throw UploadError(message: message ?? "Failed to get upload URL")
+            throw UploadError(message: message ?? String(localized: "Failed to get upload URL"))
         }
         let decoded = try JSONDecoder().decode(PresignResponse.self, from: presign.data)
         guard let url = URL(string: decoded.uploadUrl) else {
-            throw UploadError(message: "Failed to get upload URL")
+            throw UploadError(message: String(localized: "Failed to get upload URL"))
         }
 
         var request = URLRequest(url: url)
@@ -38,7 +38,7 @@ struct RemoteUploadRepository: UploadRepository {
         let (_, response) = try await session.upload(for: request, fromFile: fileURL)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-            throw UploadError(message: "File upload to S3 failed (\(code))")
+            throw UploadError(message: String(localized: "File upload to S3 failed (\(code))"))
         }
         return decoded.filePath
     }

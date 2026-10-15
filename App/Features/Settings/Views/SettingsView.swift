@@ -58,14 +58,14 @@ struct SettingsView: View {
         )
     }
 
-    private var contentLanguagesSubtitle: String {
-        guard let languages = user?.languages, !languages.isEmpty else { return "Not set" }
-        return languages.replacingOccurrences(of: ",", with: ", ")
+    private var contentLanguagesSubtitle: Text {
+        guard let languages = user?.languages, !languages.isEmpty else { return Text("Not set") }
+        return Text(verbatim: languages.replacingOccurrences(of: ",", with: ", "))
     }
 
-    private var logoutSubtitle: String {
+    private var logoutSubtitle: Text {
         let identity = user?.name ?? user?.mobile ?? user?.email ?? "-"
-        return "You are logged in as \(identity)."
+        return Text("You are logged in as \(identity).")
     }
 
     /// Scope cut #1's own gating logic (`settings_screen.dart:170-198`:
@@ -93,15 +93,15 @@ struct SettingsView: View {
                 }
                 Spacer().frame(height: Dimens.verticalSpacing)
                 ParityHeading(text: "Account")
-                tile(icon: "person.circle", title: "Profile", subtitle: "View your profile page.") {
+                tile(icon: "person.circle", title: "Profile", subtitle: Text("View your profile page.")) {
                     coordinator.push(.profile)
                 }
                 if showSubscription {
-                    tile(icon: "creditcard", title: "Manage Subscription", subtitle: "Manage subscription plans") {
+                    tile(icon: "creditcard", title: "Manage Subscription", subtitle: Text("Manage subscription plans")) {
                         coordinator.push(.subscriptionPlans)
                     }
                     if isPremium && isOwner && showsManageFamilyMembersRow {
-                        tile(icon: "person.2", title: "Manage Family Members", subtitle: "Manage upto 4 family members") {
+                        tile(icon: "person.2", title: "Manage Family Members", subtitle: Text("Manage upto 4 family members")) {
                             coordinator.push(.manageFamilyMembers)
                         }
                     }
@@ -116,21 +116,21 @@ struct SettingsView: View {
                     tile(
                         icon: "waveform",
                         title: "Audio Quality",
-                        subtitle: "Selected audio quality is \(selectedAudioQuality.settingsLabel.lowercased())"
+                        subtitle: Text(verbatim: String(localized: "Selected audio quality is \(selectedAudioQuality.settingsLabel.localizedLowercase)"))
                     ) {
                         isAudioQualityPickerPresented = true
                     }
                 }
                 ParityListTile(
                     title: "Download Over Wi-Fi Only",
-                    subtitle: "If switched on, we will download content only with a Wi-Fi network",
+                    subtitle: Text("If switched on, we will download content only with a Wi-Fi network"),
                     leading: { leadingIcon("arrow.down.circle") },
                     trailing: { AppToggle(isOn: downloadOverWifiOnlyBinding) }
                 )
                 if isVerseOfDayHidden {
                     ParityListTile(
                         title: "Verse of Day",
-                        subtitle: "Hidden for today. Toggle to show.",
+                        subtitle: Text("Hidden for today. Toggle to show."),
                         leading: { leadingIcon("book") },
                         trailing: { AppToggle(isOn: verseOfDayBinding) }
                     )
@@ -140,7 +140,7 @@ struct SettingsView: View {
                 ParityHeading(text: "App & Terms")
                 ParityListTile(
                     title: "Version",
-                    subtitle: versionText,
+                    subtitle: Text(verbatim: versionText),
                     leading: {
                         Image("AppLogo")
                             .resizable()
@@ -149,16 +149,16 @@ struct SettingsView: View {
                     },
                     trailing: { EmptyView() }
                 )
-                tile(icon: "hand.raised", title: "Privacy Policy", subtitle: "Your data, your rights.") {
+                tile(icon: "hand.raised", title: "Privacy Policy", subtitle: Text("Your data, your rights.")) {
                     UIApplication.shared.open(AppConfiguration.current.privacyPolicyURL)
                 }
-                tile(icon: "doc.text", title: "Terms And Conditions", subtitle: "All the details you need to know.") {
+                tile(icon: "doc.text", title: "Terms And Conditions", subtitle: Text("All the details you need to know.")) {
                     UIApplication.shared.open(AppConfiguration.current.termsAndConditionsURL)
                 }
 
                 Spacer().frame(height: Dimens.dividerSpacing)
                 ParityHeading(text: "Security")
-                tile(icon: "questionmark.circle", title: "Help & Support", subtitle: "For more info on support") {
+                tile(icon: "questionmark.circle", title: "Help & Support", subtitle: Text("For more info on support")) {
                     coordinator.push(.helpSupportDashboard)
                 }
                 tile(icon: "rectangle.portrait.and.arrow.right", title: "Logout", subtitle: logoutSubtitle) {
@@ -222,7 +222,7 @@ struct SettingsView: View {
             .frame(width: 24, height: 24)
     }
 
-    private func tile(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func tile(icon: String, title: LocalizedStringKey, subtitle: Text, action: @escaping () -> Void) -> some View {
         ParityListTile(
             title: title,
             subtitle: subtitle,
@@ -276,9 +276,9 @@ struct SettingsView: View {
 private extension AudioQuality {
     var settingsLabel: String {
         switch self {
-        case .low: "Data Saver"
-        case .standard: "Standard"
-        case .high: "High Quality"
+        case .low: String(localized: "Data Saver")
+        case .standard: String(localized: "Standard")
+        case .high: String(localized: "High Quality")
         }
     }
 }

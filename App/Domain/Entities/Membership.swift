@@ -118,11 +118,11 @@ extension Subscription {
 
     var displayStatus: String {
         if isActive, isCanceled {
-            return "Premium (Ends in \(remainingDays) days)"
+            return String(localized: "Premium (Ends in \(remainingDays) days)")
         } else if isActive {
-            return "Premium"
+            return String(localized: "Premium")
         } else {
-            return "Explore Premium"
+            return String(localized: "Explore Premium")
         }
     }
 }

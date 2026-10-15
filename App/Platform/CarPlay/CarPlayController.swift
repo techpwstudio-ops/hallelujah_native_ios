@@ -60,10 +60,10 @@ final class CarPlayController {
         session = container.resolve()
         artwork = ArtworkSource(session: container.resolve(), proxyHost: AppConfiguration.current.proxyBaseURL.host)
 
-        homeTemplate = Self.makeTab(titleKey: "carplay.tab.home", symbol: "house")
-        recentsTemplate = Self.makeTab(titleKey: "carplay.tab.recents", symbol: "clock")
-        searchTemplate = Self.makeTab(titleKey: "carplay.tab.search", symbol: "magnifyingglass")
-        libraryTemplate = Self.makeTab(titleKey: "carplay.tab.library", symbol: "books.vertical")
+        homeTemplate = Self.makeTab(titleKey: "Home", symbol: "house")
+        recentsTemplate = Self.makeTab(titleKey: "Recents", symbol: "clock")
+        searchTemplate = Self.makeTab(titleKey: "Search", symbol: "magnifyingglass")
+        libraryTemplate = Self.makeTab(titleKey: "Library", symbol: "books.vertical")
     }
 
     // MARK: - Lifecycle
@@ -136,7 +136,7 @@ final class CarPlayController {
 
     private static func makeTab(titleKey: String.LocalizationValue, symbol: String) -> CPListTemplate {
         let title = String(localized: titleKey)
-        let template = CPListTemplate(title: title, sections: [Self.messageSection("carplay.loading")])
+        let template = CPListTemplate(title: title, sections: [Self.messageSection("Loading…")])
         template.tabTitle = title
         template.tabImage = UIImage(systemName: symbol) ?? UIImage()
         return template
@@ -146,7 +146,7 @@ final class CarPlayController {
 
     private func loadAllTabs() async {
         guard await isSignedIn() else {
-            let section = Self.messageSection("carplay.signInRequired")
+            let section = Self.messageSection("Sign in on your iPhone to use Hallelujah in the car")
             for template in [homeTemplate, recentsTemplate, searchTemplate, libraryTemplate] {
                 template.updateSections([section])
             }
@@ -169,7 +169,7 @@ final class CarPlayController {
         let rails = await provider.homeRails()
         guard isActive else { return }
         guard !rails.isEmpty else {
-            homeTemplate.updateSections([Self.messageSection("carplay.nothingToShow")])
+            homeTemplate.updateSections([Self.messageSection("Nothing to show")])
             return
         }
 
@@ -192,7 +192,7 @@ final class CarPlayController {
     private func loadRecentsTab() async {
         let group = await provider.recentRows()
         guard isActive else { return }
-        let items = await makeListItems(group, emptyKey: "carplay.recents.empty")
+        let items = await makeListItems(group, emptyKey: "No recent plays")
         recentsTemplate.updateSections([CPListSection(items: items)])
     }
 
@@ -200,8 +200,8 @@ final class CarPlayController {
     /// is an informational row ("ask Siri") plus Browse Genres.
     private func loadSearchTab() async {
         let hint = CPListItem(
-            text: String(localized: "carplay.search.hint.title"),
-            detailText: String(localized: "carplay.search.hint.detail")
+            text: String(localized: "Ask Siri to play audio"),
+            detailText: String(localized: "Say “Hey Siri, play [song] in Hallelujah”")
         )
         let rows = await provider.genreRows()
         guard isActive else { return }
@@ -212,24 +212,24 @@ final class CarPlayController {
 
     private func loadLibraryTab() {
         let liked = CPListItem(
-            text: String(localized: "carplay.library.liked.title"),
-            detailText: String(localized: "carplay.library.liked.detail")
+            text: String(localized: "Liked Songs"),
+            detailText: String(localized: "Your favorites")
         )
         liked.handler = { [weak self] _, completion in
             completion()
             MainActor.assumeIsolated { self?.pushLikedSongs() }
         }
         let downloads = CPListItem(
-            text: String(localized: "carplay.library.downloads.title"),
-            detailText: String(localized: "carplay.library.downloads.detail")
+            text: String(localized: "Downloads"),
+            detailText: String(localized: "Saved for offline")
         )
         downloads.handler = { [weak self] _, completion in
             completion()
             MainActor.assumeIsolated { self?.pushDownloads() }
         }
         let playlists = CPListItem(
-            text: String(localized: "carplay.library.playlists.title"),
-            detailText: String(localized: "carplay.library.playlists.detail")
+            text: String(localized: "Playlists"),
+            detailText: String(localized: "Yours and curated for you")
         )
         playlists.handler = { [weak self] _, completion in
             completion()
@@ -242,24 +242,24 @@ final class CarPlayController {
 
     private func pushLikedSongs() {
         likedList = pushSongList(
-            title: String(localized: "carplay.library.liked.title"),
-            emptyKey: "carplay.liked.empty",
+            title: String(localized: "Liked Songs"),
+            emptyKey: "No liked songs yet",
             load: { [provider] in await provider.likedSongs() }
         )
     }
 
     private func pushDownloads() {
         downloadsList = pushSongList(
-            title: String(localized: "carplay.library.downloads.title"),
-            emptyKey: "carplay.downloads.empty",
+            title: String(localized: "Downloads"),
+            emptyKey: "No downloads yet",
             load: { [provider] in provider.downloadedSongs() }
         )
     }
 
     private func pushAllPlaylists() {
         playlistsList = pushSongList(
-            title: String(localized: "carplay.library.playlists.title"),
-            emptyKey: "carplay.playlists.empty",
+            title: String(localized: "Playlists"),
+            emptyKey: "No playlists yet",
             load: { [provider] in
                 CarPlayRowGroup(rows: await provider.allPlaylistRows(), songs: [], source: Self.noSource)
             }
@@ -267,7 +267,7 @@ final class CarPlayController {
     }
 
     private func pushGroup(title: String, load: @escaping () async -> CarPlayRowGroup) {
-        _ = pushSongList(title: title, emptyKey: "carplay.noSongs", load: load)
+        _ = pushSongList(title: title, emptyKey: "No songs", load: load)
     }
 
     @discardableResult
@@ -283,7 +283,7 @@ final class CarPlayController {
     }
 
     private func pushList(title: String, items: @escaping () async -> [CPListItem]) {
-        let template = CPListTemplate(title: title, sections: [Self.messageSection("carplay.loading")])
+        let template = CPListTemplate(title: title, sections: [Self.messageSection("Loading…")])
         guard push(template) else { return }
         Task {
             let built = await items()
@@ -293,10 +293,10 @@ final class CarPlayController {
 
     /// "See all" for a Home rail: the rows are already in hand, no fetch.
     private func pushStatic(title: String, group: CarPlayRowGroup) {
-        let template = CPListTemplate(title: title, sections: [Self.messageSection("carplay.loading")])
+        let template = CPListTemplate(title: title, sections: [Self.messageSection("Loading…")])
         guard push(template) else { return }
         Task {
-            let items = await makeListItems(group, emptyKey: "carplay.nothingToShow")
+            let items = await makeListItems(group, emptyKey: "Nothing to show")
             template.updateSections([CPListSection(items: items)])
         }
     }
@@ -369,7 +369,7 @@ final class CarPlayController {
         case .userPlaylist(let id):
             playlistSongLists[id] = pushSongList(
                 title: row.title,
-                emptyKey: "carplay.noSongs",
+                emptyKey: "No songs",
                 load: { [provider] in await provider.userPlaylistSongs(id: id, title: row.title) }
             )
         case .genre(let id):
@@ -554,7 +554,7 @@ private final class LiveList {
 
 extension CarPlayController {
     fileprivate static func loadingSection() -> CPListSection {
-        messageSection("carplay.loading")
+        messageSection("Loading…")
     }
 }
 

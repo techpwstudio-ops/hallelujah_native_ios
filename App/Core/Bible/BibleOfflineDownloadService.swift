@@ -141,8 +141,8 @@ final class BibleOfflineDownloadService {
         Task {
             await scheduler.post(
                 id: notificationID,
-                title: success ? "\(language) Bible downloaded" : "Failed to download \(language) Bible",
-                body: success ? "Available for offline reading." : "Check your connection and try again."
+                title: success ? String(localized: "\(language) Bible downloaded") : String(localized: "Failed to download \(language) Bible"),
+                body: success ? String(localized: "Available for offline reading.") : String(localized: "Check your connection and try again.")
             )
         }
     }
@@ -153,9 +153,9 @@ final class BibleOfflineDownloadService {
               openingNoticePosted.insert(progress.language).inserted else { return }
         let scheduler = notificationScheduler
         let notificationID = "bible-offline-\(progress.language)"
-        let detail = "\(progress.completed) of \(progress.total) books \u{00B7} \(progress.percent)%"
+        let detail = String(localized: "\(progress.completed) of \(progress.total) books \u{00B7} \(progress.percent)%")
         Task {
-            await scheduler.post(id: notificationID, title: "Saving \(progress.language) Bible", body: detail)
+            await scheduler.post(id: notificationID, title: String(localized: "Saving \(progress.language) Bible"), body: detail)
         }
     }
 

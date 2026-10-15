@@ -57,8 +57,8 @@ enum HTTPRequestPolicy {
 
     /// `_ResponseInterceptor.onResponse`: 429 and 5xx get a generic toast.
     static func responseToast(statusCode: Int) -> String? {
-        if statusCode == 429 { return "Too many requests. Please try again later." }
-        if statusCode >= 500 { return "Something went wrong. Please try again." }
+        if statusCode == 429 { return String(localized: "Too many requests. Please try again later.") }
+        if statusCode >= 500 { return String(localized: "Something went wrong. Please try again.") }
         return nil
     }
 
@@ -68,9 +68,9 @@ enum HTTPRequestPolicy {
     static func transportToast(for error: URLError) -> String {
         switch error.code {
         case .notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff:
-            "No internet connection. Please check your network."
+            String(localized: "No internet connection. Please check your network.")
         default:
-            "Connection timeout. Please try again."
+            String(localized: "Connection timeout. Please try again.")
         }
     }
 
@@ -106,9 +106,9 @@ enum HTTPRequestPolicy {
     }
 
     static func fallbackMessage(statusCode: Int) -> String {
-        if statusCode == 429 { return "Too many requests. Please try again later." }
-        if statusCode >= 500 { return "Something went wrong. Please try again." }
-        return "Request failed. Please try again."
+        if statusCode == 429 { return String(localized: "Too many requests. Please try again later.") }
+        if statusCode >= 500 { return String(localized: "Something went wrong. Please try again.") }
+        return String(localized: "Request failed. Please try again.")
     }
 
     /// Non-empty, not an HTML page, and short enough to be a sentence.

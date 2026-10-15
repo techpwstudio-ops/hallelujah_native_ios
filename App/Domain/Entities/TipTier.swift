@@ -25,12 +25,12 @@ struct TipTier: Sendable, Equatable {
 }
 
 enum TipProducts {
-    static let tiers: [TipTier] = [
-        TipTier(amount: 99, productID: "tip_99", label: "Coffee", isPopular: false),
-        TipTier(amount: 199, productID: "tip_199", label: "Cheers", isPopular: true),
-        TipTier(amount: 499, productID: "tip_499", label: "Generous", isPopular: false),
-        TipTier(amount: 899, productID: "tip_899", label: "Superfan", isPopular: false),
-    ]
+    static var tiers: [TipTier] { [
+        TipTier(amount: 99, productID: "tip_99", label: String(localized: "Coffee"), isPopular: false),
+        TipTier(amount: 199, productID: "tip_199", label: String(localized: "Cheers"), isPopular: true),
+        TipTier(amount: 499, productID: "tip_499", label: String(localized: "Generous"), isPopular: false),
+        TipTier(amount: 899, productID: "tip_899", label: String(localized: "Superfan"), isPopular: false),
+    ] }
 
     static let defaultAmount = 199
 

@@ -46,7 +46,8 @@ struct BibleVerseShareView: View {
     private var photoSelected: Bool { usePhoto && photo != nil }
 
     private var shareMessage: String {
-        "\u{201C}\(verseText.trimmingCharacters(in: .whitespacesAndNewlines))\u{201D}\n\u{2014} \(verseReference)\n\n\(deepLinkURL)"
+        let trimmedVerse = verseText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(localized: "\u{201C}\(trimmedVerse)\u{201D}\n\u{2014} \(verseReference)\n\n\(deepLinkURL)")
     }
 
     var body: some View {
@@ -246,8 +247,8 @@ struct BibleVerseShareView: View {
         case .saved:
             VerseShareNotice(
                 failed: false,
-                message: "Saved to Photos",
-                detail: "Hallelujah album",
+                message: String(localized: "Saved to Photos"),
+                detail: String(localized: "Hallelujah album"),
                 actionLabel: nil,
                 action: {}
             )
@@ -256,7 +257,7 @@ struct BibleVerseShareView: View {
                 failed: true,
                 message: message,
                 detail: nil,
-                actionLabel: "Retry",
+                actionLabel: String(localized: "Retry"),
                 action: { retryLast() }
             )
         }
@@ -329,7 +330,7 @@ struct BibleVerseShareView: View {
         try? await Task.sleep(for: .milliseconds(50))
         guard let url = captureCardToFile() else {
             finish(
-                notice: .failed(message: "Couldn't create the image. Your verse is safe \u{2014} try again.", retry: 0),
+                notice: .failed(message: String(localized: "Couldn't create the image. Your verse is safe \u{2014} try again."), retry: 0),
                 action: .shareCard
             )
             return
@@ -349,7 +350,7 @@ struct BibleVerseShareView: View {
         try? await Task.sleep(for: .milliseconds(50))
         guard let image = renderCard(), let data = image.pngData() else {
             finish(
-                notice: .failed(message: "Couldn't create the image. Your verse is safe \u{2014} try again.", retry: 0),
+                notice: .failed(message: String(localized: "Couldn't create the image. Your verse is safe \u{2014} try again."), retry: 0),
                 action: .saveImage
             )
             return
@@ -368,7 +369,7 @@ struct BibleVerseShareView: View {
             finish(notice: .saved, action: .saveImage)
         } catch {
             finish(
-                notice: .failed(message: "Couldn't save the image. Your verse is safe \u{2014} try again.", retry: 0),
+                notice: .failed(message: String(localized: "Couldn't save the image. Your verse is safe \u{2014} try again."), retry: 0),
                 action: .saveImage
             )
         }
@@ -604,11 +605,11 @@ private struct VerseBlock: View {
 
 private struct VerseSwatch<Art: View>: View {
     let selected: Bool
-    let label: String
+    let label: LocalizedStringKey
     let action: () -> Void
     let art: Art
 
-    init(selected: Bool, label: String, action: @escaping () -> Void, @ViewBuilder art: () -> Art) {
+    init(selected: Bool, label: LocalizedStringKey, action: @escaping () -> Void, @ViewBuilder art: () -> Art) {
         self.selected = selected
         self.label = label
         self.action = action
@@ -659,7 +660,7 @@ private struct PhotoSwatchArt: View {
 
 private struct VersePhotoChip: View {
     let systemName: String
-    let label: String
+    let label: LocalizedStringKey
     let action: () -> Void
 
     var body: some View {
@@ -737,10 +738,10 @@ private struct VerseShareNotice: View {
 struct VerseShareButton: View {
     let primary: Bool
     let systemName: String?
-    let label: String
-    let hint: String?
+    let label: LocalizedStringKey
+    let hint: LocalizedStringKey?
     let busy: Bool
-    let busyLabel: String?
+    let busyLabel: LocalizedStringKey?
     let enabled: Bool
     let action: () -> Void
 

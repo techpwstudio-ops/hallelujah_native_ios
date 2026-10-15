@@ -82,9 +82,7 @@ struct SubscriptionPlansView: View {
                     }
 
                     ParityExpandableText(
-                        text: "Payment will be charged to your Apple ID account at confirmation of purchase. "
-                            + "Subscription automatically renews unless canceled at least 24 hours before the end of the current period. "
-                            + "Your account will be charged for renewal within 24 hours prior to the end of the current period.",
+                        text: "Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period.",
                         maxLines: 2
                     )
 
@@ -122,8 +120,8 @@ struct SubscriptionPlansView: View {
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "dd/MM/yyyy"
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("ddMMyyyy")
         return formatter
     }()
 

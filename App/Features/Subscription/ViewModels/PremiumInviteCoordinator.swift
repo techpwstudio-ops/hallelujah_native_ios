@@ -60,8 +60,8 @@ final class PremiumInviteCoordinator {
     /// `acceptInvitation`. Returns the toast text to show.
     func accept(_ invite: PendingInvite) async -> String {
         stage = .processing(
-            title: "Accepting Invite...",
-            description: "Please wait while we accepting your invite."
+            title: String(localized: "Accepting Invite..."),
+            description: String(localized: "Please wait while we accepting your invite.")
         )
         do {
             let result = try await repository.acceptInvitation(inviteId: invite.inviteId)
@@ -71,34 +71,34 @@ final class PremiumInviteCoordinator {
             // `NavigationService.back()` closes the processing sheet, then
             // `showSubscribedSuccessSheet()` opens the success one.
             stage = .success
-            return result.message ?? "Invitation accepted."
+            return result.message ?? String(localized: "Invitation accepted.")
         } catch let error as SubscriptionError {
             stage = nil
             return error.message
         } catch {
             logger.warning("accept invitation failed: \(error)")
             stage = nil
-            return "Something went wrong"
+            return String(localized: "Something went wrong")
         }
     }
 
     /// `declineInvitation`. Returns the toast text to show.
     func decline(_ invite: PendingInvite) async -> String {
         stage = .processing(
-            title: "Declining Invite...",
-            description: "Please wait while we decline your invite."
+            title: String(localized: "Declining Invite..."),
+            description: String(localized: "Please wait while we decline your invite.")
         )
         do {
             let result = try await repository.declineInvitation(inviteId: invite.inviteId)
             stage = nil
-            return result.message ?? "Invitation declined."
+            return result.message ?? String(localized: "Invitation declined.")
         } catch let error as SubscriptionError {
             stage = nil
             return error.message
         } catch {
             logger.warning("decline invitation failed: \(error)")
             stage = nil
-            return "Something went wrong"
+            return String(localized: "Something went wrong")
         }
     }
 }

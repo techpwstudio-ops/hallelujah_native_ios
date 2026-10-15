@@ -61,7 +61,7 @@ struct ManageFamilyMembersView: View {
 
     private func sendInvite(_ identifier: String) {
         guard ManageFamilyMembersViewModel.isValidIdentifier(identifier) else {
-            inviteValidationError = "Please enter valid email or mobile"
+            inviteValidationError = String(localized: "Please enter valid email or mobile")
             return
         }
         inviteValidationError = nil
@@ -269,10 +269,10 @@ private struct InviteTile: View {
 
     private var statusText: String {
         switch invite.status {
-        case "pending": "Pending"
-        case "expired": "Expired"
-        case "cancelled": "Cancelled"
-        case "accepted": "Joined"
+        case "pending": String(localized: "Pending")
+        case "expired": String(localized: "Expired")
+        case "cancelled": String(localized: "Cancelled")
+        case "accepted": String(localized: "Joined")
         default: invite.status
         }
     }

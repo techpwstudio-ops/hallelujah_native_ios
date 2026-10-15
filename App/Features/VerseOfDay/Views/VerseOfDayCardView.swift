@@ -162,7 +162,7 @@ struct VerseOfDayMetaText: View {
     private var text: String {
         let chapter = verse.chapterNumber.map(String.init) ?? ""
         let number = verse.verseNumber.map(String.init) ?? ""
-        return "\(verse.bookName ?? "") . \(chapter) . \(number)"
+        return String(localized: "\(verse.bookName ?? "") . \(chapter) . \(number)")
     }
 
     var body: some View {

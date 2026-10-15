@@ -171,7 +171,7 @@ struct ShareSheetView: View {
     private func actions(url: URL) -> some View {
         WrapLayout(spacing: Dimens.spacing16, lineSpacing: Dimens.spacing16) {
             ForEach(installedChatApps) { app in
-                shareIcon(label: app.name) {
+                shareIcon(label: Text(verbatim: app.name)) {
                     Image(systemName: app.systemImage)
                         .font(.system(size: Dimens.iconSize))
                         .foregroundStyle(AccountParity.white)
@@ -179,15 +179,15 @@ struct ShareSheetView: View {
                     shareToChatApp(app, url: url)
                 }
             }
-            shareIcon(label: "Copy Link") {
+            shareIcon(label: Text("Copy Link")) {
                 Image(systemName: "link")
                     .font(.system(size: Dimens.iconSize))
                     .foregroundStyle(AccountParity.white)
             } action: {
                 UIPasteboard.general.string = url.absoluteString
-                showConfirmation("Link copied")
+                showConfirmation(String(localized: "Link copied"))
             }
-            shareIcon(label: "Save Image") {
+            shareIcon(label: Text("Save Image")) {
                 if isSavingImage {
                     ProgressView().tint(AccountParity.white60)
                 } else {
@@ -199,7 +199,7 @@ struct ShareSheetView: View {
                 Task { await saveImage() }
             }
             ShareLink(item: url) {
-                shareIconLabel(label: "More") {
+                shareIconLabel(label: Text("More")) {
                     Image(systemName: "ellipsis")
                         .font(.system(size: Dimens.iconSize))
                         .foregroundStyle(AccountParity.white)
@@ -212,20 +212,20 @@ struct ShareSheetView: View {
 
     /// `_ShareIcon`: 52pt white10 circle with white12 border, 8pt gap, 60pt-wide
     /// 10pt white60 label.
-    private func shareIcon<Icon: View>(label: String, @ViewBuilder icon: () -> Icon, action: @escaping () -> Void) -> some View {
+    private func shareIcon<Icon: View>(label: Text, @ViewBuilder icon: () -> Icon, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             shareIconLabel(label: label, icon: icon)
         }
         .buttonStyle(.plain)
     }
 
-    private func shareIconLabel<Icon: View>(label: String, @ViewBuilder icon: () -> Icon) -> some View {
+    private func shareIconLabel<Icon: View>(label: Text, @ViewBuilder icon: () -> Icon) -> some View {
         VStack(spacing: Dimens.spacing8) {
             icon()
                 .frame(width: Dimens.buttonHeight, height: Dimens.buttonHeight)
                 .background(Circle().fill(AccountParity.white10))
                 .overlay(Circle().strokeBorder(AccountParity.white12, lineWidth: 1))
-            Text(label)
+            label
                 .font(AccountParity.font(10))
                 .lineSpacing(3)
                 .foregroundStyle(AccountParity.white60)
@@ -291,12 +291,12 @@ struct ShareSheetView: View {
         default: raw = "twitter://post?message=\(encoded)"
         }
         guard let target = URL(string: raw) else {
-            showConfirmation("\(app.name) not supported")
+            showConfirmation(String(localized: "\(app.name) not supported"))
             return
         }
         UIApplication.shared.open(target) { success in
             if !success {
-                Task { @MainActor in showConfirmation("\(app.name) not available") }
+                Task { @MainActor in showConfirmation(String(localized: "\(app.name) not available")) }
             }
         }
     }
@@ -335,16 +335,16 @@ struct ShareSheetView: View {
         renderer.scale = 3
 
         guard let uiImage = renderer.uiImage else {
-            showConfirmation("Couldn\u{2019}t create the image. Please try again.")
+            showConfirmation(String(localized: "Couldn\u{2019}t create the image. Please try again."))
             return
         }
         do {
             try await PHPhotoLibrary.shared().performChanges {
                 _ = PHAssetChangeRequest.creationRequestForAsset(from: uiImage)
             }
-            showConfirmation("Saved to Photos")
+            showConfirmation(String(localized: "Saved to Photos"))
         } catch {
-            showConfirmation("Couldn\u{2019}t save the image. Please try again.")
+            showConfirmation(String(localized: "Couldn\u{2019}t save the image. Please try again."))
         }
     }
 

@@ -50,10 +50,10 @@ final class UserPlaylistMenuViewModel {
             if !result.songs.hasMore { break }
             page += 1
         }
-        guard !songs.isEmpty else { return "Nothing to add" }
-        let source = QueueAttribution(playerType: .userPlaylist, id: playlistID, title: title.isEmpty ? "this playlist" : title)
+        guard !songs.isEmpty else { return String(localized: "Nothing to add") }
+        let source = QueueAttribution(playerType: .userPlaylist, id: playlistID, title: title.isEmpty ? String(localized: "this playlist") : title)
         let added = await queueController.addToQueue(songs, source: source)
-        return added > 0 ? "Added to queue" : "Already in your queue"
+        return added > 0 ? String(localized: "Added to queue") : String(localized: "Already in your queue")
     }
 
     func delete() async -> Bool {

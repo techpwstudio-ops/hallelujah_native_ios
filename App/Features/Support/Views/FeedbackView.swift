@@ -22,11 +22,11 @@ struct FeedbackContentView: View {
     /// `reasons` (`feedback.dart`), verbatim. Two submitted `value`s differ
     /// from their labels ("Subscription Issue", "Content Issue").
     private static let reasons: [SupportDropdown.Item] = [
-        .init(label: "Playback Issue", value: "Playback Issue"),
-        .init(label: "Audio Quality Problem", value: "Audio Quality Problem"),
-        .init(label: "App Crash / Bug", value: "App Crash / Bug"),
-        .init(label: "Subscription / Payment Issue", value: "Subscription Issue"),
-        .init(label: "Content Not Available", value: "Content Issue"),
+        .init(label: String(localized: "Playback Issue"), value: "Playback Issue"),
+        .init(label: String(localized: "Audio Quality Problem"), value: "Audio Quality Problem"),
+        .init(label: String(localized: "App Crash / Bug"), value: "App Crash / Bug"),
+        .init(label: String(localized: "Subscription / Payment Issue"), value: "Subscription Issue"),
+        .init(label: String(localized: "Content Not Available"), value: "Content Issue"),
     ]
 
     private var trimmedDescription: String {
@@ -42,7 +42,7 @@ struct FeedbackContentView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     SupportDropdown(
-                        hint: "Choose reason",
+                        hint: String(localized: "Choose reason"),
                         items: Self.reasons,
                         selectedValue: selectedReason?.value,
                         isDisabled: viewModel.isSubmitting

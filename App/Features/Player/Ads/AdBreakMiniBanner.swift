@@ -50,7 +50,7 @@ struct AdBreakMiniBanner: View {
 
                 if ad.hasDestination {
                     Button { pacing.openAction(for: ad, coordinator: coordinator) } label: {
-                        Text(ad.ctaLabel?.isEmpty == false ? (ad.ctaLabel ?? "More Info") : "More Info")
+                        Text(ad.ctaLabel?.isEmpty == false ? (ad.ctaLabel ?? String(localized: "More Info")) : String(localized: "More Info"))
                             .font(.custom(Typography.fontFamily, size: 11, relativeTo: .caption2).weight(.semibold))
                             .foregroundStyle(Color.black)
                             .padding(.horizontal, 12)
@@ -86,6 +86,6 @@ struct AdBreakMiniBanner: View {
     static func headline(for ad: AdCreative) -> String {
         if let headline = ad.headline, !headline.isEmpty { return headline }
         if let advertiser = ad.advertiserName, !advertiser.isEmpty { return advertiser }
-        return "Advertisement"
+        return String(localized: "Advertisement")
     }
 }

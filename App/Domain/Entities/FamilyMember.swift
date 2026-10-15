@@ -58,7 +58,7 @@ struct FamilyInvite: Sendable, Equatable, Identifiable, Decodable {
     let mobile: String?
 
     /// `InviteModel.displayText` ported verbatim.
-    var displayText: String { email ?? mobile ?? "Unknown" }
+    var displayText: String { email ?? mobile ?? String(localized: "Unknown") }
 
     func updatingStatus(_ status: String) -> FamilyInvite {
         FamilyInvite(id: id, status: status, email: email, mobile: mobile)

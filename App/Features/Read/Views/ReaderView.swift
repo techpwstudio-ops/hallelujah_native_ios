@@ -603,7 +603,7 @@ struct ReaderView: View {
 
     private func menuRow<Trailing: View>(
         icon: String,
-        title: String,
+        title: LocalizedStringKey,
         @ViewBuilder trailing: () -> Trailing,
         action: @escaping () -> Void
     ) -> some View {

@@ -80,7 +80,7 @@ final class AccountDeletionViewModel {
         let context = LAContext()
         var canEvaluateError: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &canEvaluateError) else {
-            return .passed(toastMessage: "Your device does not have device lock, please set and try again")
+            return .passed(toastMessage: String(localized: "Your device does not have device lock, please set and try again"))
         }
 
         let blockingCodes: Set<LAError.Code> = [.userCancel, .userFallback, .authenticationFailed, .systemCancel]
@@ -88,7 +88,7 @@ final class AccountDeletionViewModel {
         return await withCheckedContinuation { continuation in
             context.evaluatePolicy(
                 .deviceOwnerAuthentication,
-                localizedReason: "Please verify your identity to continue"
+                localizedReason: String(localized: "Please verify your identity to continue")
             ) { success, error in
                 if success {
                     continuation.resume(returning: .passed(toastMessage: nil))

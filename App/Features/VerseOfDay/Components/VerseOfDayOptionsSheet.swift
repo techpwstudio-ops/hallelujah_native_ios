@@ -44,7 +44,7 @@ struct VerseOfDayOptionsSheet: View {
     }
 
     private func tile<Leading: View>(
-        title: String,
+        title: LocalizedStringKey,
         @ViewBuilder leading: () -> Leading,
         action: @escaping () -> Void
     ) -> some View {

@@ -11,16 +11,16 @@ func startBibleOfflineDownload(
     toast: ToastCenter
 ) async {
     if service.isLanguageDownloaded(language) {
-        toast.show("The \(language) Bible is already saved on this device.")
+        toast.show(String(localized: "The \(language) Bible is already saved on this device."))
         return
     }
     if service.isDownloading(language) {
-        toast.show("The \(language) Bible is already downloading.")
+        toast.show(String(localized: "The \(language) Bible is already downloading."))
         return
     }
     let reachability: any ReachabilityMonitoring = DependencyContainer.current.resolve()
     if !reachability.isOnline {
-        toast.show("You need an internet connection to save the \(language) Bible for offline reading.")
+        toast.show(String(localized: "You need an internet connection to save the \(language) Bible for offline reading."))
         return
     }
     // No toast on start — the ring is the feedback (matches Flutter).
@@ -67,7 +67,7 @@ struct BibleOfflineDownloadButton: View {
                     Task {
                         let removed = await service.deleteLanguage(language)
                         if removed {
-                            toastCenter.show("\(language) Bible removed from this device.")
+                            toastCenter.show(String(localized: "\(language) Bible removed from this device."))
                         }
                     }
                 }
@@ -104,12 +104,12 @@ struct BibleOfflineDownloadButton: View {
     private var accessibilityLabel: String {
         if isDownloading {
             let percent = progress?.percent ?? 0
-            return "Saving \(language) Bible, \(percent) percent done"
+            return String(localized: "Saving \(language) Bible, \(percent) percent done")
         }
         if isDownloaded {
-            return "\(language) Bible is saved on this device. Long press to remove it."
+            return String(localized: "\(language) Bible is saved on this device. Long press to remove it.")
         }
-        return "Save \(language) Bible on this device"
+        return String(localized: "Save \(language) Bible on this device")
     }
 }
 

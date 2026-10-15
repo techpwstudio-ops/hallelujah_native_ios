@@ -298,7 +298,7 @@ private struct AppRouteDestinationView: View {
             return label
         }
         if case let .createPlaylist(userPlaylistID, _, _) = route {
-            return userPlaylistID == nil ? "Create Playlist" : "Edit Playlist"
+            return userPlaylistID == nil ? String(localized: "Create Playlist") : String(localized: "Edit Playlist")
         }
         return route.placeholderTitle
     }
@@ -361,36 +361,36 @@ private struct FullScreenDestinationView: View {
 private extension AppRoute {
     var placeholderTitle: String {
         switch self {
-        case .settings: "Settings"
-        case .profile: "Profile"
-        case .notificationSettings: "Notification Settings"
-        case .subscriptionPlans: "Subscription Plans"
-        case .manageFamilyMembers: "Manage Family Members"
-        case .deleteAccount: "Delete Account"
-        case .contentLanguage: "Content Language"
-        case .helpSupportDashboard: "Help & Support"
-        case .faqs: "FAQs"
-        case .feedback: "Feedback"
-        case .genreSearch: "Genre Search"
-        case .episodes: "Episodes"
-        case .contentSearch: "Content Search"
-        case .aiHistory: "AI History"
-        case .aiChat: "Chat"
-        case .downloads: "Downloads"
-        case .storageSettings: "Storage"
-        case .createPlaylist: "Create Playlist"
-        case .creatorGrid: "Creators"
-        case .creatorSongs: "Creator Songs"
-        case .userPlaylistSongs: "Playlist"
-        case .playlistDetail: "Playlist"
-        case .favouriteSongs: "Favourites"
-        case .favouriteArtists: "Favourite Artists"
-        case .genreSongs: "Genre"
-        case .recentSongs: "Recent Songs"
-        case .seeAllSongs: "Songs"
-        case .seeAllArtists: "Artists"
-        case .bibleVerseShare: "Share Verse"
-        case .cropCompressImage: "Edit Photo"
+        case .settings: String(localized: "Settings")
+        case .profile: String(localized: "Profile")
+        case .notificationSettings: String(localized: "Notification Settings")
+        case .subscriptionPlans: String(localized: "Subscription Plans")
+        case .manageFamilyMembers: String(localized: "Manage Family Members")
+        case .deleteAccount: String(localized: "Delete Account")
+        case .contentLanguage: String(localized: "Content Language")
+        case .helpSupportDashboard: String(localized: "Help & Support")
+        case .faqs: String(localized: "FAQs")
+        case .feedback: String(localized: "Feedback")
+        case .genreSearch: String(localized: "Genre Search")
+        case .episodes: String(localized: "Episodes")
+        case .contentSearch: String(localized: "Content Search")
+        case .aiHistory: String(localized: "AI History")
+        case .aiChat: String(localized: "Chat")
+        case .downloads: String(localized: "Downloads")
+        case .storageSettings: String(localized: "Storage")
+        case .createPlaylist: String(localized: "Create Playlist")
+        case .creatorGrid: String(localized: "Creators")
+        case .creatorSongs: String(localized: "Creator Songs")
+        case .userPlaylistSongs: String(localized: "Playlist")
+        case .playlistDetail: String(localized: "Playlist")
+        case .favouriteSongs: String(localized: "Favourites")
+        case .favouriteArtists: String(localized: "Favourite Artists")
+        case .genreSongs: String(localized: "Genre")
+        case .recentSongs: String(localized: "Recent Songs")
+        case .seeAllSongs: String(localized: "Songs")
+        case .seeAllArtists: String(localized: "Artists")
+        case .bibleVerseShare: String(localized: "Share Verse")
+        case .cropCompressImage: String(localized: "Edit Photo")
         }
     }
 }
@@ -398,9 +398,9 @@ private extension AppRoute {
 private extension FullScreenDestination {
     var placeholderTitle: String {
         switch self {
-        case .player: "Now Playing"
-        case .aiVoiceOverlay: "Voice"
-        case .aiAudioConversation: "Voice"
+        case .player: String(localized: "Now Playing")
+        case .aiVoiceOverlay: String(localized: "Voice")
+        case .aiAudioConversation: String(localized: "Voice")
         }
     }
 }

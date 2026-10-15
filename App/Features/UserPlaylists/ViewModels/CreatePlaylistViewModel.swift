@@ -41,7 +41,7 @@ final class CreatePlaylistViewModel {
             return try await repository.fetchPlaylist(id: userPlaylistID).title
         } catch {
             logger.warning("fetch playlist \(userPlaylistID) failed: \(error)")
-            errorMessage = "Couldn't load this playlist. Please try again."
+            errorMessage = String(localized: "Couldn't load this playlist. Please try again.")
             return nil
         }
     }
@@ -67,7 +67,7 @@ final class CreatePlaylistViewModel {
             return try await repository.createPlaylist(title: trimmed, songID: songID)
         } catch {
             logger.warning("submit playlist failed: \(error)")
-            errorMessage = "Something went wrong. Please try again."
+            errorMessage = String(localized: "Something went wrong. Please try again.")
             return nil
         }
     }

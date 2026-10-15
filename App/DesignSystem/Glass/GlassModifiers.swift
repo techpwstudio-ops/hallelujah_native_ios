@@ -49,6 +49,6 @@ struct GlassIconButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
+        .accessibilityLabel(L10n.tr(accessibilityLabel))
     }
 }

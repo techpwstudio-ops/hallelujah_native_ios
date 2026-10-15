@@ -161,7 +161,7 @@ struct AIVerseInsightDialogView: View {
         if let answer = firstAssistantMessage(in: chatViewModel.messages) {
             if answer.isError {
                 errorBlock(
-                    answer.content ?? "Something went wrong. Please try again.",
+                    answer.content ?? String(localized: "Something went wrong. Please try again."),
                     onRetry: chatViewModel.canRetry(messageID: answer.id)
                         ? { Task { await chatViewModel.retry(messageID: answer.id) } }
                         : nil

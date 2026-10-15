@@ -21,9 +21,10 @@ import json, re, sys, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 APP = ROOT / "App"
 LOCALIZABLE_CALL = re.compile(
-    r'(?:Text|Label|Button|TextField|SecureField|Toggle|Section|Picker|Menu|Link|NavigationLink|'
+    r'(?:(?:Text|Label|Button|TextField|SecureField|Toggle|Section|Picker|Menu|Link|NavigationLink|'
     r'navigationTitle|accessibilityLabel|accessibilityHint|accessibilityValue|help|alert|confirmationDialog|'
-    r'LocalizedStringKey|LocalizedStringResource|String\(localized:|L10n\.tr|\.show)\s*\(\s*(?:localized:\s*)?"((?:[^"\\]|\\.)*)"')
+    r'LocalizedStringKey|LocalizedStringResource|L10n\.tr|\.show)\s*\(\s*(?:localized:\s*)?|String\(localized:\s*)'
+    r'"((?:[^"\\]|\\.)*)"')
 STRING = re.compile(r'(?<![\w#])"((?:[^"\\]|\\.)+)"')
 SKIP_CONTEXT = re.compile(
     r'(logger\.|AppLogger|\.debug\(|\.info\(|\.warning\(|\.error\(|print\(|assert|fatalError|precondition|'
@@ -32,6 +33,29 @@ SKIP_CONTEXT = re.compile(
     r'DateFormatter|dateFormat|Locale\(identifier|@Test|#expect|#Preview|accessibilityIdentifier|'
     r'id: "|identifier|queryItems|URLQueryItem|setValue|forHTTPHeaderField|JSONSerialization|\["|NSUserActivity|'
     r'static let \w*(Key|ID|Id|Name|Path|Identifier|Scheme|Host)\w*\s*=|AppRoute|DependencyContainer)')
+
+INT_HINT = re.compile(r'(count|Count|minutes|days|months|weeks|seconds|hours|index|total|limit|number|max|min|\bn\b|years|plays|songs|likes|items|size)', re.I)
+
+def unescape(k: str) -> str:
+    k = re.sub(r'\\u\{([0-9A-Fa-f]+)\}', lambda m: chr(int(m.group(1), 16)), k)
+    return k.replace('\\n', '\n').replace('\\"', '"').replace('\\\\', '\\')
+
+def to_format_key(raw: str):
+    """Swift string with \\(expr) interpolations -> catalog key with %@ / %lld, or None if unparseable."""
+    out, i = [], 0
+    while i < len(raw):
+        if raw.startswith('\\(', i):
+            depth, j = 1, i + 2
+            while j < len(raw) and depth:
+                depth += (raw[j] == '(') - (raw[j] == ')')
+                j += 1
+            if depth: return None
+            expr = raw[i + 2:j - 1]
+            out.append('%lld' if INT_HINT.search(expr) else '%@')
+            i = j
+        else:
+            out.append(raw[i]); i += 1
+    return ''.join(out)
 
 def looks_like_prose(s: str) -> bool:
     if len(s) < 3 or '%' in s and ' ' not in s: return False
@@ -67,8 +91,11 @@ def main():
     files = [pathlib.Path(a) for a in args[args.index('--files') + 1:]] if '--files' in args else sorted(APP.rglob('*.swift'))
     keys, total = set(), 0
     for f in files:
+        if '--catalog' in args and f.name == 'Country.swift': continue
         loc, off = scan(f)
         keys |= loc
+        if '--catalog' in args:
+            keys |= {t for _, t in off}   # literals passed to LocalizedStringKey-typed params
         if off and '--catalog' not in args:
             for n, s in off:
                 print(f"{f.relative_to(ROOT)}:{n}: {s}")
@@ -77,7 +104,9 @@ def main():
         cat_path = APP / 'Resources' / 'Localizable.xcstrings'
         cat = json.loads(cat_path.read_text())
         for k in sorted(keys):
-            if k and k not in cat['strings'] and '\\(' not in k:
+            k = to_format_key(k) if k and '\\(' in k else k
+            k = unescape(k) if k else k
+            if k and k not in cat['strings']:
                 cat['strings'][k] = {"extractionState": "manual", "localizations": {"en": {"stringUnit": {"state": "translated", "value": k}}}}
         cat_path.write_text(json.dumps(cat, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
         print(f"catalog: {len(cat['strings'])} keys")

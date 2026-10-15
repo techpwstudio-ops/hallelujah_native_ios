@@ -15,29 +15,33 @@ enum PlanCopy {
 
     // MARK: Free trial
 
-    static func plural(_ count: Int, one: String, other: String) -> String {
-        count == 1 ? one : "\(count) \(other)"
-    }
-
     static func freeTrialPeriod(_ trial: FreeTrial) -> String {
         var parts: [String] = []
-        if trial.months > 0 { parts.append(count(trial.months, "Month")) }
+        if trial.months > 0 { parts.append(monthsText(trial.months)) }
         if trial.days > 0 {
             if trial.days % 7 == 0 {
-                parts.append(count(trial.days / 7, "Week"))
+                parts.append(weeksText(trial.days / 7))
             } else {
-                parts.append(count(trial.days, "Day"))
+                parts.append(daysText(trial.days))
             }
         }
         return parts.joined(separator: " + ")
     }
 
-    private static func count(_ value: Int, _ unit: String) -> String {
-        value == 1 ? "1 \(unit)" : "\(value) \(unit)s"
+    private static func monthsText(_ value: Int) -> String {
+        value == 1 ? String(localized: "1 Month") : String(localized: "\(value) Months")
+    }
+
+    private static func weeksText(_ value: Int) -> String {
+        value == 1 ? String(localized: "1 Week") : String(localized: "\(value) Weeks")
+    }
+
+    private static func daysText(_ value: Int) -> String {
+        value == 1 ? String(localized: "1 Day") : String(localized: "\(value) Days")
     }
 
     static func freeTrialHeadline(_ trial: FreeTrial) -> String {
-        "\(freeTrialPeriod(trial)) Free"
+        String(localized: "\(freeTrialPeriod(trial)) Free")
     }
 
     // MARK: Currency / GST
@@ -69,14 +73,30 @@ enum PlanCopy {
         return amount - tax
     }
 
+    private static func isoCode(_ currency: String) -> String? {
+        switch currency.trimmingCharacters(in: .whitespaces).uppercased() {
+        case "INR", "RS", "RS.", "\u{20B9}": return "INR"
+        case "USD": return "USD"
+        case "EUR": return "EUR"
+        case "GBP": return "GBP"
+        default: return nil
+        }
+    }
+
+    private static func formatted(_ amount: Double, currency: String, fractionDigits: Int) -> String {
+        if let code = isoCode(currency) {
+            return amount.formatted(.currency(code: code).precision(.fractionLength(fractionDigits)))
+        }
+        return currencySymbol(currency) + amount.formatted(.number.precision(.fractionLength(fractionDigits)))
+    }
+
     /// "₹20", "₹29.50".
     static func formatPrice(_ amount: Double, currency: String) -> String {
-        let whole = amount == amount.rounded()
-        return currencySymbol(currency) + String(format: whole ? "%.0f" : "%.2f", amount)
+        formatted(amount, currency: currency, fractionDigits: amount == amount.rounded() ? 0 : 2)
     }
 
     /// Always two decimals ("₹0.00").
     static func formatAmount(_ amount: Double, currency: String) -> String {
-        currencySymbol(currency) + String(format: "%.2f", amount)
+        formatted(amount, currency: currency, fractionDigits: 2)
     }
 }

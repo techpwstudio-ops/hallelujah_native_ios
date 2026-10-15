@@ -173,7 +173,7 @@ private struct AssistantBubble: View {
                     .font(.system(size: 14))
                     .foregroundStyle(AIColors.redAccent)
                     .padding(.top, 1)
-                Text((message.content ?? "").isEmpty ? "Failed to respond." : (message.content ?? ""))
+                Text((message.content ?? "").isEmpty ? String(localized: "Failed to respond.") : (message.content ?? ""))
                     .typography(Typography.bodySmall)
                     .foregroundStyle(AIColors.white70)
             }

@@ -59,13 +59,13 @@ final class TipPurchaseManager {
         var displayMessage: String {
             switch self {
             case .invalidAmount:
-                "Please choose one of the listed tip amounts."
+                String(localized: "Please choose one of the listed tip amounts.")
             case .iapUnavailable:
-                "In app purchase service is not available on your device please use another option for payment"
+                String(localized: "In app purchase service is not available on your device please use another option for payment")
             case .productUnavailable:
-                "This tip option isn't available right now. Please try again later."
+                String(localized: "This tip option isn't available right now. Please try again later.")
             case .failedVerification:
-                "This purchase could not be verified by the App Store. Please try again."
+                String(localized: "This purchase could not be verified by the App Store. Please try again.")
             }
         }
     }

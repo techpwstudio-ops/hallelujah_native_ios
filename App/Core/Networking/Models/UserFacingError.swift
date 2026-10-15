@@ -5,9 +5,9 @@ import Foundation
 /// ("The operation couldn't be completed. (GHallelujah.AuthRepositoryError error 1.)"),
 /// so UI code should call this instead.
 enum UserFacingError {
-    static let generic = "Something went wrong. Please try again."
-    static let offline = "No internet connection. Please check your connection and try again."
-    static let timedOut = "The request timed out. Please try again."
+    static var generic: String { String(localized: "Something went wrong. Please try again.") }
+    static var offline: String { String(localized: "No internet connection. Please check your connection and try again.") }
+    static var timedOut: String { String(localized: "The request timed out. Please try again.") }
 
     static func message(for error: Error) -> String {
         if error is CancellationError { return "" }
@@ -35,7 +35,7 @@ enum UserFacingError {
         case .timedOut:
             return timedOut
         case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed:
-            return "We couldn't reach the server. Please try again in a moment."
+            return String(localized: "We couldn't reach the server. Please try again in a moment.")
         default:
             return generic
         }

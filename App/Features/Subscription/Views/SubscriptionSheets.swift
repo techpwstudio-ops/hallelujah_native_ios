@@ -9,21 +9,18 @@ enum SubscriptionSheetFormat {
     /// `Formater.formatToDate`: dd/MM/yyyy (local).
     static func date(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "dd/MM/yyyy"
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("ddMMyyyy")
         return formatter.string(from: date)
     }
 
     /// `premiumEndingSoonSheet._formatDate`: "5 Mar 2026".
     static func shortDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "d MMM yyyy"
-        return formatter.string(from: date)
+        date.formatted(.dateTime.day().month(.abbreviated).year())
     }
 }
 
-private func sheetTitle(_ text: String, weight: Font.Weight = .bold) -> some View {
+private func sheetTitle(_ text: LocalizedStringKey, weight: Font.Weight = .bold) -> some View {
     Text(text)
         .font(AccountParity.font(24, weight))
         .foregroundStyle(AccountParity.white)
@@ -36,10 +33,10 @@ private func sheetTitle(_ text: String, weight: Font.Weight = .bold) -> some Vie
 /// `showRemoveMemberSheet` / `showCancelInviteConfirmationSheet`: alert icon,
 /// title, white70 body, outlined + white buttons side by side (12pt radius).
 struct ParityConfirmSheet: View {
-    let title: String
-    let message: String
-    let cancelTitle: String
-    let confirmTitle: String
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
+    let cancelTitle: LocalizedStringKey
+    let confirmTitle: LocalizedStringKey
     let onCancel: () -> Void
     let onConfirm: () -> Void
 
@@ -293,7 +290,7 @@ struct ConfirmCancelSheet: View {
         }
     }
 
-    private func plainBullet(_ text: String) -> some View {
+    private func plainBullet(_ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Circle().fill(AccountParity.white).frame(width: 6, height: 6).padding(.top, 6)
             Text(text)
@@ -517,8 +514,8 @@ struct SubscribedSuccessSheet: View {
 struct AudioQualitySheet: View {
     struct Option: Identifiable {
         let id: AudioQuality
-        let title: String
-        let subtitle: String
+        let title: LocalizedStringKey
+        let subtitle: LocalizedStringKey
         let badge: String
     }
 
