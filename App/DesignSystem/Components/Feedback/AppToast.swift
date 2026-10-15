@@ -43,7 +43,7 @@ final class ToastCenter {
 
     func show(_ text: String) {
         dismissTask?.cancel()
-        let message = ToastMessage(text: text)
+        let message = ToastMessage(text: L10n.tr(text))
         current = message
         dismissTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(Self.duration))
