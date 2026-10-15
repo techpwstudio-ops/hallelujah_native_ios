@@ -32,7 +32,7 @@ struct MiniPlayerInsetView: View {
             }
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.bottom, coordinator.isMiniPlayerVisible ? Spacing.sm : 0)
+        .padding(.bottom, coordinator.isMiniPlayerVisible ? Spacing.md : 0)
         .animation(MotionCurve.dockShow, value: coordinator.isMiniPlayerVisible)
         // `DashboardNavBloc._canShowPlayer`: playback present <-> player shown.
         .onChange(of: audioEngine.currentSong) { _, newValue in
@@ -380,7 +380,7 @@ private struct DockPreviewContent: View {
 /// alone leaves it tucked underneath).
 struct DockClearance: View {
     @Environment(AppNavigationCoordinator.self) private var coordinator
-    var base: CGFloat = 16
+    var base: CGFloat = 24
 
     var body: some View {
         Color.clear.frame(height: base + (coordinator.isMiniPlayerVisible ? 120 : 0))
