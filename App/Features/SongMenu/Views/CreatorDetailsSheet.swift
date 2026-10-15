@@ -37,7 +37,7 @@ final class CreatorDetailsViewModel {
     }
 
     nonisolated static func listenersText(_ count: Int) -> String? {
-        count > 0 ? "\(count) Listeners" : nil
+        count > 0 ? String(localized: "\(count) Listeners") : nil
     }
 }
 

@@ -27,7 +27,7 @@ struct ContentLanguageView: View {
             content
         }
         .background(AuthColors.background.ignoresSafeArea())
-        .parityNavTitle(label)
+        .parityNavTitle(LocalizedStringKey(label))
         .task {
             await viewModel.initialize()
             initialSelection = viewModel.selectedLanguages
@@ -94,7 +94,7 @@ struct ContentLanguageView: View {
 
     private func toggle(_ name: String) {
         guard !viewModel.toggleLanguage(name) else { return }
-        toastCenter.show("You can select up to \(LanguageViewModel.maxSelectableLanguages) languages. Remove one to add another.")
+        toastCenter.show(String(localized: "You can select up to \(LanguageViewModel.maxSelectableLanguages) languages. Remove one to add another."))
     }
 
     private func save() async {

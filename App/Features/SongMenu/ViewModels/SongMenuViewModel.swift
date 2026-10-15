@@ -69,11 +69,11 @@ final class SongMenuViewModel {
     /// `DownloadTaskStatus` in `song_menu_sheet.dart`.
     var downloadTitle: String {
         switch downloadState {
-        case nil: isEpisode ? "Download Episode" : "Download Music"
-        case .completed, .queued: "Remove From Downloads"
-        case .downloading: "Cancel Downloading"
-        case .failed: "Retry Downloading"
-        case .paused: "Resume Downloading"
+        case nil: isEpisode ? String(localized: "Download Episode") : String(localized: "Download Music")
+        case .completed, .queued: String(localized: "Remove From Downloads")
+        case .downloading: String(localized: "Cancel Downloading")
+        case .failed: String(localized: "Retry Downloading")
+        case .paused: String(localized: "Resume Downloading")
         }
     }
 
@@ -100,12 +100,12 @@ final class SongMenuViewModel {
 
     /// `Formater.formatDurationText` + " Left" from `song_menu_sheet.dart`.
     nonisolated static func sleepLeftText(seconds: Int) -> String {
-        guard seconds > 0 else { return "0 min Left" }
+        guard seconds > 0 else { return String(localized: "0 min Left") }
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60
-        if hours > 0 { return (minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h") + " Left" }
-        if minutes > 0 { return "\(minutes) min Left" }
-        return "\(seconds % 60) sec Left"
+        if hours > 0 { return minutes > 0 ? String(localized: "\(hours)h \(minutes)m Left") : String(localized: "\(hours)h Left") }
+        if minutes > 0 { return String(localized: "\(minutes) min Left") }
+        return String(localized: "\(seconds % 60) sec Left")
     }
 
     // MARK: - Actions
@@ -116,11 +116,11 @@ final class SongMenuViewModel {
         engine.setCurrentSongFavorited(target, songId: song.id)
         do {
             try await favouriteRepository.toggleSongFavorite(songId: song.id, isFavorited: target)
-            return .message(target ? "Added to favorites" : "Removed from favorites")
+            return .message(target ? String(localized: "Added to favorites") : String(localized: "Removed from favorites"))
         } catch {
             song = song.withFavorited(!target)
             engine.setCurrentSongFavorited(!target, songId: song.id)
-            return .message("Network error")
+            return .message(String(localized: "Network error"))
         }
     }
 
@@ -129,17 +129,17 @@ final class SongMenuViewModel {
     func addToQueue() async -> SongMenuOutcome {
         let source = QueueAttribution(playerType: .home, id: nil, title: "")
         let added = await queueController.addToQueue(song, source: queueController.queue?.source ?? source)
-        return added ? .message("Added to queue") : .openQueue
+        return added ? .message(String(localized: "Added to queue")) : .openQueue
     }
 
     func removeFromPlaylist() async -> SongMenuOutcome {
         guard let userPlaylistID else { return .dismiss }
         do {
             try await userPlaylistRepository.detachSongs(playlistID: userPlaylistID, songIDs: [song.id])
-            return .message("Removed from playlist")
+            return .message(String(localized: "Removed from playlist"))
         } catch {
             logger.warning("remove from playlist failed: \(error)")
-            return .message("Network error")
+            return .message(String(localized: "Network error"))
         }
     }
 
@@ -218,9 +218,9 @@ final class SongMenuViewModel {
                 try await userPlaylistRepository.attachSongs(playlistID: playlist.id, songIDs: [song.id])
             }
             updateLocal(playlistID: playlist.id, adding: !isAdded)
-            return .notice(isAdded ? "Removed from \(playlist.title)" : "Added to playlist")
+            return .notice(isAdded ? String(localized: "Removed from \(playlist.title)") : String(localized: "Added to playlist"))
         } catch {
-            return .notice("Internet error, please check your internet")
+            return .notice(String(localized: "Internet error, please check your internet"))
         }
     }
 
@@ -248,9 +248,9 @@ final class SongMenuViewModel {
     /// success playback stops (the server now hides the song from this
     /// listener) and the player closes.
     func report(reason: String) async -> SongMenuOutcome {
-        guard !reason.isEmpty else { return .notice("Please enter note") }
+        guard !reason.isEmpty else { return .notice(String(localized: "Please enter note")) }
         let trimmed = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return .notice("Please enter a reason and try again") }
+        guard !trimmed.isEmpty else { return .notice(String(localized: "Please enter a reason and try again")) }
         isBusy = true
         defer { isBusy = false }
         do {
@@ -260,7 +260,7 @@ final class SongMenuViewModel {
         } catch SongRepositoryError.rejected(let message) {
             return .notice(message)
         } catch {
-            return .notice("Network error")
+            return .notice(String(localized: "Network error"))
         }
     }
 
