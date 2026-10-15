@@ -222,7 +222,7 @@ struct CropImageView: View {
         }
     }
 
-    private func toolbarButton(_ systemName: String, _ label: String, action: @escaping () -> Void) -> some View {
+    private func toolbarButton(_ systemName: String, _ label: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 Image(systemName: systemName)
@@ -296,7 +296,7 @@ struct CropImageView: View {
     }
 
     private func fail() {
-        failureMessage = "Image processing failed"
+        failureMessage = String(localized: "Image processing failed")
         Task {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             failureMessage = nil

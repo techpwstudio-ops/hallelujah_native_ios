@@ -133,7 +133,7 @@ struct AdOptionsSheet: View {
 
     // MARK: Pieces
 
-    private func header(_ title: String) -> some View {
+    private func header(_ title: LocalizedStringKey) -> some View {
         Text(title)
             .typography(Typography.titleMedium)
             .fontWeight(.bold)

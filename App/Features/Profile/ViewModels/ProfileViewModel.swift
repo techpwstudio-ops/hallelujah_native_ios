@@ -89,7 +89,7 @@ final class ProfileViewModel {
             return false
         } catch {
             logger.warning("profile save failed: \(error)")
-            state = .error(message: "Something went wrong. Please try again.")
+            state = .error(message: String(localized: "Something went wrong. Please try again."))
             return false
         }
     }

@@ -48,7 +48,7 @@ struct EpisodesView: View {
         if genres.isEmpty, viewModel.isLoading {
             ParitySpinner(fills: true)
         } else if let error = viewModel.loadError, genres.isEmpty {
-            ErrorStateView(title: "Couldn't load podcasts", message: error) {
+            ErrorStateView(title: String(localized: "Couldn't load podcasts"), message: error) {
                 Task { await viewModel.load() }
             }
         } else {

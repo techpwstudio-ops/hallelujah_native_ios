@@ -228,7 +228,7 @@ final class SongMenuViewModel {
     nonisolated static func playlistDateText(_ date: Date?) -> String {
         guard let date else { return "" }
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.locale = .current
         formatter.dateFormat = "dd/MM/yy HH:mm:ss"
         return formatter.string(from: date)
     }

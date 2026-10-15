@@ -11,10 +11,10 @@ enum SearchFilter: String, Sendable, CaseIterable, Equatable {
 
     var title: String {
         switch self {
-        case .music: "Music"
-        case .episode: "Episodes"
-        case .creator: "Artists"
-        case .playlists: "Playlists"
+        case .music: String(localized: "Music")
+        case .episode: String(localized: "Episodes")
+        case .creator: String(localized: "Artists")
+        case .playlists: String(localized: "Playlists")
         }
     }
 }

@@ -19,24 +19,16 @@ struct TermsAndPrivacyTextView: View {
     }
 
     private var attributedText: AttributedString {
-        var result = AttributedString("By continuing, you agree to our ")
-
-        var terms = AttributedString("Terms of Service")
-        terms.link = configuration.termsAndConditionsURL
-        terms.font = Font.custom(Typography.fontFamily, size: Typography.bodySmall.size).weight(.bold)
-
-        let and = AttributedString(" and ")
-
-        var privacy = AttributedString("Privacy Policy")
-        privacy.link = configuration.privacyPolicyURL
-        privacy.font = Font.custom(Typography.fontFamily, size: Typography.bodySmall.size).weight(.bold)
-
-        let dot = AttributedString(".")
-
-        result += terms
-        result += and
-        result += privacy
-        result += dot
+        var result = AttributedString(localized: "By continuing, you agree to our **Terms of Service** and **Privacy Policy**.")
+        let links = [configuration.termsAndConditionsURL, configuration.privacyPolicyURL]
+        let boldRanges = result.runs.compactMap { run -> Range<AttributedString.Index>? in
+            guard run.inlinePresentationIntent?.contains(.stronglyEmphasized) == true else { return nil }
+            return run.range
+        }
+        for (index, range) in boldRanges.enumerated() where index < links.count {
+            result[range].link = links[index]
+            result[range].font = Font.custom(Typography.fontFamily, size: Typography.bodySmall.size).weight(.bold)
+        }
         return result
     }
 }

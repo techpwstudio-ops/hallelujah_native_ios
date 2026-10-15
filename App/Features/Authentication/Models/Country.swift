@@ -34,6 +34,10 @@ struct Country: Identifiable, Hashable, Sendable {
         return flag
     }
 
+    var displayName: String {
+        Locale.current.localizedString(forRegionCode: isoCode) ?? name
+    }
+
     var dialCodeDisplay: String { "+\(dialCode)" }
 
     /// `favorite: const ['IN']` (`phone_auth_screen.dart`'s

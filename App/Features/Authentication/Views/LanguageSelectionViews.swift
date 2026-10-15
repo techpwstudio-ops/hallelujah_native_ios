@@ -152,7 +152,7 @@ struct LanguageGridView: View {
 /// widget serving both hosts.
 struct LanguageSelectionSummaryView: View {
     let viewModel: LanguageViewModel
-    var continueLabel: String = "Continue"
+    var continueLabel: LocalizedStringKey = "Continue"
     let onContinue: () -> Void
 
     var body: some View {
@@ -203,8 +203,10 @@ struct LanguageSelectionSummaryView: View {
 
     private var countLabel: String {
         let count = viewModel.selectedLanguages.count
-        let noun = count == 1 ? "language" : "languages"
-        return "\(count) of \(LanguageViewModel.maxSelectableLanguages) \(noun) selected"
+        let maxCount = LanguageViewModel.maxSelectableLanguages
+        return count == 1
+            ? String(localized: "\(count) of \(maxCount) language selected")
+            : String(localized: "\(count) of \(maxCount) languages selected")
     }
 
     /// "Hindi (हिन्दी)" — just "English" when the native spelling would only
@@ -214,7 +216,7 @@ struct LanguageSelectionSummaryView: View {
         return "\(name) (\(option.nativeLabel))"
     }
 
-    private func summaryRow(badge: String, isPrimary: Bool, value: String, trailing: String?) -> some View {
+    private func summaryRow(badge: LocalizedStringKey, isPrimary: Bool, value: String, trailing: LocalizedStringKey?) -> some View {
         HStack(spacing: 0) {
             Text(badge)
                 .typography(Typography.labelSmall)

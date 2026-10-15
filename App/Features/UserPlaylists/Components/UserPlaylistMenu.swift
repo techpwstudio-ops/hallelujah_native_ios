@@ -183,7 +183,7 @@ private struct UserPlaylistMenuSheet: View {
                 SongMenuRow(systemImage: "square.and.pencil", title: "Edit playlist") { onEdit() }
                 SongMenuRow(
                     systemImage: viewModel.actions.isPublic ? "globe" : "lock.fill",
-                    title: viewModel.actions.visibilityTitle
+                    title: LocalizedStringKey(viewModel.actions.visibilityTitle)
                 ) {
                     Task { onVisibilityChanged(await viewModel.actions.toggleVisibility()) }
                 }

@@ -37,7 +37,7 @@ struct AddToLibraryButton: View {
     private func toggle() {
         Task {
             if await store.toggle(type, id: itemID) == .failed {
-                toastCenter.show("Could not update your library, please try again")
+                toastCenter.show(String(localized: "Could not update your library, please try again"))
             }
         }
     }
@@ -53,7 +53,7 @@ extension View {
     ) -> some View {
         let name = title?.trimmingCharacters(in: .whitespaces) ?? ""
         return confirmationDialog(
-            name.isEmpty ? "Remove this from your library?" : "Remove \"\(name)\" from your library?",
+            name.isEmpty ? String(localized: "Remove this from your library?") : String(localized: "Remove \"\(name)\" from your library?"),
             isPresented: isPresented,
             titleVisibility: .visible
         ) {

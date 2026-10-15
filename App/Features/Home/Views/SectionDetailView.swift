@@ -37,10 +37,10 @@ struct SectionDetailView: View {
         case .loading:
             LoadingStateView()
         case .empty:
-            EmptyStateView(title: "Nothing here yet")
+            EmptyStateView(title: String(localized: "Nothing here yet"))
         case .failed:
             ErrorStateView(
-                title: "Couldn't load this",
+                title: String(localized: "Couldn't load this"),
                 onRetry: { Task { await viewModel.refresh() } }
             )
         case .loaded(let section):
@@ -82,7 +82,7 @@ struct SectionDetailView: View {
             // exists in Dart either. Kept as a safe fallback rather than
             // `fatalError` in case a future caller points this view at a
             // playlists-viewType uiId.
-            EmptyStateView(title: "Nothing here yet")
+            EmptyStateView(title: String(localized: "Nothing here yet"))
         }
     }
 

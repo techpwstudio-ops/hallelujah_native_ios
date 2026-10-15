@@ -15,13 +15,16 @@ struct HomeRecentItemCardView: View {
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @State private var isResuming = false
 
-    private static let badgeLabels: [String: String] = [
-        "companyPlaylist": "Playlist",
-        "album": "Album",
-        "season": "Season",
-        "userPlaylist": "Your list",
-        "creator": "Artist",
-    ]
+    private static func badgeLabel(for itemType: String) -> String? {
+        switch itemType {
+        case "companyPlaylist": String(localized: "Playlist")
+        case "album": String(localized: "Album")
+        case "season": String(localized: "Season")
+        case "userPlaylist": String(localized: "Your list")
+        case "creator": String(localized: "Artist")
+        default: nil
+        }
+    }
 
     static let coverSize: CGFloat = HomeMetrics.coverSize
 
@@ -77,7 +80,7 @@ struct HomeRecentItemCardView: View {
             HomeRecentProgressBar(item: item)
         }
         .overlay(alignment: .topLeading) {
-            if !item.isSong, let label = Self.badgeLabels[item.itemType] {
+            if !item.isSong, let label = Self.badgeLabel(for: item.itemType) {
                 Text(label)
                     .font(.custom(Typography.fontFamily, size: 9, relativeTo: .caption2).weight(.semibold))
                     .foregroundStyle(Color.white)

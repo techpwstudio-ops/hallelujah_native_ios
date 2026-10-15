@@ -134,13 +134,13 @@ extension Playlist {
 /// `Formater.formatDurationText` / `formatNumber` (`lib/utils/formater.dart`).
 enum HomeFormat {
     static func durationText(_ seconds: Int?) -> String {
-        guard let seconds, seconds > 0 else { return "0 min" }
+        guard let seconds, seconds > 0 else { return String(localized: "0 min") }
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60
         let secs = seconds % 60
-        if hours > 0 { return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h" }
-        if minutes > 0 { return "\(minutes) min" }
-        return "\(secs) sec"
+        if hours > 0 { return minutes > 0 ? String(localized: "\(hours)h \(minutes)m") : String(localized: "\(hours)h") }
+        if minutes > 0 { return String(localized: "\(minutes) min") }
+        return String(localized: "\(secs) sec")
     }
 
     /// `NumberFormat.compact()` — 1.2K / 3.4M, no decimals once >= 10.

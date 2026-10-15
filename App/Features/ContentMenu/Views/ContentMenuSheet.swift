@@ -60,7 +60,7 @@ struct ContentMenuSheet: View {
         .task { await store.refreshIfNeeded() }
     }
 
-    private var shareTitle: String {
+    private var shareTitle: LocalizedStringKey {
         if case .playlist = viewModel.target { return "Share playlist" }
         return "Share"
     }
@@ -82,7 +82,7 @@ struct ContentMenuSheet: View {
             case .playlist:
                 guard let item = viewModel.target.libraryItem else { return }
                 let result = await store.toggle(item.type, id: item.id)
-                onOutcome(result == .failed ? .message("Could not update your library, please try again") : .dismiss)
+                onOutcome(result == .failed ? .message(String(localized: "Could not update your library, please try again")) : .dismiss)
             case .creator:
                 onOutcome(await viewModel.toggleFollow())
             }

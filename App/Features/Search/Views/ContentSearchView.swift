@@ -253,7 +253,7 @@ struct ContentSearchView: View {
         }
         if !viewModel.musicPage.items.isEmpty {
             sectionHeader(
-                SearchFilter.music.title,
+                LocalizedStringKey(SearchFilter.music.title),
                 filter: seeAllVisible(count: viewModel.musicPage.items.count, hasMore: viewModel.musicPage.hasMore) ? .music : nil
             )
             ForEach(Array(viewModel.musicPage.items.prefix(preview))) { song in
@@ -262,7 +262,7 @@ struct ContentSearchView: View {
         }
         if !viewModel.episodePage.items.isEmpty {
             sectionHeader(
-                SearchFilter.episode.title,
+                LocalizedStringKey(SearchFilter.episode.title),
                 filter: seeAllVisible(count: viewModel.episodePage.items.count, hasMore: viewModel.episodePage.hasMore) ? .episode : nil
             )
             ForEach(Array(viewModel.episodePage.items.prefix(preview))) { song in
@@ -271,7 +271,7 @@ struct ContentSearchView: View {
         }
         if !viewModel.creatorPage.items.isEmpty {
             sectionHeader(
-                SearchFilter.creator.title,
+                LocalizedStringKey(SearchFilter.creator.title),
                 filter: seeAllVisible(count: viewModel.creatorPage.items.count, hasMore: viewModel.creatorPage.hasMore) ? .creator : nil
             )
             ForEach(Array(viewModel.creatorPage.items.prefix(preview))) { creator in
@@ -280,7 +280,7 @@ struct ContentSearchView: View {
         }
         if !viewModel.playlistPage.items.isEmpty {
             sectionHeader(
-                SearchFilter.playlists.title,
+                LocalizedStringKey(SearchFilter.playlists.title),
                 filter: seeAllVisible(count: viewModel.playlistPage.items.count, hasMore: viewModel.playlistPage.hasMore) ? .playlists : nil
             )
             ForEach(Array(viewModel.playlistPage.items.prefix(preview)), id: \.compositeID) { playlist in
@@ -326,7 +326,7 @@ struct ContentSearchView: View {
 
     /// `_buildSectionHeaderSliver`: 16/12/16/4 inset, `titleMedium` w600 white,
     /// "See all" in `bodySmall` w500 `greySubtle`.
-    private func sectionHeader(_ title: String, filter: SearchFilter?) -> some View {
+    private func sectionHeader(_ title: LocalizedStringKey, filter: SearchFilter?) -> some View {
         HStack {
             Text(title)
                 .typography(Typography.titleMedium)

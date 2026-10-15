@@ -81,7 +81,7 @@ final class CreatorProfileViewModel {
             configureTabs(for: fetched)
         } catch {
             logger.warning("creator detail load failed: \(error)")
-            loadError = "Something went wrong"
+            loadError = String(localized: "Something went wrong")
         }
         isLoadingCreator = false
     }

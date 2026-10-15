@@ -128,7 +128,7 @@ struct PlaylistDetailView: View {
                         cornerRadius: 0
                     )
                     companyInfo
-                    songList(emptyText: "No songs yet", verticalPadding: 0)
+                    songList(emptyText: String(localized: "No songs yet"), verticalPadding: 0)
                     Color.clear.frame(height: HomeMetrics.pageBottomSpacing)
                 }
             }

@@ -107,11 +107,11 @@ struct SeeAllSongsView: View {
             HomeSpinner()
                 .frame(maxWidth: .infinity, minHeight: 300)
         case .empty, .failed:
-            HomeEmptyText(text: "Your feed is empty")
+            HomeEmptyText(text: String(localized: "Your feed is empty"))
                 .frame(minHeight: 300)
         case .loaded:
             if songs.isEmpty {
-                HomeEmptyText(text: "Your feed is empty")
+                HomeEmptyText(text: String(localized: "Your feed is empty"))
                     .frame(minHeight: 300)
             } else {
                 LazyVStack(spacing: 0) {

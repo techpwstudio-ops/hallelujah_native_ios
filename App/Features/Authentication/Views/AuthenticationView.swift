@@ -72,7 +72,7 @@ struct AuthenticationView: View {
 
                         Spacer().frame(height: Spacing.md)
 
-                        Text(isEmailMode ? "Continue with Email" : "Continue with Mobile")
+                        Text(isEmailMode ? LocalizedStringKey("Continue with Email") : LocalizedStringKey("Continue with Mobile"))
                             .typography(Typography.bodyMedium)
                             .foregroundStyle(.white)
                             .multilineTextAlignment(.center)

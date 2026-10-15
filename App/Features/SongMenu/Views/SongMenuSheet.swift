@@ -56,7 +56,7 @@ struct SongMenuSheet: View {
                         if let id = await viewModel.resolveArtistID() {
                             onOutcome(.goToArtist(id))
                         } else {
-                            onOutcome(.message("Artist not available"))
+                            onOutcome(.message(String(localized: "Artist not available")))
                         }
                     }
                 }
@@ -75,7 +75,7 @@ struct SongMenuSheet: View {
                 SongMenuRow(systemImage: "person.2", title: "View credits") {
                     viewModel.page = .credits
                 }
-                SongMenuRow(systemImage: viewModel.downloadSystemImage, title: viewModel.downloadTitle) {
+                SongMenuRow(systemImage: viewModel.downloadSystemImage, title: LocalizedStringKey(viewModel.downloadTitle)) {
                     run { await viewModel.download() }
                 } trailing: {
                     if viewModel.blocksPremium { GoPremiumBadge() }

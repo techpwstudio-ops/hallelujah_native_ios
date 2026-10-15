@@ -19,7 +19,7 @@ struct NotificationSettingsView: View {
                     LoadingStateView()
                 case .failed:
                     ErrorStateView(
-                        title: "Couldn't load notification settings",
+                        title: String(localized: "Couldn't load notification settings"),
                         onRetry: { Task { await viewModel.refresh() } }
                     )
                 case .loaded(let topics):
@@ -41,8 +41,8 @@ struct NotificationSettingsView: View {
         Spacer().frame(height: 8)
         ParityHeading(text: "Daily Bible")
         row(
-            title: "Verse of the Day",
-            subtitle: "One verse each day, in your Bible language.",
+            title: Text("Verse of the Day"),
+            subtitle: Text("One verse each day, in your Bible language."),
             isOn: viewModel.bibleNotificationsEnabled,
             isBusy: viewModel.isBibleBusy,
             onToggle: { newValue in Task { await viewModel.toggleBible(newValue) } }
@@ -57,7 +57,7 @@ struct NotificationSettingsView: View {
         } else {
             ForEach(topics) { topic in
                 row(
-                    title: topic.name,
+                    title: Text(verbatim: topic.name),
                     subtitle: subtitle(for: topic),
                     isOn: viewModel.isEnabled(topic.topicKey),
                     isBusy: viewModel.isBusy(topic.topicKey),
@@ -68,10 +68,7 @@ struct NotificationSettingsView: View {
             }
         }
         Spacer().frame(height: 24)
-        Text(
-            "Turning a channel off stops new notifications from it. Alerts about your account "
-                + "and anything you asked us to send you are not affected."
-        )
+        Text("Turning a channel off stops new notifications from it. Alerts about your account and anything you asked us to send you are not affected.")
         .font(AccountParity.bodySmall)
         .lineSpacing(12 * 0.5)
         .foregroundStyle(AccountParity.grey)
@@ -79,17 +76,17 @@ struct NotificationSettingsView: View {
     }
 
     /// `_topicSubtitle`.
-    private func subtitle(for topic: NotificationTopic) -> String {
+    private func subtitle(for topic: NotificationTopic) -> Text {
         guard let language = topic.language?.trimmingCharacters(in: .whitespaces), !language.isEmpty else {
-            return "Announcements for everyone."
+            return Text("Announcements for everyone.")
         }
-        return "In \(language)."
+        return Text("In \(language).")
     }
 
     /// `_switchTile` (`SwitchListTile.adaptive`).
     private func row(
-        title: String,
-        subtitle: String,
+        title: Text,
+        subtitle: Text,
         isOn: Bool,
         isBusy: Bool,
         onToggle: @escaping (Bool) -> Void
@@ -103,10 +100,10 @@ struct NotificationSettingsView: View {
                     .frame(width: 20, height: 20)
             }
             VStack(alignment: .leading, spacing: 0) {
-                Text(title)
+                title
                     .font(AccountParity.font(17, .semibold))
                     .foregroundStyle(AccountParity.white)
-                Text(subtitle)
+                subtitle
                     .font(AccountParity.bodyMedium)
                     .foregroundStyle(AccountParity.grey)
             }

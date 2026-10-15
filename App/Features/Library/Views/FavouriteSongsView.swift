@@ -27,8 +27,8 @@ struct FavouriteSongsView: View {
     var body: some View {
         ParityGradientHeader(
             top: Self.gradientTop,
-            title: "Liked \(viewModel.typeName)",
-            subtitle: "\(viewModel.songCount) \(viewModel.typeName)",
+            title: viewModel.likedTitle,
+            subtitle: viewModel.countText,
             isShuffled: queueController.isShuffled,
             isPlaying: isPlaying,
             onShuffle: { Task { await queueController.toggleShuffle() } },
@@ -100,7 +100,7 @@ struct FavouriteSongsView: View {
             if viewModel.isLoadingSongs || !viewModel.hasLoadedOnce {
                 ParitySpinner(fills: true)
             } else {
-                ParityEmptyText(text: "No \(viewModel.attributionID)")
+                ParityEmptyText(text: LocalizedStringKey(viewModel.emptyText))
             }
         } else {
             ScrollView {

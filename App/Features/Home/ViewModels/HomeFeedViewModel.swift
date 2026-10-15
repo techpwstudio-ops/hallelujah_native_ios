@@ -139,9 +139,9 @@ final class HomeFeedViewModel {
         // truly empty feed surfaces the error page (`_failLayout`).
         if placeholders.isEmpty {
             if let urlError = lastError as? URLError, urlError.code == .notConnectedToInternet {
-                layoutError = "No internet connection"
+                layoutError = String(localized: "No internet connection")
             } else {
-                layoutError = "Failed to load home"
+                layoutError = String(localized: "Failed to load home")
             }
         }
     }

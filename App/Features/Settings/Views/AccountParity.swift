@@ -67,7 +67,7 @@ private struct ParityNavTitle<TitleContent: View>: ViewModifier {
 
 extension View {
     /// Flutter `AppBar(title: Text(title, style: appBarTextStyle))`.
-    func parityNavTitle(_ title: String, leading: Bool = false) -> some View {
+    func parityNavTitle(_ title: LocalizedStringKey, leading: Bool = false) -> some View {
         modifier(ParityNavTitle(
             leading: leading,
             titleContent: Text(title)
@@ -90,7 +90,7 @@ extension View {
 
 /// `CustomHeading`: titleSmall in white70.
 struct ParityHeading: View {
-    let text: String
+    let text: LocalizedStringKey
     var body: some View {
         HStack {
             Text(text)
@@ -104,8 +104,8 @@ struct ParityHeading: View {
 /// `SettingsListItem`: Material two-line `ListTile` with zero content padding,
 /// a 1pt `borderColor` bottom rule, 17/w600 title, grey subtitle.
 struct ParityListTile<Leading: View, Trailing: View>: View {
-    let title: String
-    var subtitle: String? = nil
+    let title: LocalizedStringKey
+    var subtitle: LocalizedStringKey? = nil
     var onTap: (() -> Void)? = nil
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var trailing: () -> Trailing
@@ -163,7 +163,7 @@ struct ParityArrowNext: View {
 /// White-on-black `FilledButton` with Material M3 metrics (min height 40, 24pt
 /// horizontal padding, 8pt radius, `titleMedium` label in black).
 struct ParityFilledButton: View {
-    let title: String
+    let title: LocalizedStringKey
     var fillWidth: Bool = false
     var isLoading: Bool = false
     var enabled: Bool = true
@@ -214,11 +214,11 @@ struct ParityDragHandler: View {
 
 /// Dialog body replicating `showConfirmationDialog` (`lib/dialogs/confirmation_dialog.dart`).
 struct ParityConfirmationDialog: View {
-    var title: String = "Confirm"
-    var message: String?
+    var title: LocalizedStringKey = "Confirm"
+    var message: LocalizedStringKey?
     var systemIcon: String = "questionmark.circle"
     var force: Bool = false
-    var confirmTitle: String? = nil
+    var confirmTitle: LocalizedStringKey? = nil
     let onCancel: () -> Void
     let onConfirm: () -> Void
 
@@ -270,7 +270,7 @@ struct ParityConfirmationDialog: View {
                         Rectangle().fill(Color.white.opacity(0.06)).frame(width: 1)
                     }
                     Button(action: onConfirm) {
-                        Text(confirmTitle ?? (force ? "Continue" : "Yes"))
+                        Text(confirmTitle ?? (force ? LocalizedStringKey("Continue") : LocalizedStringKey("Yes")))
                             .font(AccountParity.font(17, .bold))
                             .foregroundStyle(Color.white)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -295,11 +295,11 @@ struct ParityConfirmationDialog: View {
 
 private struct ParityConfirmationModifier: ViewModifier {
     @Binding var isPresented: Bool
-    let title: String
-    let message: String?
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey?
     let systemIcon: String
     let force: Bool
-    let confirmTitle: String?
+    let confirmTitle: LocalizedStringKey?
     let onConfirm: () -> Void
 
     func body(content: Content) -> some View {
@@ -325,11 +325,11 @@ extension View {
     /// Flutter `showConfirmationDialog` equivalent (blurred-dark rounded card, Cancel / Yes).
     func parityConfirmationDialog(
         isPresented: Binding<Bool>,
-        title: String = "Confirm",
-        message: String?,
+        title: LocalizedStringKey = "Confirm",
+        message: LocalizedStringKey?,
         systemIcon: String = "questionmark.circle",
         force: Bool = false,
-        confirmTitle: String? = nil,
+        confirmTitle: LocalizedStringKey? = nil,
         onConfirm: @escaping () -> Void
     ) -> some View {
         modifier(ParityConfirmationModifier(
@@ -348,7 +348,7 @@ extension View {
 /// 8pt radius, 12/16 content padding, 12pt w500 grey hint, 16pt value text.
 struct ParityTextField: View {
     @Binding var text: String
-    var placeholder: String
+    var placeholder: LocalizedStringKey
     var enabled: Bool = true
     var errorMessage: String? = nil
     var keyboard: UIKeyboardType = .default
@@ -402,7 +402,7 @@ struct ParityTextField: View {
 
 /// `Text.rich("Label" + red " * ")` field label (`titleSmall`).
 struct ParityRequiredLabel: View {
-    let text: String
+    let text: LocalizedStringKey
     var required: Bool = true
     var body: some View {
         (Text(text).font(AccountParity.titleSmall).foregroundStyle(AccountParity.white)
@@ -479,7 +479,7 @@ extension View {
 /// `Bullet` (`lib/widgets/widgets.dart`): 6pt white70 dot, 10pt gap, bodyMedium
 /// white70 at height 1.4, 10pt bottom padding.
 struct ParityBullet: View {
-    let text: String
+    let text: LocalizedStringKey
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Circle()
@@ -501,7 +501,7 @@ struct ParityBullet: View {
 struct ParitySheetButton: View {
     enum Style { case filled, outlined }
 
-    let title: String
+    let title: LocalizedStringKey
     var style: Style = .filled
     var radius: CGFloat = 14
     var verticalPadding: CGFloat = 16

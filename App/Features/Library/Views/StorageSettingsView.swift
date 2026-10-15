@@ -90,7 +90,7 @@ struct StorageSettingsView: View {
         }
     }
 
-    private func statRow(title: String, value: String) -> some View {
+    private func statRow(title: LocalizedStringKey, value: String) -> some View {
         HStack {
             Text(title)
                 .typography(Typography.bodyMedium)

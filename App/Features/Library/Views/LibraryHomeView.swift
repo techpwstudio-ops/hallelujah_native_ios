@@ -117,7 +117,7 @@ struct LibraryHomeView: View {
                         title: "Liked Music",
                         count: viewModel.counts?.likedMusic ?? 0
                     ) {
-                        coordinator.push(.favouriteSongs(type: "music", label: "Liked Music", asset: "liked_musics"))
+                        coordinator.push(.favouriteSongs(type: "music", label: String(localized: "Liked Music"), asset: "liked_musics"))
                     }
                 }
                 if viewModel.filter == .all || viewModel.filter == .episode {
@@ -127,7 +127,7 @@ struct LibraryHomeView: View {
                         title: "Liked Episodes",
                         count: viewModel.counts?.likedEpisodes ?? 0
                     ) {
-                        coordinator.push(.favouriteSongs(type: "episode", label: "Liked Episodes", asset: "liked_episode"))
+                        coordinator.push(.favouriteSongs(type: "episode", label: String(localized: "Liked Episodes"), asset: "liked_episode"))
                     }
                 }
                 LibraryQuickLinkRow(

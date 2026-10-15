@@ -219,7 +219,7 @@ private struct ProfileContentView: View {
         .padding(.bottom, 24)
     }
 
-    private func sourceTile(icon: String, title: String, action: @escaping () -> Void) -> some View {
+    private func sourceTile(icon: String, title: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 16) {
                 Image(systemName: icon)
@@ -260,7 +260,7 @@ private struct ProfileContentView: View {
 
     // MARK: - Fields
 
-    private func textField(label: String, text: Binding<String>, error: String?, contentType: UITextContentType) -> some View {
+    private func textField(label: LocalizedStringKey, text: Binding<String>, error: String?, contentType: UITextContentType) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ParityRequiredLabel(text: label)
                 .padding(.bottom, 8)
@@ -276,7 +276,7 @@ private struct ProfileContentView: View {
         .padding(.vertical, 2)
     }
 
-    private func readOnlyField(label: String, value: String, keyboard: UIKeyboardType) -> some View {
+    private func readOnlyField(label: LocalizedStringKey, value: String, keyboard: UIKeyboardType) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ParityRequiredLabel(text: label)
                 .padding(.bottom, 8)
@@ -299,7 +299,7 @@ private struct ProfileContentView: View {
                 isDatePickerPresented = true
             } label: {
                 HStack {
-                    Text(dateOfBirth.map(Self.displayFormatter.string(from:)) ?? "Enter Date Of Birth")
+                    (dateOfBirth.map { Text(verbatim: Self.displayFormatter.string(from: $0)) } ?? Text("Enter Date Of Birth"))
                         .font(AccountParity.font(14, .medium))
                         .foregroundStyle(dateOfBirth == nil ? Color(red: 0x80 / 255, green: 0x80 / 255, blue: 0x80 / 255) : AccountParity.white)
                     Spacer()
@@ -382,7 +382,7 @@ private struct ProfileContentView: View {
         .padding(8)
     }
 
-    private func genderOption(label: String, value: String) -> some View {
+    private func genderOption(label: LocalizedStringKey, value: String) -> some View {
         Button {
             gender = value
         } label: {
@@ -441,14 +441,14 @@ private struct ProfileContentView: View {
     /// too short -> "Please enter at least 2 characters.".
     private var fNameError: String? {
         guard showValidation else { return nil }
-        if fNameTrimmed.isEmpty { return "First Name" }
-        return isFNameValid ? nil : "Please enter at least 2 characters."
+        if fNameTrimmed.isEmpty { return String(localized: "First Name") }
+        return isFNameValid ? nil : String(localized: "Please enter at least 2 characters.")
     }
 
     private var lNameError: String? {
         guard showValidation else { return nil }
-        if lNameTrimmed.isEmpty { return "Last Name" }
-        return isLNameValid ? nil : "Please enter at least 2 characters."
+        if lNameTrimmed.isEmpty { return String(localized: "Last Name") }
+        return isLNameValid ? nil : String(localized: "Please enter at least 2 characters.")
     }
 
     /// `DateTime.now().difference(date).inDays < (13 * 365)` — same
@@ -559,8 +559,8 @@ private struct ProfileContentView: View {
     /// `dd/MM/yyyy` — `dateInput`'s own `displayText` formatting.
     private static let displayFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "dd/MM/yyyy"
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("ddMMyyyy")
         return formatter
     }()
 

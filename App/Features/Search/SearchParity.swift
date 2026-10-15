@@ -135,8 +135,8 @@ struct ParityMoreButton: View {
 /// `titleLarge` white, 8pt gap, `bodyMedium` greySubtle (height 1.5).
 struct ParityEmptyState: View {
     let systemImage: String
-    let title: String
-    let message: String
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
 
     var body: some View {
         VStack(spacing: 0) {
@@ -266,20 +266,20 @@ extension ParityColor {
 
 /// `Formater.formatDurationText` (`lib/utils/formater.dart`).
 func parityDurationText(_ duration: Int?) -> String {
-    guard let duration, duration > 0 else { return "0 min" }
+    guard let duration, duration > 0 else { return String(localized: "0 min") }
     let hours = duration / 3600
     let minutes = (duration % 3600) / 60
     let seconds = duration % 60
-    if hours > 0 { return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h" }
-    if minutes > 0 { return "\(minutes) min" }
-    return "\(seconds) sec"
+    if hours > 0 { return minutes > 0 ? String(localized: "\(hours)h \(minutes)m") : String(localized: "\(hours)h") }
+    if minutes > 0 { return String(localized: "\(minutes) min") }
+    return String(localized: "\(seconds) sec")
 }
 
 /// `Formater.formatToDate` -> `dd/MM/yyyy`.
 func parityDateText(_ date: Date?) -> String {
     guard let date else { return "" }
     let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.locale = .current
     formatter.dateFormat = "dd/MM/yyyy"
     return formatter.string(from: date)
 }

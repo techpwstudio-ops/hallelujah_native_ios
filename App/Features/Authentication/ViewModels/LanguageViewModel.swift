@@ -96,7 +96,7 @@ final class LanguageViewModel {
             languageOptions = try await authRepository.fetchLanguages()
         } catch {
             logger.warning("fetch languages failed: \(error)")
-            errorMessage = "Network error"
+            errorMessage = String(localized: "Network error")
         }
         isLoading = false
     }
@@ -131,11 +131,11 @@ final class LanguageViewModel {
     @discardableResult
     func saveLanguages() async -> Bool {
         guard hasSelection else {
-            saveState = .error(message: "Please select at least 1 language")
+            saveState = .error(message: String(localized: "Please select at least 1 language"))
             return false
         }
         guard selectedLanguages.count <= Self.maxSelectableLanguages else {
-            saveState = .error(message: "You can select up to \(Self.maxSelectableLanguages) languages")
+            saveState = .error(message: String(localized: "You can select up to \(Self.maxSelectableLanguages) languages"))
             return false
         }
 
@@ -149,7 +149,7 @@ final class LanguageViewModel {
             return false
         } catch {
             logger.warning("save languages failed: \(error)")
-            saveState = .error(message: "Network error")
+            saveState = .error(message: String(localized: "Network error"))
             return false
         }
     }

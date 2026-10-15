@@ -65,7 +65,7 @@ struct BrowseView: View {
             LoadingStateView()
                 .frame(maxWidth: .infinity, minHeight: 200)
         } else if let error = viewModel.loadError, genres.isEmpty {
-            ErrorStateView(title: "Couldn't load genres", message: error) {
+            ErrorStateView(title: String(localized: "Couldn't load genres"), message: error) {
                 Task { await viewModel.loadGenres() }
             }
             .frame(maxWidth: .infinity, minHeight: 200)

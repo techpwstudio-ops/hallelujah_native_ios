@@ -13,7 +13,7 @@ import UIKit
 struct LibraryQuickLinkRow: View {
     let assetName: String
     let fallbackSymbol: String
-    let title: String
+    let title: LocalizedStringKey
     let count: Int
     let action: () -> Void
 

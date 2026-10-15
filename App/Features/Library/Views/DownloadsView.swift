@@ -63,8 +63,8 @@ struct DownloadsView: View {
     var body: some View {
         ParityGradientHeader(
             top: Self.gradientTop,
-            title: "Downloads",
-            subtitle: "\(songCount) Songs \u{00B7} \(episodeCount) Podcasts",
+            title: String(localized: "Downloads"),
+            subtitle: String(localized: "\(songCount) Songs \u{00B7} \(episodeCount) Podcasts"),
             isShuffled: queueController.isShuffled,
             isPlaying: isPlaying,
             onShuffle: { Task { await queueController.toggleShuffle() } },

@@ -123,7 +123,7 @@ struct OTPView: View {
                     Spacer().frame(height: Spacing.md)
 
                     AppButton.secondary(
-                        countdown.canResend ? "Resend code" : "Resend code (after \(countdown.secondsRemaining)s)",
+                        countdown.canResend ? String(localized: "Resend code") : String(localized: "Resend code (after \(countdown.secondsRemaining)s)"),
                         enabled: countdown.canResend
                     ) {
                         guard countdown.canResend else { return }

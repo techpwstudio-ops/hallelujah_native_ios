@@ -202,8 +202,8 @@ private struct HomeAdDetailsCard: View {
         // never uploaded a dedicated logo.
         let logo = ad.advertiserLogoUrl ?? ad.squareImageUrl
         let advertiserName = ad.advertiserName ?? ""
-        let headline = (ad.headline?.isEmpty == false) ? ad.headline! : "Advertisement"
-        let subtitle = advertiserName.isEmpty ? "Sponsored" : "Sponsored \u{00B7} \(advertiserName)"
+        let headline = (ad.headline?.isEmpty == false) ? ad.headline! : String(localized: "Advertisement")
+        let subtitle = advertiserName.isEmpty ? String(localized: "Sponsored") : String(localized: "Sponsored \u{00B7} \(advertiserName)")
         let bodyText = ad.bodyText ?? ""
 
         VStack(alignment: .leading, spacing: 0) {

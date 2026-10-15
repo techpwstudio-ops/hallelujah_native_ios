@@ -5,7 +5,7 @@ import SwiftUI
 /// trailing badge.
 struct SongMenuRow<Trailing: View>: View {
     let systemImage: String
-    let title: String
+    let title: LocalizedStringKey
     let action: () -> Void
     @ViewBuilder var trailing: () -> Trailing
 
@@ -36,7 +36,7 @@ struct SongMenuRow<Trailing: View>: View {
 }
 
 extension SongMenuRow where Trailing == EmptyView {
-    init(systemImage: String, title: String, action: @escaping () -> Void) {
+    init(systemImage: String, title: LocalizedStringKey, action: @escaping () -> Void) {
         self.init(systemImage: systemImage, title: title, action: action) { EmptyView() }
     }
 }

@@ -59,7 +59,21 @@ final class FavouriteSongsViewModel {
     /// ternary (`favourite_songs_list.dart`), including its `.all`-falls-to-
     /// "Episodes" edge case (never actually reached: every real call site
     /// sends `music`/`episode`).
-    var typeName: String { type == .music ? "Music" : "Episodes" }
+    var likedTitle: String {
+        type == .music ? String(localized: "Liked Music") : String(localized: "Liked Episodes")
+    }
+
+    var countText: String {
+        type == .music ? String(localized: "\(songCount) Music") : String(localized: "\(songCount) Episodes")
+    }
+
+    var emptyText: String {
+        switch type {
+        case .music: String(localized: "No music")
+        case .episode: String(localized: "No episode")
+        default: String(localized: "No \(attributionID)")
+        }
+    }
 
     func onAppear() async {
         guard !hasLoadedOnce, !page.isLoading else { return }

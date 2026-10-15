@@ -120,7 +120,7 @@ struct ParityIconButton: View {
 
 /// `Empty(text:)` (`lib/widgets/empty.dart`): centred text, w600, 16pt padding.
 struct ParityEmptyText: View {
-    let text: String
+    let text: LocalizedStringKey
     var body: some View {
         Text(text)
             .font(.custom(Typography.fontFamily, size: 14).weight(.semibold))

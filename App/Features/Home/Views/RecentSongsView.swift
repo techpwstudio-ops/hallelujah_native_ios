@@ -97,11 +97,11 @@ private struct RecentSongsList: View {
             HomeSpinner()
                 .frame(maxWidth: .infinity, minHeight: 300)
         case .empty, .failed:
-            HomeEmptyText(text: "No Recent Music/Episodes")
+            HomeEmptyText(text: String(localized: "No Recent Music/Episodes"))
                 .frame(minHeight: 300)
         case .loaded:
             if songs.isEmpty {
-                HomeEmptyText(text: "No Recent Music/Episodes")
+                HomeEmptyText(text: String(localized: "No Recent Music/Episodes"))
                     .frame(minHeight: 300)
             } else {
                 LazyVStack(spacing: 0) {

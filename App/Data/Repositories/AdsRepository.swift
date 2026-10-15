@@ -314,16 +314,16 @@ enum AdFeedbackReason: String, Sendable, CaseIterable {
     /// `l10n.adReason*`.
     var label: String {
         switch self {
-        case .notRelevant: "Not relevant to me"
-        case .seenTooOften: "I've seen this too many times"
-        case .dislikeBrand: "I don't like this brand"
-        case .inappropriate: "Inappropriate or offensive"
-        case .misleading: "Misleading or a scam"
-        case .sexual: "Sexual content"
-        case .violence: "Violence or dangerous content"
-        case .copyright: "Copyright infringement"
-        case .broken: "The ad didn't work properly"
-        case .other: "Something else"
+        case .notRelevant: String(localized: "Not relevant to me")
+        case .seenTooOften: String(localized: "I've seen this too many times")
+        case .dislikeBrand: String(localized: "I don't like this brand")
+        case .inappropriate: String(localized: "Inappropriate or offensive")
+        case .misleading: String(localized: "Misleading or a scam")
+        case .sexual: String(localized: "Sexual content")
+        case .violence: String(localized: "Violence or dangerous content")
+        case .copyright: String(localized: "Copyright infringement")
+        case .broken: String(localized: "The ad didn't work properly")
+        case .other: String(localized: "Something else")
         }
     }
 

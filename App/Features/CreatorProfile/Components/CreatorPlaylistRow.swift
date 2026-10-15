@@ -23,10 +23,10 @@ struct CreatorPlaylistRow: View {
 
     private var subtitle: String {
         let count = playlist.songsCount ?? 0
-        let noun = contentType == .episode ? "Podcasts" : "Songs"
+        let countText = contentType == .episode ? String(localized: "\(count) Podcasts") : String(localized: "\(count) Songs")
         var parts: [String] = []
         if case let .creator(_, name) = playlist.owner, let name, !name.isEmpty { parts.append(name) }
-        parts.append("\(count) \(noun)")
+        parts.append(countText)
         return parts.joined(separator: parityDotSign)
     }
 
@@ -40,7 +40,7 @@ struct CreatorPlaylistRow: View {
             )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(playlist.title.isEmpty ? "Untitled Playlist" : playlist.title.parityCapitalized)
+                Text(playlist.title.isEmpty ? String(localized: "Untitled Playlist") : playlist.title.parityCapitalized)
                     .typography(Typography.titleSmall)
                     .foregroundStyle(Color.white)
                     .lineLimit(1)

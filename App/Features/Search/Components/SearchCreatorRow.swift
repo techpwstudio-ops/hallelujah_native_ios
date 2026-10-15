@@ -16,7 +16,7 @@ struct SearchCreatorRow: View {
     }
 
     private var subtitle: String {
-        "Artist\(parityDotSign)\(creator.followersCount ?? 0) followers"
+        "\(String(localized: "Artist"))\(parityDotSign)\(String(localized: "\(creator.followersCount ?? 0) followers"))"
     }
 
     var body: some View {

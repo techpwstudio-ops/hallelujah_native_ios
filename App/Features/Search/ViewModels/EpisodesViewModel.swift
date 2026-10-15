@@ -34,7 +34,7 @@ final class EpisodesViewModel {
             allGenres = try await repository.fetchGenres()
         } catch {
             logger.warning("podcast genre list load failed: \(error)")
-            loadError = "Something went wrong"
+            loadError = String(localized: "Something went wrong")
         }
         isLoading = false
     }

@@ -51,7 +51,7 @@ struct LibraryEntryRow: View {
         case let .playlist(playlist):
             return playlist.title
         case let .userPlaylist(_, title, _, _, _, _, _):
-            return title.isEmpty ? "Unnamed Playlist" : title.parityCapitalized
+            return title.isEmpty ? String(localized: "Unnamed Playlist") : title.parityCapitalized
         }
     }
 
@@ -60,15 +60,15 @@ struct LibraryEntryRow: View {
         case let .playlist(playlist):
             switch playlist.owner {
             case .company:
-                return "Playlist"
+                return String(localized: "Playlist")
             case let .creator(_, name):
-                let kind = playlist.isSeason ? "Season" : "Album"
+                let kind = playlist.isSeason ? String(localized: "Season") : String(localized: "Album")
                 if let name, !name.isEmpty { return "\(kind)\(parityDotSign)\(name)" }
                 return kind
             }
         case let .userPlaylist(_, _, _, _, _, _, detail):
-            if let detail, !detail.isEmpty { return "Playlist\(parityDotSign)\(detail)" }
-            return "Playlist"
+            if let detail, !detail.isEmpty { return "\(String(localized: "Playlist"))\(parityDotSign)\(detail)" }
+            return String(localized: "Playlist")
         }
     }
 }

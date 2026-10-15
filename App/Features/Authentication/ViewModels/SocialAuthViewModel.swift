@@ -45,10 +45,10 @@ final class SocialAuthViewModel {
             let result = try await googleCoordinator.signIn()
             try await verify(result: result, provider: .google)
         } catch SocialAuthError.missingCredential {
-            state = .error(message: "Authentication with google failed, please try another method")
+            state = .error(message: String(localized: "Authentication with google failed, please try another method"))
         } catch {
             logger.warning("google sign-in failed: \(error)")
-            state = .error(message: "Google sign-in did not complete. Please try again.")
+            state = .error(message: String(localized: "Google sign-in did not complete. Please try again."))
         }
     }
 
@@ -60,10 +60,10 @@ final class SocialAuthViewModel {
         } catch SocialAuthError.canceled {
             state = .idle
         } catch SocialAuthError.missingCredential {
-            state = .error(message: "Apple sign-in failed. Please try again.")
+            state = .error(message: String(localized: "Apple sign-in failed. Please try again."))
         } catch {
             logger.warning("apple sign-in failed: \(error)")
-            state = .error(message: "Apple sign-in did not complete. Please try again.")
+            state = .error(message: String(localized: "Apple sign-in did not complete. Please try again."))
         }
     }
 

@@ -73,7 +73,7 @@ struct AppButton: View {
                         if let leadingIcon {
                             theme.icon(leadingIcon)
                         }
-                        Text(label)
+                        Text(LocalizedStringKey(label))
                             .typography(Typography.titleSmall)
                     }
                 }

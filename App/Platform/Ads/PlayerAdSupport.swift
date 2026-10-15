@@ -156,6 +156,6 @@ extension AdCreative {
     /// The call-to-action label of the player's strip and card.
     var playerCTALabel: String {
         let label = ctaLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return label.isEmpty ? "Learn more" : label
+        return label.isEmpty ? String(localized: "Learn more") : label
     }
 }

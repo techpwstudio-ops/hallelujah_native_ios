@@ -46,7 +46,7 @@ final class BrowseViewModel {
             allGenres = try await repository.fetchGenres()
         } catch {
             logger.warning("genre list load failed: \(error)")
-            loadError = "Something went wrong"
+            loadError = String(localized: "Something went wrong")
         }
         isLoading = false
     }

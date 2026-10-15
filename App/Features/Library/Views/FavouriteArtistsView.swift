@@ -24,7 +24,7 @@ struct FavouriteArtistsView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        coordinator.push(.creatorGrid(title: "Favourite Artist", songType: songType))
+                        coordinator.push(.creatorGrid(title: String(localized: "Favourite Artist"), songType: songType))
                     } label: {
                         Image(systemName: "plus")
                     }

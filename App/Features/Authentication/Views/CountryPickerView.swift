@@ -25,7 +25,7 @@ struct CountryPickerView: View {
     private var filteredCountries: [Country] {
         guard !searchText.isEmpty else { return Country.all }
         return Country.all.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText) || $0.dialCode.contains(searchText)
+            $0.displayName.localizedCaseInsensitiveContains(searchText) || $0.name.localizedCaseInsensitiveContains(searchText) || $0.dialCode.contains(searchText)
         }
     }
 
@@ -77,7 +77,7 @@ struct CountryPickerView: View {
         } label: {
             HStack(spacing: Spacing.sm) {
                 Text(country.flagEmoji)
-                Text(country.name)
+                Text(country.displayName)
                     .typography(Typography.bodyMedium)
                     .foregroundStyle(theme.color(.textPrimary))
                 Spacer()
