@@ -187,12 +187,15 @@ struct MiniPlayerDockView: View {
         .scaleEffect(isVisible ? 1 : 0.92, anchor: .bottom)
         .offset(y: isVisible ? 0 : Spacing.miniPlayerHeight)
         .animation(isVisible ? MotionCurve.dockShow : MotionCurve.dockHide, value: isVisible)
-        .allowsHitTesting(isVisible)
         .contentShape(Rectangle())
         // `swipe_to_skip.dart:183-196`'s single gesture-arena doc comment —
         // one recognizer resolving both, rather than nested detectors.
         .onTapGesture { onExpand() }
         .gesture(swipeGesture)
+        // Must be the LAST hit-test modifier: placed before `.onTapGesture`/
+        // `.gesture` it only disabled the pill's children, leaving the hidden
+        // (opacity 0) frame still tappable and opening the player.
+        .allowsHitTesting(isVisible)
         // T35 — written against the iOS 18 zoom-navigation-transition API
         // as documented (Apple's own WWDC24 demos pair this exact
         // `matchedTransitionSource`/`.navigationTransition(.zoom(...))`

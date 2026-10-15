@@ -355,27 +355,27 @@ natively — it is already Swift and is the best available spec.
   lifecycle alongside the SwiftUI app lifecycle.
   *Done:* app appears and launches in the CarPlay simulator.
 
-- [x] **T49 — Tab bar and tabs** — _UNVERIFIED: not compiled/run, verify locally_
+- [x] **T49 — Tab bar and tabs** — _COMPILED 2026-10-15: app target builds (Dev + Production schemes); CarPlay not yet exercised in the simulator_
   `CPTabBarTemplate` with **Home, Library, Recents, Search**, each lazily loaded with a
   loading template while data arrives.
   *Done:* all four tabs populate; no blocking main-thread work on connect.
 
-- [x] **T50 — List templates and artwork** — _UNVERIFIED: not compiled/run, verify locally_
+- [x] **T50 — List templates and artwork** — _COMPILED 2026-10-15: app target builds (Dev + Production schemes); CarPlay not yet exercised in the simulator_
   `CPListTemplate` / `CPListSection` / `CPListItem` / `CPListImageRowItem`, circular
   artwork, disk-cached and correctly sized images, the 3-image row cards used on Home.
   *Done:* artwork renders from cache without a network round-trip on every scroll.
 
-- [x] **T51 — Pushed templates** — _UNVERIFIED: not compiled/run, verify locally_
+- [x] **T51 — Pushed templates** — _COMPILED 2026-10-15: app target builds (Dev + Production schemes); CarPlay not yet exercised in the simulator_
   Liked Songs, Downloads, all playlists, playlist songs, company playlists, creator
   songs, home "see all", search results — one function per `push*` in the Dart/Swift original.
   *Done:* every push target from the existing delegate exists and plays.
 
-- [x] **T52 — Now Playing and handoff** — _UNVERIFIED: not compiled/run, verify locally_
+- [x] **T52 — Now Playing and handoff** — _COMPILED 2026-10-15: app target builds (Dev + Production schemes); CarPlay not yet exercised in the simulator_
   `CPNowPlayingTemplate`, now-playing indicator on list rows, progress updates, remote
   commands, and state shared with the phone UI in both directions.
   *Done:* start on phone → continue in car → control from car, with no duplicate players.
 
-- [x] **T53 — CarPlay QA** — _UNVERIFIED: not compiled/run, verify locally_
+- [x] **T53 — CarPlay QA** — _COMPILED 2026-10-15: app target builds (Dev + Production schemes); CarPlay not yet exercised in the simulator_
   Auth-required guards (`pushGuarded`), offline behaviour, template-depth limit (5),
   list item count limits, connect while playing / while logged out.
   *Done:* QA matrix in `Docs/CARPLAY.md` fully passed.
@@ -432,7 +432,7 @@ natively — it is already Swift and is the best available spec.
   Tip products and tip sheet.
   *Done:* tip purchase completes.
 
-- [x] **T65 — Premium gating** — _UNVERIFIED: not compiled/run, verify locally_
+- [x] **T65 — Premium gating** — _COMPILED 2026-10-15: app target builds (Dev + Production schemes); not exercised at runtime_
   One gating rule set applied across player, downloads, AI, and ads.
   *Done:* a single source of truth decides every gate; no scattered `isPremium` checks.
 
@@ -888,3 +888,4 @@ needs no testability); `GHallelujahTests` runs under Development only.
 | 2026-10-14 | T72–T76 | Ticked per the UNVERIFIED policy — **what each tick actually means**: **T72** `Docs/PERFORMANCE.md` has budgets, the Instruments protocol and suspects; *no numbers measured*. **T73** `GlassSurface` now degrades to an opaque surface under Reduce Transparency; new icon buttons carry labels; `Docs/ACCESSIBILITY.md` checklist is unrun. **T74** Flutter ships English only (`app_en.arb`); SwiftUI literals extract to `Localizable.xcstrings` on build; a full pass converting `String`-typed literals (toasts, `AppButton(label:)`) is **not done**. **T75** tests + CI as logged above; no UI/snapshot tests, no coverage report. **T76** `PrivacyInfo.xcprivacy`, `Docs/RELEASE.md`, manual `testflight.yml`; *no build uploaded*, Flutter→native session migration still open (Q4). |
 | 2026-10-14 | EXTRA | **iOS extensions** from the Flutter host: `NotificationServiceExtension` (downloads/attaches `fcm_options.image` to rich pushes, T66) and `SiriIntentsExtension` (`INPlayMediaIntent` → `.continueInApp`), as XcodeGen `app-extension` targets embedded in the app (`Extensions/`, `Config/Shared/*Extension.xcconfig`, `project.yml`). App side: `Platform/Siri/SiriPlayService` (search → play best match), hooked from `GHallelujahApp.onContinueUserActivity` and `CarPlaySceneDelegate.scene(_:continue:)`; `NSUserActivityTypes` + `com.apple.developer.siri` added. Closes the "Siri voice play isn't wired" CarPlay gap. Needs the Siri capability on the App ID and a provisioning profile per extension bundle id. **UNVERIFIED** — project generation with the new targets is the thing to watch in CI. |
 | 2026-10-14 | D12 | **Parity pass 2 (all UNVERIFIED, uncompiled).** Closed gaps from the seven-agent parity pass: `SubscriptionPlan.freeTrial` (+ "Activate Free Trial" CTA, trial copy now live); presigned-upload layer (`UploadRepository`/`RemoteUploadRepository`, `POST /upload/generate/presigned` + S3 PUT) wired into Profile photo save (`image` key) and AI image attachments (photo picker → upload → send); `BibleNoteEntry.verseText/languageName` resolved from cached chapters (quoted verse + language suffix in My Notes); ad ⋮ options sheet (`Features/Ads/AdOptionsSheet`, `/ads/feedback`) and persisted like/dislike (`/ads/reaction`), `AdCreative.isCompany`; **Settings → Content Languages** was a placeholder → `ContentLanguageView`; **Choose artists** (`CreatorGridView`/`CreatorGridViewModel`, `GET /creators`, replace-follow with `detach:true`) was a placeholder → built; `.aiVoiceOverlay` routes to the streaming voice screen; web-checkout cancel flow (Cancel/Confirm/Cancelled sheets → `/premium/subscription/cancel`); app-wide toast (`ToastCenter.shared` + shell overlay, fixes Profile's lost toast); `NoNetworkBanner` moved into Home's scroll, Home nav bar hidden, Search/other tab titles inline. New tests: free trial, ad reaction/feedback, upload kind, endpoints. In flight via agents: user-playlist follow/share/visibility, Home rail/banner ads, player ad surfaces. |
+| 2026-10-15 | VERIFY | **Compile pass + simulator run.** `xcodebuild` succeeds for the app target on both the "GHallelujah Development" and "GHallelujah Production" schemes (iPhone simulator), so everything previously tagged UNVERIFIED in the app target (T49–T53 CarPlay, T65 premium gating, parity passes) now compiles; it is **compiled, not fully runtime-verified**. Fixes made while running: Swift 6 concurrency errors; NowPlaying artwork crash (`nonisolated` `makeArtwork`); Bible `chapterNumber` lenient Int decoding; Emet nav bar/dock overlap; shared circular `AppBackToolbarItem`; player width via `containerRelativeFrame`; song-meta placeholder while loading; opaque Home top bar; entitlements kept via `properties:` in `project.yml` (CarPlay, Siri, push, Apple sign-in, associated domains, App Attest); version 4.1.0 (331) over Flutter 4.0.2 (330) with the same bundle id; gitignored `Config/Secrets.xcconfig` for OTP/API secrets (fixes production Google sign-in 400 "Invalid secrets"); AI chat repository now accepts any 2xx (create conversation returns 201). **Still not done:** test targets (`GHallelujahTests`/UITests) not compile-checked; T72–T76 remain UNVERIFIED (no measurements, no device/VoiceOver pass); CarPlay not run in the simulator; Google sign-in/OTP on production awaiting user retry. |
