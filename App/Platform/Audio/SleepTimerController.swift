@@ -9,9 +9,9 @@ import Observation
 /// engine must all see the same deadline. Premium-gated at the call site via
 /// `PremiumGate` (`PremiumFeature.sleepTimer`), as `song_menu_sheet.dart` does.
 ///
-/// When the deadline passes the timer pauses playback and bumps `firedCount`;
+/// When the deadline passes the timer stops playback entirely and bumps `firedCount`;
 /// the player screen observes that to leave itself (Dart's `popPlayerScreens`),
-/// which keeps this type free of any navigation dependency. Playback is paused
+/// which keeps this type free of any navigation dependency. Playback is stopped
 /// here, not in the view, because the timer nearly always fires with the phone
 /// locked — no view is alive to do it (the same reason Dart stops from the
 /// event handler rather than a post-frame callback).
@@ -65,9 +65,17 @@ final class SleepTimerController {
         endDate = nil
     }
 
+    /// `_onSleepTriggered` -> `StopPlayerEvent`: the timer doesn't just pause,
+    /// it ends the session (queue cleared, mini player gone), so the listener
+    /// who fell asleep wakes to a quiet, idle app. Position is persisted
+    /// first so the song can still be found again.
     private func fire() {
-        engine.pause()
         engine.persistPlaybackPosition()
+        if let queueController = DependencyContainer.current.resolveIfRegistered(QueueController.self) {
+            queueController.clear()
+        } else {
+            engine.stop()
+        }
         cancel()
         firedCount += 1
     }

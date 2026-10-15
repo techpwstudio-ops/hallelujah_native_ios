@@ -31,27 +31,52 @@ final class RemoteFamilyMembersRepository: FamilyMembersRepository {
         return decoded.data
     }
 
-    func resendInvitation(inviteId: String) async throws -> String {
+    func resendInvitation(inviteId: String) async throws -> FamilyInviteResendResult {
         let body = try JSONEncoder().encode(ResendFamilyInviteRequest(inviteId: inviteId))
         let response = try await client.send(.resendFamilyMemberInvite, body: body)
         guard response.statusCode == 200 else {
             throw SubscriptionError(statusCode: response.statusCode, data: response.data)
         }
         let decoded = try JSONDecoder().decode(ResendFamilyInviteResponseDTO.self, from: response.data)
-        return decoded.data.status
+        return FamilyInviteResendResult(status: decoded.data.status, message: decoded.message)
     }
 
-    func cancelInvitation(inviteId: String) async throws {
+    func cancelInvitation(inviteId: String) async throws -> String? {
         let response = try await client.send(.cancelFamilyMemberInvite(inviteId: inviteId))
         guard response.statusCode == 200 else {
             throw SubscriptionError(statusCode: response.statusCode, data: response.data)
         }
+        return Self.message(in: response.data)
     }
 
-    func removeMember(memberId: String) async throws {
+    func removeMember(memberId: String) async throws -> String? {
         let response = try await client.send(.removeFamilyMember(memberId: memberId))
         guard response.statusCode == 200 else {
             throw SubscriptionError(statusCode: response.statusCode, data: response.data)
         }
+        return Self.message(in: response.data)
+    }
+
+    func acceptInvitation(inviteId: String) async throws -> FamilyInviteActionResult {
+        let body = try JSONEncoder().encode(ResendFamilyInviteRequest(inviteId: inviteId))
+        let response = try await client.send(.acceptFamilyMemberInvite, body: body)
+        guard response.statusCode == 200 else {
+            throw SubscriptionError(statusCode: response.statusCode, data: response.data)
+        }
+        let decoded = try? JSONDecoder().decode(AcceptFamilyInviteResponseDTO.self, from: response.data)
+        return FamilyInviteActionResult(message: decoded?.message, membership: decoded?.data)
+    }
+
+    func declineInvitation(inviteId: String) async throws -> FamilyInviteActionResult {
+        let body = try JSONEncoder().encode(ResendFamilyInviteRequest(inviteId: inviteId))
+        let response = try await client.send(.declineFamilyMemberInvite, body: body)
+        guard response.statusCode == 200 else {
+            throw SubscriptionError(statusCode: response.statusCode, data: response.data)
+        }
+        return FamilyInviteActionResult(message: Self.message(in: response.data), membership: nil)
+    }
+
+    private static func message(in data: Data) -> String? {
+        (try? JSONDecoder().decode(FamilyMessageResponseDTO.self, from: data))?.message
     }
 }

@@ -55,11 +55,17 @@ actor NotificationPreferencesStore {
         if let data = try? JSONEncoder().encode(optOut) {
             keyValueStore.setData(data, forKey: Self.topicOptOutKey)
         }
+        // `setTopicSubscription`: the preference is written FIRST so the
+        // user's intent survives a failed FCM call; the subscription change
+        // follows. A no-op until the signed-in shell has activated the manager.
+        Task { @MainActor in FCMTopicManager.shared.preferencesDidChange() }
     }
 
     func setBibleNotificationsEnabled(_ enabled: Bool) {
         bibleNotificationsEnabled = enabled
         keyValueStore.setString(enabled ? "true" : "false", forKey: Self.bibleEnabledKey)
+        // `setBibleNotifications` -> `subscribeVerseOfDay()`.
+        Task { @MainActor in FCMTopicManager.shared.preferencesDidChange() }
     }
 
     /// The COMPLETE current subscribed set, for

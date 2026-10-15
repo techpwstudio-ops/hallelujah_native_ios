@@ -34,13 +34,18 @@ final class RealtimeEventBus {
     private(set) var verseOfDayCommentAddedCount = 0
 
     /// Bumped by `premium.member.invite` (Dart: presents an invite-received
-    /// sheet). No consumer yet.
+    /// sheet). `AppInfrastructureHost` consumes it; `lastPremiumInvite` is the
+    /// event's `{inviteId, inviterName, planName}`.
     private(set) var premiumInviteReceivedCount = 0
-    /// Bumped by `premium.invite.update`. No consumer yet.
+    private(set) var lastPremiumInvite: InitInviteInfo?
+    /// Bumped by `premium.invite.update` (Dart: `familyMembersProvider
+    /// .updateInviteStatus(inviteId, status)`). A family-members screen
+    /// compares `lastPremiumInviteStatusUpdate` against its own rows.
     private(set) var premiumInviteStatusUpdateCount = 0
-    /// Bumped by `premium.update` (Dart: triggers a full user-details
-    /// refetch). No consumer yet — once T61-65 land, this is where a
-    /// membership store would re-fetch itself from.
+    private(set) var lastPremiumInviteStatusUpdate: PremiumInviteStatusUpdate?
+    /// Bumped by `premium.update` (Dart: `OurSession.fetchUserDetails()`).
+    /// The dispatcher itself also re-fetches the user, which refreshes the
+    /// membership store.
     private(set) var premiumUpdateCount = 0
 
     /// Bumped by `songs.public` (Dart: `HomeDataChangedEvent()`). A future
@@ -56,9 +61,22 @@ final class RealtimeEventBus {
     func notifyVerseOfDayCommentLiked() { verseOfDayCommentLikeCount += 1 }
     func notifyVerseOfDayCommentAdded() { verseOfDayCommentAddedCount += 1 }
 
-    func notifyPremiumInviteReceived() { premiumInviteReceivedCount += 1 }
-    func notifyPremiumInviteStatusUpdated() { premiumInviteStatusUpdateCount += 1 }
+    func notifyPremiumInviteReceived(_ invite: InitInviteInfo? = nil) {
+        lastPremiumInvite = invite
+        premiumInviteReceivedCount += 1
+    }
+
+    func notifyPremiumInviteStatusUpdated(_ update: PremiumInviteStatusUpdate? = nil) {
+        lastPremiumInviteStatusUpdate = update
+        premiumInviteStatusUpdateCount += 1
+    }
     func notifyPremiumUpdated() { premiumUpdateCount += 1 }
 
     func notifyNewContentAvailable() { newContentAvailableCount += 1 }
+}
+
+/// `premium.invite.update`'s `data` — `{inviteId, status}`.
+struct PremiumInviteStatusUpdate: Sendable, Equatable {
+    let inviteId: String
+    let status: String
 }

@@ -35,7 +35,9 @@ struct HomeRecentItemCardView: View {
                 HomeSquareCard(
                     url: artworkURL,
                     title: (item.title ?? "").homeTrimmed
-                )
+                ) {
+                    HomeRecentProgressBar(item: item)
+                }
             }
         }
         .contentShape(Rectangle())
@@ -70,6 +72,9 @@ struct HomeRecentItemCardView: View {
                 }
             }
             .padding(Dimens.spacing16)
+        }
+        .overlay(alignment: .bottom) {
+            HomeRecentProgressBar(item: item)
         }
         .overlay(alignment: .topLeading) {
             if !item.isSong, let label = Self.badgeLabels[item.itemType] {

@@ -20,6 +20,30 @@ struct UserPlaylistDTO: Decodable, Sendable {
     let duration: Int?
     let userId: String?
     let createdAt: String?
+    let songs: [SongRef]?
+    let user: Owner?
+
+    struct Owner: Decodable, Sendable {
+        let fName: String?
+    }
+
+    /// `{songId}` entry of `songs`; Dart stringifies it (`"${e['songId']}"`).
+    struct SongRef: Decodable, Sendable {
+        let songId: String?
+
+        private enum CodingKeys: String, CodingKey { case songId }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            if let string = try? container.decode(String.self, forKey: .songId) {
+                songId = string
+            } else if let number = try? container.decode(Int.self, forKey: .songId) {
+                songId = String(number)
+            } else {
+                songId = nil
+            }
+        }
+    }
 }
 
 extension UserPlaylistDTO {
@@ -34,7 +58,9 @@ extension UserPlaylistDTO {
             songsCount: songsCount,
             duration: duration,
             ownerUserID: sanitized(userId),
-            createdAt: Date.parseFlexibleISO8601(createdAt)
+            createdAt: Date.parseFlexibleISO8601(createdAt),
+            songIDs: (songs ?? []).compactMap(\.songId),
+            ownerName: sanitized(user?.fName)
         )
     }
 }

@@ -101,7 +101,9 @@ struct PlaybackAnalyticsDeviceInfo: Encodable, Sendable {
             sdkInt: nil,
             isPhysicalDevice: !isSimulator,
             deviceType: device.userInterfaceIdiom == .pad ? "tablet" : "mobile",
-            deviceID: nil,
+            // `getTrackData()['device_id']` — the server-assigned id stored at
+            // sign-in (`DeviceIdentityStore`), nil before the first one.
+            deviceID: DeviceIdentityStore.shared.deviceID,
             locale: locale,
             language: language,
             timezone: timeZone.abbreviation() ?? timeZone.identifier,

@@ -79,6 +79,7 @@ final class DeepLinkService {
     /// `GHallelujahApp`'s `.onOpenURL` calls this for every delivery — cold
     /// launch and warm start alike.
     func receive(_ url: URL) {
+        ReferralAttributionStore.shared.record(url)
         guard let coordinator else {
             pendingURL = url
             return
@@ -102,18 +103,25 @@ final class DeepLinkService {
         guard segments.count == 2 else { return }
         let code = segments[1]
 
+        // `Loader.instance.show()` ... `finally { Loader.instance.hide() }`.
+        GlobalLoader.shared.show()
+        defer { GlobalLoader.shared.hide() }
         do {
             let response = try await httpClient.send(.validateDeepLink(code: code))
             guard response.statusCode == 200 || response.statusCode == 201 else {
-                // Dart also special-cases 404 with its own toast; every other
-                // status (including this one) is dropped silently on purpose,
-                // same as Dart's own "any other status is ignored" comment —
-                // resolving an incoming link is a passive background flow.
+                // 404 gets its own toast; every other status is dropped
+                // silently on purpose, same as Dart's "any other status is
+                // ignored" comment — resolving an incoming link is a passive
+                // background flow.
                 logger.warning("deep link \(code) validate returned \(response.statusCode)")
+                if response.statusCode == 404 {
+                    ToastCenter.shared.show("This link is no longer available.")
+                }
                 return
             }
             guard let validation = DeepLinkValidationResponse(data: response.data) else {
                 logger.warning("deep link \(code) validate returned an unrecognised payload shape")
+                ToastCenter.shared.show("Unable to open this link. Please try again.")
                 return
             }
             openShareable(shareableType: validation.deepLink.shareableType, item: validation.item, coordinator: coordinator)
@@ -148,13 +156,11 @@ final class DeepLinkService {
 
         case .song:
             // Dart doesn't navigate for this case at all — it caches the
-            // song and fires `PlaySongEvent`, starting playback directly;
-            // the mini player then appears wherever the user already is. No
-            // playback engine exists natively yet (T31-39), so there's
-            // genuinely nothing to do here until then — logging and
-            // dropping is more honest than presenting an empty full-screen
-            // player for a song that isn't actually playing.
-            logger.info("deep link: song \(id ?? "?") — deferred until playback exists (T31-39)")
+            // song and fires `PlaySongEvent(playerType: invite)`, starting
+            // playback directly; the mini player then appears wherever the
+            // user already is.
+            guard let id else { return }
+            Task { await playSong(id: id) }
 
         case .creator:
             guard let id else { return }
@@ -205,7 +211,42 @@ final class DeepLinkService {
             // M9). `NavigationService.offAll(DashBoardContainer.routeName)`
             // is the part that does have one: reset to the Read tab's root.
             coordinator.resetToRoot(selecting: .read)
+            // Cache the shared row (only a full row, not a push's bare ids),
+            // then scroll the reader to the verse.
+            if type == .verseOfDay, item["verseText"] != nil {
+                VerseOfDayIngest.ingest(item: item, makeCurrent: false)
+            }
+            ReaderVerseOpener.open(from: item)
         }
+    }
+
+    /// A shared / pushed song starts playing on its own, as a one-song queue
+    /// attributed to `PlayerType.invite`. The full song is fetched rather than
+    /// built from the link's lightweight projection (`GET /song/:id` is the
+    /// `openNotificationTarget` path in Dart and carries every field the
+    /// player needs); a failed fetch is the "no longer available" toast.
+    @discardableResult
+    func playSong(id: String) async -> Bool {
+        let container = DependencyContainer.current
+        guard let repository = container.resolveIfRegistered((any SongRepository).self),
+              let queue = container.resolveIfRegistered(QueueController.self) else { return false }
+        GlobalLoader.shared.show()
+        let fetched: Song
+        do {
+            fetched = try await repository.fetchSong(id: id)
+            GlobalLoader.shared.hide()
+        } catch {
+            GlobalLoader.shared.hide()
+            logger.warning("deep link: song \(id) could not be opened: \(error)")
+            ToastCenter.shared.show("This song is no longer available.")
+            return false
+        }
+        await queue.play(
+            songs: [fetched],
+            startIndex: 0,
+            source: QueueAttribution(playerType: .invite, id: nil, title: "")
+        )
+        return true
     }
 
     /// `company_playlist.dart`'s `getCompanyPlaylistFromJson` is the one

@@ -16,6 +16,9 @@ struct Paginated<Item: Sendable>: Sendable {
     let total: Int?
     let totalPages: Int
     let hasMore: Bool
+    /// Opaque token for cursor-paginated lists (AI chat messages); `nil` for
+    /// page-number lists.
+    var nextCursor: String? = nil
 
     static var empty: Self { Paginated(items: [], page: 1, perPage: nil, total: nil, totalPages: 1, hasMore: false) }
 }

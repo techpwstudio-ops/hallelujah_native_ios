@@ -69,13 +69,18 @@ final class PushNotificationRouter {
     private func route(_ userInfo: [AnyHashable: Any], coordinator: AppNavigationCoordinator) async {
         if (userInfo["topic"] as? String) == "verse_of_day" {
             let verseOfDayID = (userInfo["verseOfDayId"] as? String) ?? ""
-            // Fire-and-forget, matching Dart's own un-awaited `.then` here —
-            // `openShareable`'s `.verseOfDay` branch (below) only resets to
-            // the Read tab, so navigation has nothing to wait on this for.
-            Task { await markVerseOfDayClicked(id: verseOfDayID) }
+            // Fire-and-forget, matching Dart's own un-awaited `.then` here
+            // (it also caches the row).
+            Task { _ = await markVerseOfDayClicked(id: verseOfDayID) }
+            // `ReadService.openVerse` reads the book/chapter/verse numbers
+            // straight off the push payload.
+            var item: [String: Any] = ["id": verseOfDayID]
+            for key in ["bookNumber", "chapterNumber", "verseNumber"] {
+                if let value = userInfo[key] { item[key] = value }
+            }
             DeepLinkService.shared.openShareable(
                 shareableType: ShareableType.verseOfDay.rawValue,
-                item: ["id": verseOfDayID],
+                item: item,
                 coordinator: coordinator
             )
             return
@@ -121,13 +126,22 @@ final class PushNotificationRouter {
             )
 
         case ShareableType.verseOfDay.rawValue:
-            // Same fire-and-forget shape as the `topic` branch above — its
-            // `openShareable` branch ignores `item` entirely (see that
-            // method's own doc comment).
-            Task { await markVerseOfDayClicked(id: shareableId) }
+            // Addressed by id only, but opening the reader needs book/chapter/
+            // verse numbers: mark-clicked returns the row, so one call does
+            // both (`openNotificationTarget`).
+            GlobalLoader.shared.show()
+            let clicked = await markVerseOfDayClicked(id: shareableId)
+            GlobalLoader.shared.hide()
+            guard let verse = clicked,
+                  let book = verse.bookNumber, let chapter = verse.chapterNumber else {
+                ToastCenter.shared.show("This verse is no longer available.")
+                return
+            }
+            var item: [String: Any] = ["id": shareableId, "bookNumber": book, "chapterNumber": chapter]
+            if let number = verse.verseNumber { item["verseNumber"] = number }
             DeepLinkService.shared.openShareable(
                 shareableType: shareableType,
-                item: ["id": shareableId],
+                item: item,
                 coordinator: coordinator
             )
 
@@ -153,8 +167,12 @@ final class PushNotificationRouter {
         shareableType: String,
         coordinator: AppNavigationCoordinator
     ) async {
+        // `Loader.instance.show()` around the request only — hidden before
+        // anything navigates (Dart's `Loader.hide()` is a `Navigator.pop()`).
+        GlobalLoader.shared.show()
+        defer { GlobalLoader.shared.hide() }
         do {
-            let response = try await httpClient.send(endpoint)
+            let response = try await httpClient.send(endpoint, silent: true)
             guard
                 response.statusCode == 200,
                 let root = try? JSONSerialization.jsonObject(with: response.data) as? [String: Any],
@@ -162,11 +180,15 @@ final class PushNotificationRouter {
                 let playlist = data["playlist"] as? [String: Any]
             else {
                 logger.warning("push tap: \(shareableType) \(id) fetch returned an unusable payload")
+                ToastCenter.shared.show(shareableType == ShareableType.companyPlaylist.rawValue
+                    ? "This playlist is no longer available."
+                    : "This album is no longer available.")
                 return
             }
             DeepLinkService.shared.openShareable(shareableType: shareableType, item: playlist, coordinator: coordinator)
         } catch {
             logger.warning("push tap: \(shareableType) \(id) fetch failed: \(error)")
+            ToastCenter.shared.show("Unable to open this notification. Please try again.")
         }
     }
 
@@ -175,11 +197,13 @@ final class PushNotificationRouter {
     /// design, same posture `PushNotificationTokenRegistrar`'s own doc
     /// comment documents for its sibling calls: a failed click-mark must
     /// never block navigation or surface to the user.
-    private func markVerseOfDayClicked(id: String) async {
+    private func markVerseOfDayClicked(id: String) async -> VerseOfDay? {
+        let repository: any VerseOfDayRepository = DependencyContainer.current.resolve()
         do {
-            _ = try await httpClient.send(.markVerseOfDayClicked(id: id))
+            return try await repository.markClicked(id: id)
         } catch {
             logger.warning("markVerseOfDayClicked(\(id)) failed: \(error)")
+            return nil
         }
     }
 }

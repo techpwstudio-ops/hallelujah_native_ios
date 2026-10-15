@@ -14,11 +14,16 @@ struct AIChatHomeView: View {
     @State private var suggestionsLoaded = false
     @State private var isCreating = false
     @State private var inputText = ""
+    @State private var attachments: [AIPendingAttachment] = []
+    @State private var pendingInitialAttachments: [AIAttachmentPayload] = []
+    @State private var isPhotoPickerPresented = false
+    @State private var photoSelection: PhotosPickerItem?
     @State private var fallbackSuggestions: [String] = AIChatHomeView.pickFallbackSuggestions()
 
     @State private var navigationStore: AIChatNavigationStore = DependencyContainer.current.resolve()
 
     private let repository: any AIChatRepository = DependencyContainer.current.resolve()
+    private let uploadRepository: any UploadRepository = DependencyContainer.current.resolve()
     private let logger = AppLogger(category: .content)
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
@@ -54,23 +59,38 @@ struct AIChatHomeView: View {
             if let conversationID {
                 // A fresh identity per conversation gives each its own view
                 // model and its own one-shot initial-message guard.
-                AIChatConversationView(conversationID: conversationID, initialMessage: pendingInitialMessage)
-                    .id(conversationID)
+                AIChatConversationView(
+                    conversationID: conversationID,
+                    initialMessage: pendingInitialMessage,
+                    initialAttachments: pendingInitialAttachments
+                )
+                .id(conversationID)
             } else {
                 AITtsBar()
                 emptyState
                 suggestionsRow
                 AIChatInputBar(
                     text: $inputText,
+                    attachments: attachments,
                     isBusy: isCreating,
                     isStreaming: false,
-                    onVoice: { startVoice() },
+                    onVoice: VoiceFeature.showVoiceEntryPoint ? { startVoice() } : nil,
+                    onAttach: { isPhotoPickerPresented = true },
+                    onRemoveAttachment: { index in
+                        if attachments.indices.contains(index) { attachments.remove(at: index) }
+                    },
                     onSend: { sendFromEmptyState() },
                     onStop: {}
                 )
             }
         }
         .background(AIColors.background.ignoresSafeArea())
+        .photosPicker(isPresented: $isPhotoPickerPresented, selection: $photoSelection, matching: .images)
+        .onChange(of: photoSelection) { _, item in
+            guard let item else { return }
+            photoSelection = nil
+            Task { await attach(item) }
+        }
         .toolbar(.hidden, for: .navigationBar)
         .task {
             await suggestionsViewModel.load()
@@ -79,6 +99,7 @@ struct AIChatHomeView: View {
         .onChange(of: navigationStore.pendingConversationID) { _, newValue in
             guard let newValue else { return }
             pendingInitialMessage = nil
+            pendingInitialAttachments = []
             conversationID = newValue
             navigationStore.pendingConversationID = nil
         }
@@ -207,14 +228,40 @@ struct AIChatHomeView: View {
     private func resetToEmptyState() {
         conversationID = nil
         pendingInitialMessage = nil
+        pendingInitialAttachments = []
         inputText = ""
+        attachments = []
     }
 
     private func sendFromEmptyState() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        // `_onSendTap`: wait for uploads, then only finished uploads go out.
+        if attachments.contains(where: { $0.isUploading }) { return }
+        let uploaded = AIAttachmentStaging.payloads(from: attachments)
         inputText = ""
-        startConversation(with: text)
+        attachments = []
+        startConversation(with: text, attachments: uploaded)
+    }
+
+    /// `_pickFile` + `_uploadAttachment` for the empty state (the strip can
+    /// hold several here, unlike the conversation view).
+    private func attach(_ item: PhotosPickerItem) async {
+        guard let staged = await AIAttachmentStaging.stage(item) else {
+            toastCenter.show("File upload failed. Please try again.")
+            return
+        }
+        attachments.append(staged.pending)
+        let id = staged.pending.id
+        if let key = await AIAttachmentStaging.upload(staged, using: uploadRepository) {
+            if let index = attachments.firstIndex(where: { $0.id == id }) {
+                attachments[index].isUploading = false
+                attachments[index].uploadedKey = key
+            }
+        } else {
+            attachments.removeAll { $0.id == id }
+            toastCenter.show("File upload failed. Please try again.")
+        }
     }
 
     private func startVoice() {
@@ -223,18 +270,22 @@ struct AIChatHomeView: View {
 
     /// Creates a conversation, then mounts it with `message` queued as the
     /// first send (Flutter `_startOrContinueChat`).
-    private func startConversation(with message: String) {
+    private func startConversation(with message: String, attachments: [AIAttachmentPayload] = []) {
         guard !isCreating else { return }
         isCreating = true
         Task {
             defer { isCreating = false }
             do {
-                let conversation = try await repository.createConversation()
+                // `_startOrContinueChat`: the title is the first 60 characters.
+                let title = message.isEmpty ? nil : (message.count > 60 ? String(message.prefix(60)) + "..." : message)
+                let conversation = try await repository.createConversation(title: title)
                 pendingInitialMessage = message
+                pendingInitialAttachments = attachments
                 conversationID = conversation.id
             } catch let createError {
                 logger.warning("create conversation failed: \(createError)")
-                toastCenter.show("Couldn't start a new conversation. Please try again.")
+                let text = AIErrorParser.parse(createError)
+                if !text.isEmpty { toastCenter.show(text) }
             }
         }
     }
@@ -246,6 +297,7 @@ struct AIChatHomeView: View {
 struct AIChatConversationView: View {
     let conversationID: String
     var initialMessage: String? = nil
+    var initialAttachments: [AIAttachmentPayload] = []
 
     @State private var viewModel: AIChatViewModel
     @State private var hasSentInitialMessage = false
@@ -260,9 +312,10 @@ struct AIChatConversationView: View {
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
 
-    init(conversationID: String, initialMessage: String? = nil) {
+    init(conversationID: String, initialMessage: String? = nil, initialAttachments: [AIAttachmentPayload] = []) {
         self.conversationID = conversationID
         self.initialMessage = initialMessage
+        self.initialAttachments = initialAttachments
         _viewModel = State(initialValue: AIChatViewModel(conversationID: conversationID))
     }
 
@@ -276,7 +329,9 @@ struct AIChatConversationView: View {
                 attachments: attachments,
                 isBusy: viewModel.isSending,
                 isStreaming: viewModel.isStreaming,
-                onVoice: { coordinator.presentAIAudioConversation(conversationID: conversationID) },
+                onVoice: VoiceFeature.showVoiceEntryPoint
+                    ? { coordinator.presentAIAudioConversation(conversationID: conversationID) }
+                    : nil,
                 onAttach: { isPhotoPickerPresented = true },
                 onRemoveAttachment: { index in
                     if attachments.indices.contains(index) { attachments.remove(at: index) }
@@ -369,10 +424,7 @@ struct AIChatConversationView: View {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         // `_send`: only fully uploaded attachments go out; the strip clears.
-        let uploaded = attachments.compactMap { attachment -> AIAttachmentPayload? in
-            guard let key = attachment.uploadedKey else { return nil }
-            return AIAttachmentPayload(key: key, mimeType: attachment.mimeType)
-        }
+        let uploaded = AIAttachmentStaging.payloads(from: attachments)
         inputText = ""
         attachments = []
         Task { await viewModel.sendMessage(payload: AISendPayload(message: text, attachments: uploaded)) }
@@ -381,29 +433,19 @@ struct AIChatConversationView: View {
     /// `_pickFile` + `_uploadAttachment`: one image at a time (a new pick
     /// replaces the strip), uploaded straight away through the presigned flow.
     private func attach(_ item: PhotosPickerItem) async {
-        guard let data = try? await item.loadTransferable(type: Data.self),
-              let image = UIImage(data: data),
-              let jpeg = image.jpegData(compressionQuality: 0.9) else {
+        guard let staged = await AIAttachmentStaging.stage(item) else {
             toastCenter.show("Something went wrong, please check your network and try again.")
             return
         }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).jpg")
-        do { try jpeg.write(to: url, options: .atomic) } catch {
-            toastCenter.show("Something went wrong, please check your network and try again.")
-            return
-        }
-        let id = UUID()
-        attachments = [AIPendingAttachment(
-            id: id, fileName: url.lastPathComponent, thumbnail: image,
-            isUploading: true, uploadedKey: nil, mimeType: "image/jpeg"
-        )]
-        do {
-            let key = try await uploadRepository.upload(fileURL: url, kind: .aiImage, mimeType: "image/jpeg")
+        // `_pickFile`: a new pick replaces the strip.
+        attachments = [staged.pending]
+        let id = staged.pending.id
+        if let key = await AIAttachmentStaging.upload(staged, using: uploadRepository) {
             if let index = attachments.firstIndex(where: { $0.id == id }) {
                 attachments[index].isUploading = false
                 attachments[index].uploadedKey = key
             }
-        } catch {
+        } else {
             attachments.removeAll { $0.id == id }
             toastCenter.show("Something went wrong, please check your network and try again.")
         }
@@ -414,6 +456,6 @@ struct AIChatConversationView: View {
               let initialMessage,
               !initialMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         hasSentInitialMessage = true
-        await viewModel.sendMessage(payload: AISendPayload(message: initialMessage, attachments: []))
+        await viewModel.sendMessage(payload: AISendPayload(message: initialMessage, attachments: initialAttachments))
     }
 }

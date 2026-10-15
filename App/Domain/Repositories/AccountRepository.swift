@@ -28,6 +28,11 @@ protocol AccountRepository: Sendable {
     /// `if (res.statusCode == 200)` branch — Dart shows that message either
     /// way, and only signs out on the 200 path.
     func deleteAccount(reason: String) async throws -> AccountDeletionResult
+
+    /// `showAccountDeletionSheet`'s `onCancelDeletion` — `GET
+    /// /users/account/cancel/delete`. On success the cached user's
+    /// `deletingDate` is cleared.
+    func cancelAccountDeletion() async throws -> AccountDeletionResult
 }
 
 struct AccountDeletionResult: Sendable {

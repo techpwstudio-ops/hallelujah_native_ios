@@ -4,18 +4,15 @@ import Foundation
 /// (`AuthOtpService.send`,
 /// `lib/features/authentication/data/auth_otp_service.dart`).
 ///
-/// `refer` (Dart's best-effort `{initial, latest}` deep-link attribution,
-/// sourced from `AppLinks().getInitialLinkString()`/`getLatestLinkString()`
-/// and swallowed to `nil` on any failure) isn't ported: `DeepLinkService`
-/// (T18) has no equivalent "read the cached initial/latest link" query, only
-/// one-shot delivery, and the server already tolerates this field being
-/// absent exactly as it tolerates Dart's own null-on-failure case.
+/// `refer` is `{initial, latest}` deep-link attribution
+/// (`ReferralAttributionStore`), sent on first send only (`if (!resend)`).
 struct AuthOTPSendRequest: Encodable, Sendable {
     let identifier: String
     let secret1: String
     let secret2: String
     let appCheck: String?
     let requestId: String?
+    var refer: ReferAttribution? = nil
 }
 
 /// What `/auth/otp/send` and `/auth/otp/resend` answer with.
@@ -51,9 +48,10 @@ struct AuthOTPVerifyRequest: Encodable, Sendable {
 /// own `CodingKeys` already match those four keys, so decoding it a second
 /// time from the same container picks them up for free.
 ///
-/// `deviceId`/`isPasswordSet` also arrive in this body but aren't modeled:
-/// `deviceId` has no native consumer yet, and `isPasswordSet` is the same
-/// legacy field `User` already declines to port (see `User.swift`).
+/// `isPasswordSet` also arrives in this body but isn't modeled: it is the
+/// same legacy field `User` already declines to port (see `User.swift`).
+/// `deviceId` IS read — `createSession(deviceId:)` persists it and every
+/// later request echoes it as the `device-id` header (`DeviceIdentityStore`).
 /// `membership` (T61) IS modeled — `OurSession.setMembershipDetails`'s
 /// counterpart, `Membership` decodes directly (it's already `Codable`), no
 /// separate DTO.
@@ -63,11 +61,12 @@ struct AuthOTPVerifyResponse: Sendable, Equatable {
     let isNewUser: Bool
     let requiresAccountSetup: Bool
     let membership: Membership?
+    var deviceId: String? = nil
 }
 
 extension AuthOTPVerifyResponse: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case user, isNewUser, requiresAccountSetup, membership
+        case user, isNewUser, requiresAccountSetup, membership, deviceId
     }
 
     /// Decode with `JSONDecoder.authTokens` (`.iso8601` date strategy) — the
@@ -83,6 +82,7 @@ extension AuthOTPVerifyResponse: Decodable {
         isNewUser = try container.decodeIfPresent(Bool.self, forKey: .isNewUser) ?? false
         requiresAccountSetup = try container.decodeIfPresent(Bool.self, forKey: .requiresAccountSetup) ?? false
         membership = try container.decodeIfPresent(Membership.self, forKey: .membership)
+        deviceId = try container.decodeIfPresent(String.self, forKey: .deviceId)
     }
 }
 

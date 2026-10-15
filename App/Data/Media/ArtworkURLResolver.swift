@@ -27,12 +27,21 @@ import Foundation
 /// that value is a launch-time default rather than a live fetch today, same
 /// as it effectively is in Dart on a cold start.
 struct ArtworkURLResolver: Sendable {
-    private let cdnHost: String
+    private let fallbackCDNHost: String
     private let proxyBaseURL: URL
 
     init(configuration: AppConfiguration = .current) {
-        self.cdnHost = URL(string: RemoteSettings.current.cdnUrl)?.host ?? configuration.cdnHost
+        self.fallbackCDNHost = configuration.cdnHost
         self.proxyBaseURL = configuration.proxyBaseURL
+    }
+
+    /// Read on every resolve rather than captured at init: Dart's
+    /// `EndPoints.cloudFrontUrl` is a live getter over
+    /// `SettingsService.instance.cdnUrl`, so a `cdnUrl` that arrives with
+    /// `/dashboard/init` (after this resolver was built at launch) applies
+    /// to the very next image.
+    private var cdnHost: String {
+        URL(string: RemoteSettings.current.cdnUrl)?.host ?? fallbackCDNHost
     }
 
     /// - Parameters:

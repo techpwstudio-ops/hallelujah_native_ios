@@ -10,6 +10,10 @@ struct GHallelujahApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
+        // `SettingsService.instance.init()` (`main.dart`): the last known
+        // remote settings (showSubscription, adsEnabled, cdnUrl) are in place
+        // before the first frame; `AppDataSync` refreshes them.
+        RemoteSettings.restore()
         AppComposition.installRuntime()
     }
 
@@ -18,6 +22,11 @@ struct GHallelujahApp: App {
         WindowGroup {
             RootView()
                 .environment(\.appTheme, .standard)
+                // `themeMode: ThemeMode.dark` (`launch_app.dart`) plus the light
+                // status-bar icons `main()` sets: the Flutter app is dark-only
+                // whatever the device appearance is (D5). Also keeps system
+                // sheets, alerts and the keyboard dark on a light-mode phone.
+                .preferredColorScheme(.dark)
                 // T18 — fires for both the `gshallelujah://` custom scheme and
                 // the `applinks:` universal-link domains, on cold launch and
                 // while running alike; see DeepLinkService's doc comment for

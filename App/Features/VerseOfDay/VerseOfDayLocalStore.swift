@@ -18,7 +18,10 @@ final class VerseOfDayLocalStore {
 
     var lastVerseOfDayID: String? {
         get { keyValueStore.string(forKey: lastIDKey) }
-        set { keyValueStore.setString(newValue, forKey: lastIDKey) }
+        set {
+            keyValueStore.setString(newValue, forKey: lastIDKey)
+            Task { @MainActor in VerseOfDayIngest.notifyChanged() }
+        }
     }
 
     /// `state.isHiddenToday`: `DateTime.now().isBefore(hiddenUntil)`.
@@ -39,9 +42,11 @@ final class VerseOfDayLocalStore {
         let startOfToday = calendar.startOfDay(for: Date())
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday) else { return }
         keyValueStore.setString(ISO8601DateFormatter().string(from: startOfTomorrow), forKey: hiddenUntilKey)
+        Task { @MainActor in VerseOfDayIngest.notifyChanged() }
     }
 
     func unhide() {
         keyValueStore.removeValue(forKey: hiddenUntilKey)
+        Task { @MainActor in VerseOfDayIngest.notifyChanged() }
     }
 }

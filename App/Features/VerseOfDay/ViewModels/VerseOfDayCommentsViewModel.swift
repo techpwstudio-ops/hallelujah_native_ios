@@ -79,6 +79,21 @@ final class VerseOfDayCommentsViewModel {
         }
     }
 
+    /// `InsertVerseOfDayCommentEvent`: a comment pushed over the socket is
+    /// shown at the top unless it is for another verse or already listed.
+    func applyLiveComment(_ comment: VerseOfDayComment) {
+        guard comment.verseOfDayId == verseOfDayId else { return }
+        guard !page.items.contains(where: { $0.id == comment.id }) else { return }
+        page.items.insert(comment, at: 0)
+    }
+
+    /// `UpdateVerseOfDayCommentLikeEvent`: another reader's like count update.
+    func applyLiveLikes(commentId: String, likes: Int, verseOfDayId: String) {
+        guard verseOfDayId == self.verseOfDayId,
+              let index = page.items.firstIndex(where: { $0.id == commentId }) else { return }
+        page.items[index] = page.items[index].updatingLikes(likes)
+    }
+
     func toggleCommentLike(_ comment: VerseOfDayComment) async {
         guard let index = page.items.firstIndex(where: { $0.id == comment.id }) else { return }
         do {

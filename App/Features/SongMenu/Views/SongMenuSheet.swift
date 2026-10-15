@@ -62,12 +62,23 @@ struct SongMenuSheet: View {
                 }
                 SongMenuRow(systemImage: "moon.zzz", title: "Sleep timer") {
                     run { await viewModel.requestSleepTimer() }
+                } trailing: {
+                    if viewModel.blocksPremium {
+                        GoPremiumBadge()
+                    } else if let left = viewModel.sleepTimeLeftText {
+                        Text(left)
+                            .italic()
+                            .typography(Typography.bodyLarge)
+                            .foregroundStyle(Color(red: 1, green: 0.714, blue: 0.106))
+                    }
                 }
                 SongMenuRow(systemImage: "person.2", title: "View credits") {
                     viewModel.page = .credits
                 }
-                SongMenuRow(systemImage: "arrow.down.circle", title: viewModel.downloadTitle) {
+                SongMenuRow(systemImage: viewModel.downloadSystemImage, title: viewModel.downloadTitle) {
                     run { await viewModel.download() }
+                } trailing: {
+                    if viewModel.blocksPremium { GoPremiumBadge() }
                 }
                 SongMenuRow(systemImage: "flag", title: "Report") {
                     viewModel.page = .report
@@ -79,6 +90,7 @@ struct SongMenuSheet: View {
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.sm)
         }
+        .task { await viewModel.loadPremium() }
     }
 
     private var shareContent: some View {

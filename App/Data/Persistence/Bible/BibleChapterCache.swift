@@ -101,10 +101,23 @@ final class BibleChapterCache: BibleChapterCaching, Sendable {
                 chapterNumber: chapterNumber,
                 verseNumber: verseNumber,
                 content: note.content,
-                updatedAt: Date()
+                // The Notes list shows/sorts by the note's server `createdAt`
+                // (Flutter `SORT(createdAt desc)`); a re-fetch of the chapter
+                // must not reset it to "now".
+                updatedAt: Self.parseServerDate(note.createdAt) ?? existing?.updatedAt ?? Date()
             )
             try record.save(db)
         }
+    }
+
+    private static func parseServerDate(_ raw: String?) -> Date? {
+        guard let raw, !raw.isEmpty else { return nil }
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = withFraction.date(from: raw) { return date }
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: raw)
     }
 
     func deleteLocalNote(verseID: String) async {

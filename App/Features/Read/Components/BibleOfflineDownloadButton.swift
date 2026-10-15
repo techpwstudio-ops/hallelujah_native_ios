@@ -24,7 +24,7 @@ func startBibleOfflineDownload(
         return
     }
     // No toast on start — the ring is the feedback (matches Flutter).
-    await service.downloadLanguage(language)
+    await service.downloadLanguage(language, announce: true)
 }
 
 /// The control that saves one Bible language for offline reading and doubles

@@ -38,6 +38,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUser
         PushNotificationService.shared.didFailToRegisterForRemoteNotifications(error)
     }
 
+    /// Silent / background pushes (`UIBackgroundModes: remote-notification`) —
+    /// `FirebaseMessaging.onBackgroundMessage` -> `handleBackground`
+    /// (`main.dart`, `fcm_service.dart`).
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        _ = Messaging.messaging().appDidReceiveMessage(userInfo)
+        PushNotificationService.shared.handleRemoteNotification(userInfo: userInfo)
+        completionHandler(.newData)
+    }
+
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         PushNotificationService.shared.didReceiveFCMToken(fcmToken)
     }

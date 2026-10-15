@@ -11,12 +11,12 @@ import Foundation
 /// `AppRoute.userPlaylistSongs` already documents for staying id-only.
 enum LibraryEntry: Sendable, Identifiable, Equatable {
     case playlist(Playlist)
-    case userPlaylist(id: String, title: String, image: String?, imageVariants: String?, songsCount: Int?, isOwner: Bool)
+    case userPlaylist(id: String, title: String, image: String?, imageVariants: String?, songsCount: Int?, isOwner: Bool, detail: String? = nil)
 
     var id: String {
         switch self {
         case let .playlist(playlist): playlist.id
-        case let .userPlaylist(id, _, _, _, _, _): id
+        case let .userPlaylist(id, _, _, _, _, _, _): id
         }
     }
 }

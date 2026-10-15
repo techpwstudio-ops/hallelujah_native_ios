@@ -44,6 +44,10 @@ enum FirebaseBootstrap {
         options.bundleID = Bundle.main.bundleIdentifier ?? ""
         FirebaseApp.configure(options: options)
 
+        // `buildHeaders()`'s `app-check-token` (`DioService.dart`) — every
+        // `HTTPClient` reads the cached token through the shared provider.
+        RequestHeaderProvider.shared.installAppCheckSource(FirebaseAppCheckTokenSource())
+
         Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(
             AppConfiguration.current.crashReportingEnabled
         )

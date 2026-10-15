@@ -174,7 +174,7 @@ struct LibraryHomeView: View {
         switch entry {
         case let .playlist(playlist):
             contentMenuTarget = .playlist(playlist)
-        case let .userPlaylist(id, title, _, _, _, _):
+        case let .userPlaylist(id, title, _, _, _, _, _):
             userPlaylistMenuTarget = UserPlaylistMenuTarget(id: id, title: title)
         }
     }
@@ -199,7 +199,7 @@ struct LibraryHomeView: View {
                 creatorID: creatorID,
                 creatorName: creatorName
             ))
-        case let .userPlaylist(id, _, _, _, _, _):
+        case let .userPlaylist(id, _, _, _, _, _, _):
             coordinator.push(.userPlaylistSongs(playlistID: id))
         }
     }

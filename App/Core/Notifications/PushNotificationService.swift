@@ -37,6 +37,12 @@ final class PushNotificationService {
     /// being the gate `receive(_:)` checks before buffering into `pendingURL`.
     private var isActivated = false
     private var cachedFCMToken: String?
+    private let deduplicator = PushDeduplicator()
+
+    /// The most recent FCM registration token, kept after it has been sent
+    /// (`cachedFCMToken` is only the not-yet-sent one) — topic sync reports
+    /// it to the server (`FCMTopicManager.reportSubscriptions`).
+    private(set) var latestFCMToken: String?
 
     private init() {}
 
@@ -52,7 +58,12 @@ final class PushNotificationService {
             _ = await requestAuthorizationIfNeeded()
             UIApplication.shared.registerForRemoteNotifications()
             await flushCachedTokenIfNeeded()
+            // `FirebaseMessagingService.init()`: every topic subscription.
+            await FCMTopicManager.shared.activate()
         }
+        // The signed-in shell is mounting: load `/dashboard/init`, arm the
+        // token refresh timer (`OurSession.initializeApp`).
+        AppSessionBootstrap.shellDidAppear()
     }
 
     /// Mirrors `DeepLinkService.detach()`. Nothing currently tears the shell
@@ -100,6 +111,7 @@ final class PushNotificationService {
     /// mid-session `onTokenRefresh`) flushes right away.
     func didReceiveFCMToken(_ token: String?) {
         cachedFCMToken = token
+        if let token, !token.isEmpty { latestFCMToken = token }
         guard isActivated else { return }
         Task { await flushCachedTokenIfNeeded() }
     }
@@ -108,7 +120,42 @@ final class PushNotificationService {
     /// this type's doc comment for why this replaces Dart's manual
     /// local-notification synthesis outright, rather than porting it.
     func presentationOptions(for notification: UNNotification) -> UNNotificationPresentationOptions {
-        [.banner, .badge, .sound]
+        // `handleFcm`: a delivered verse-of-day push is marked delivered and its
+        // row cached, so the Home card shows it.
+        handleIncoming(userInfo: notification.request.content.userInfo)
+        return [.banner, .badge, .sound]
+    }
+
+    /// `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)`
+    /// (`AppDelegate`) — silent and background pushes, Dart's
+    /// `handleBackground`. A foreground push iOS also delivers here is
+    /// dropped by the de-duplicator, since `presentationOptions(for:)` has
+    /// already handled it.
+    func handleRemoteNotification(userInfo: [AnyHashable: Any]) {
+        handleIncoming(userInfo: userInfo)
+    }
+
+    /// `handleFcm` (`fcm_service.dart`): a verse-of-day push is marked
+    /// delivered and its row cached so the Home card shows it; any other push
+    /// carrying an `event` is routed to the realtime handlers exactly as a
+    /// socket event would be (`premium.update`, `users.user.updated`, …).
+    private func handleIncoming(userInfo: [AnyHashable: Any]) {
+        guard deduplicator.isFirstSighting(of: PushPayload.messageID(from: userInfo)) else { return }
+
+        if let id = PushPayload.verseOfDayID(from: userInfo) {
+            VerseOfDayIngest.markDelivered(id: id)
+            return
+        }
+
+        Task { @MainActor in
+            let container = DependencyContainer.current
+            guard let userStore = container.resolveIfRegistered(CurrentUserStore.self),
+                  let bus = container.resolveIfRegistered(RealtimeEventBus.self) else { return }
+            let userID = await userStore.user?.id
+            guard let event = PushPayload.realtimeEvent(from: userInfo, currentUserID: userID) else { return }
+            RealtimeEventDispatcher(currentUserStore: userStore, eventBus: bus)
+                .dispatch(name: event.name, items: [event.envelope])
+        }
     }
 
     /// `didReceive response:` (a deferred `AppDelegate`/scene-delegate
@@ -131,7 +178,9 @@ final class PushNotificationService {
     private func flushCachedTokenIfNeeded() async {
         guard let token = cachedFCMToken else { return }
         cachedFCMToken = nil
-        let deviceID = UIDevice.current.identifierForVendor?.uuidString
+        // `updateFcmToken` sends the stored server-assigned id; the vendor id
+        // only stands in before a first sign-in has produced one.
+        let deviceID = DeviceIdentityStore.shared.deviceID ?? UIDevice.current.identifierForVendor?.uuidString
         await PushNotificationTokenRegistrar(client: httpClient).registerToken(token, deviceID: deviceID)
     }
 }

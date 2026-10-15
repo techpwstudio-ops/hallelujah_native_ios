@@ -113,3 +113,46 @@ struct AccountRestoredSheet: View {
         }
     }
 }
+
+// MARK: - Hosting
+
+private struct AccountDeletionPendingModifier: ViewModifier {
+    @Bindable var coordinator: AccountDeletionPendingCoordinator
+    @Environment(\.toastCenter) private var toastCenter
+
+    func body(content: Content) -> some View {
+        content
+            .parityFitSheet(
+                item: $coordinator.stage,
+                cornerRadius: coordinator.stage == .restored ? 28 : 24,
+                dismissible: coordinator.stage == .restored
+            ) { stage in
+                switch stage {
+                case let .scheduled(date):
+                    AccountDeletionScheduledSheet(
+                        deletionDate: date,
+                        isWorking: coordinator.isWorking,
+                        onCancelDeletion: {
+                            Task {
+                                if let message = await coordinator.cancelDeletion() {
+                                    toastCenter.show(message)
+                                }
+                            }
+                        },
+                        // `exit(0)` in Dart.
+                        onCloseApp: { exit(0) }
+                    )
+                case .restored:
+                    AccountRestoredSheet { coordinator.stage = nil }
+                }
+            }
+    }
+}
+
+extension View {
+    /// Hosts the blocking "Deletion Scheduled" sheet and its "account restored"
+    /// follow-up. Apply once on the app shell.
+    func accountDeletionPendingSheets(_ coordinator: AccountDeletionPendingCoordinator) -> some View {
+        modifier(AccountDeletionPendingModifier(coordinator: coordinator))
+    }
+}

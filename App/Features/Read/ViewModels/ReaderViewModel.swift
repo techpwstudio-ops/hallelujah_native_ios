@@ -92,6 +92,10 @@ final class ReaderViewModel {
                 return
             }
             currentBook = resolvedBook
+            // `fetchBookPage`: a saved chapter past the book's end resets to 1.
+            if currentChapterNumber > max(resolvedBook.chapters, 1) || currentChapterNumber < 1 {
+                currentChapterNumber = 1
+            }
             dispatchChapterLoad(
                 bookNumber: resolvedBook.bookNumber,
                 chapterNumber: currentChapterNumber,
@@ -125,6 +129,37 @@ final class ReaderViewModel {
             await loadIfNeeded()
         } else {
             await refresh()
+        }
+    }
+
+    // MARK: - Auto-heal
+
+    /// `_autoHealEmptyChapter` (`read_page.dart`): a loaded-but-empty chapter is
+    /// silently re-fetched up to 4 times (immediately, then 700ms apart) while
+    /// the spinner stays up, before the "Something went wrong" state shows.
+    private(set) var isAutoHealing = false
+    private var healKey: String?
+    private var healAttempts = 0
+    static let maxHealAttempts = 4
+
+    /// Called by the view when it observes an empty chapter with nothing in
+    /// flight. Returns without effect once the per-chapter budget is spent.
+    func healEmptyChapterIfNeeded() {
+        guard state == .loaded, !isChapterLoading, verses.isEmpty, let currentBook else { return }
+        let key = "\(currentBook.bookNumber):\(currentChapterNumber):\(currentLanguage)"
+        if healKey != key {
+            healKey = key
+            healAttempts = 0
+        }
+        guard healAttempts < Self.maxHealAttempts, !isAutoHealing else { return }
+        healAttempts += 1
+        isAutoHealing = true
+        let delay: Duration = healAttempts == 1 ? .zero : .milliseconds(700)
+        Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard let self else { return }
+            self.isAutoHealing = false
+            await self.refresh()
         }
     }
 
@@ -190,12 +225,13 @@ final class ReaderViewModel {
     func goToPreviousBook() {
         guard let currentBook else { return }
         guard let previousBook = books.first(where: { $0.bookNumber == currentBook.bookNumber - 1 }) else {
-            boundaryMessage = "This is the first book"
+            boundaryMessage = "This is first book"
             return
         }
+        // `previousBook` in `bible_bloc.dart` lands on the previous book's last chapter.
         dispatchChapterLoad(
             bookNumber: previousBook.bookNumber,
-            chapterNumber: 1,
+            chapterNumber: previousBook.chapters,
             languageName: currentLanguage,
             isBookNumberChanged: true,
             isChapterNumberChanged: true
@@ -263,7 +299,7 @@ final class ReaderViewModel {
             bookNumber: currentBook.bookNumber,
             chapterNumber: currentChapterNumber,
             languageName: language,
-            isBookNumberChanged: false,
+            isBookNumberChanged: true,
             isChapterNumberChanged: true
         )
     }

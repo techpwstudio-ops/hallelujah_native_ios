@@ -88,37 +88,44 @@ struct AIConversationResponseDTO: Decodable, Sendable {
 struct AICursorPageDTO<Item: Decodable & Sendable>: Decodable, Sendable {
     let items: [Item]?
     let hasMore: Bool?
-    /// Decoded so it isn't silently dropped at the wire boundary — but see
-    /// `toPaginated(_:)` below, which is as far as it can travel.
     let nextCursor: String?
+    /// Conversations are page-number paginated in Flutter (`data['page']`).
+    let page: Int?
+
+    /// Flutter's `AiService` reads `data['conversations'] ?? data['items']`
+    /// for conversations, `data['messages']` for messages and `data['cursor']`
+    /// for the next-page token, so every spelling is accepted.
+    private enum CodingKeys: String, CodingKey {
+        case items, messages, conversations, hasMore, nextCursor, cursor, page
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        items = try container.decodeIfPresent([Item].self, forKey: .items)
+            ?? container.decodeIfPresent([Item].self, forKey: .messages)
+            ?? container.decodeIfPresent([Item].self, forKey: .conversations)
+        hasMore = try container.decodeIfPresent(Bool.self, forKey: .hasMore)
+        nextCursor = try container.decodeIfPresent(String.self, forKey: .nextCursor)
+            ?? container.decodeIfPresent(String.self, forKey: .cursor)
+        page = try? container.decodeIfPresent(Int.self, forKey: .page)
+    }
 }
 
 extension AICursorPageDTO {
-    /// Maps to `Paginated<Domain>`, the return type `AIChatRepository`'s
-    /// protocol requires. **Deviation, flagged in T58's build report:**
-    /// `Paginated<Item>` was designed for this app's existing *page-number*
-    /// pagination (`page`/`perPage`/`total`/`totalPages`/`hasMore` —
-    /// `UserPlaylistsResponseDTO.toDomain()` is the precedent this file was
-    /// told to mirror), and has no field for an opaque cursor token. So
-    /// `hasMore` comes through faithfully (a real wire `Bool`, copied
-    /// directly), but the decoded `nextCursor` above cannot be threaded any
-    /// further than this DTO — `RemoteAIChatRepository`'s callers see only
-    /// `Paginated<AIConversation>`/`Paginated<AIMessage>` and have no way to
-    /// obtain the real cursor for their next call through this return type
-    /// as specified. Editing `Paginated.swift` or inventing a second,
-    /// ai-chat-only paginated type were both out of scope for this task, so
-    /// this is the best-effort mapping: `page`/`totalPages` are placeholders
-    /// (not meaningful for cursor pagination), and `hasMore` is the one
-    /// field downstream code can actually rely on.
+    /// Maps to `Paginated<Domain>`. `nextCursor` rides along on the result for
+    /// cursor-paginated messages; `page` is the server's page number for
+    /// page-paginated conversations (1 when absent).
     func toPaginated<Domain>(_ transform: (Item) -> Domain) -> Paginated<Domain> {
         let hasMore = hasMore ?? false
+        let currentPage = page ?? 1
         return Paginated(
             items: (items ?? []).map(transform),
-            page: 1,
+            page: currentPage,
             perPage: nil,
             total: nil,
-            totalPages: hasMore ? 2 : 1,
-            hasMore: hasMore
+            totalPages: hasMore ? currentPage + 1 : currentPage,
+            hasMore: hasMore,
+            nextCursor: nextCursor
         )
     }
 }
@@ -152,6 +159,31 @@ extension AIMessagesResponseDTO {
 /// `{ message: string }`").
 struct AISendMessageRequestDTO: Encodable, Sendable {
     let message: String?
+    let audioKey: String?
+    let audioMimeType: String?
+    let provider: String?
+    let attachments: [AIAttachmentPayloadDTO]?
+    let tts: Bool?
+
+    /// `AiSendPayload.toJson`: only populated keys are sent; `attachments`
+    /// only when non-empty; `tts` only when true.
+    init(payload: AISendPayload) {
+        message = payload.message
+        audioKey = payload.audioKey
+        audioMimeType = payload.audioMimeType
+        provider = payload.provider
+        attachments = payload.attachments.isEmpty
+            ? nil
+            : payload.attachments.map { AIAttachmentPayloadDTO(key: $0.key, type: $0.type, mimeType: $0.mimeType) }
+        tts = payload.tts ? true : nil
+    }
+}
+
+/// `AiAttachmentPayload.toJson` — `{key, type, mimeType}`.
+struct AIAttachmentPayloadDTO: Encodable, Sendable {
+    let key: String
+    let type: String
+    let mimeType: String
 }
 
 /// `POST /ai/conversations/:id/messages`'s response — `data.userMessage`/

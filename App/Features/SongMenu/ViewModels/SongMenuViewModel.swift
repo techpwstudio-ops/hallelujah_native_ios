@@ -32,6 +32,9 @@ final class SongMenuViewModel {
     private(set) var credits: Loadable<[SongCreditGroup]> = .idle
     private(set) var playlists: Loadable<[UserPlaylist]> = .idle
     private(set) var isBusy = false
+    /// `OurSession.shouldBlockPremiumAccess`, resolved once on appear; drives the
+    /// Premium badges on the Sleep timer and Download rows.
+    private(set) var blocksPremium = false
 
     private let favouriteRepository: any FavouriteRepository
     private let songRepository: any SongRepository
@@ -40,6 +43,7 @@ final class SongMenuViewModel {
     private let queueController: QueueController
     private let engine: AudioEngine
     private let premiumGate: PremiumGate
+    private let sleepTimer: SleepTimerController
     private let keyValueStore: any KeyValueStoring
     private let logger = AppLogger(category: .content)
 
@@ -53,6 +57,7 @@ final class SongMenuViewModel {
         queueController = container.resolve()
         engine = container.resolve()
         premiumGate = container.resolve()
+        sleepTimer = container.resolve()
         keyValueStore = container.resolve()
         downloadState = downloadEngine.tasks[song.id]?.state
     }
@@ -70,6 +75,37 @@ final class SongMenuViewModel {
         case .failed: "Retry Downloading"
         case .paused: "Resume Downloading"
         }
+    }
+
+    /// SF Symbol for the download row: `download_done_rounded` when finished,
+    /// `downloading` while running, else `download_for_offline_outlined`.
+    var downloadSystemImage: String {
+        switch downloadState {
+        case .completed: "checkmark.circle"
+        case .downloading: "arrow.down.circle.dashed"
+        default: "arrow.down.circle"
+        }
+    }
+
+    /// Trailing text of the Sleep timer row ("5 min Left"); `nil` when no timer
+    /// runs or the row shows the Premium badge instead.
+    var sleepTimeLeftText: String? {
+        guard !blocksPremium, let remaining = sleepTimer.remaining() else { return nil }
+        return Self.sleepLeftText(seconds: Int(remaining))
+    }
+
+    func loadPremium() async {
+        blocksPremium = !(await premiumGate.hasPremium)
+    }
+
+    /// `Formater.formatDurationText` + " Left" from `song_menu_sheet.dart`.
+    nonisolated static func sleepLeftText(seconds: Int) -> String {
+        guard seconds > 0 else { return "0 min Left" }
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        if hours > 0 { return (minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h") + " Left" }
+        if minutes > 0 { return "\(minutes) min Left" }
+        return "\(seconds % 60) sec Left"
     }
 
     // MARK: - Actions
@@ -167,15 +203,43 @@ final class SongMenuViewModel {
         }
     }
 
-    func add(to playlist: UserPlaylist) async -> SongMenuOutcome {
+    /// `_PlaylistSheetTile.onTap`: attaches the song when the playlist does not
+    /// hold it ("Added to playlist"), detaches it when it does ("Removed from
+    /// <title>"). The sheet stays open either way, so the row flips between
+    /// add and remove in place.
+    func toggle(_ playlist: UserPlaylist) async -> SongMenuOutcome {
         isBusy = true
         defer { isBusy = false }
+        let isAdded = playlist.songIDs.contains(song.id)
         do {
-            try await userPlaylistRepository.attachSongs(playlistID: playlist.id, songIDs: [song.id])
-            return .message("Added to \(playlist.title)")
+            if isAdded {
+                try await userPlaylistRepository.detachSongs(playlistID: playlist.id, songIDs: [song.id])
+            } else {
+                try await userPlaylistRepository.attachSongs(playlistID: playlist.id, songIDs: [song.id])
+            }
+            updateLocal(playlistID: playlist.id, adding: !isAdded)
+            return .notice(isAdded ? "Removed from \(playlist.title)" : "Added to playlist")
         } catch {
-            return .notice("Network error")
+            return .notice("Internet error, please check your internet")
         }
+    }
+
+    /// `DateFormatter.format` (`lib/constants/date.dart`): `dd/MM/yy HH:mm:ss`.
+    nonisolated static func playlistDateText(_ date: Date?) -> String {
+        guard let date else { return "" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "dd/MM/yy HH:mm:ss"
+        return formatter.string(from: date)
+    }
+
+    private func updateLocal(playlistID: String, adding: Bool) {
+        guard case .loaded(var list) = playlists,
+              let index = list.firstIndex(where: { $0.id == playlistID }) else { return }
+        var ids = list[index].songIDs
+        if adding { if !ids.contains(song.id) { ids.append(song.id) } } else { ids.removeAll { $0 == song.id } }
+        list[index].songIDs = ids
+        playlists = .loaded(list)
     }
 
     // MARK: - Report
@@ -184,6 +248,7 @@ final class SongMenuViewModel {
     /// success playback stops (the server now hides the song from this
     /// listener) and the player closes.
     func report(reason: String) async -> SongMenuOutcome {
+        guard !reason.isEmpty else { return .notice("Please enter note") }
         let trimmed = reason.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .notice("Please enter a reason and try again") }
         isBusy = true

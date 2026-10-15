@@ -1,4 +1,5 @@
 import FirebaseCrashlytics
+import Foundation
 
 /// Keeps any crash-reporting vendor SDK out of app code — call sites depend
 /// on this protocol, never on a vendor type directly.
@@ -19,6 +20,24 @@ struct NoOpCrashReporter: CrashReporting {
 struct FirebaseCrashReporter: CrashReporting {
     func recordError(_ error: any Error) {
         Crashlytics.crashlytics().record(error: error)
+        reportToServer(error)
+    }
+
+    /// `AnalyticSession._reportToServer` (`analytics_session.dart`): outside
+    /// production every tracked error is also posted to `/client-log/error`
+    /// as `{message, stackTrace}` so QA can read them server-side. Fire and
+    /// forget, and silent — failing to log an error must never raise one.
+    private func reportToServer(_ error: any Error) {
+        guard AppConfiguration.current.environment != .production,
+              let client = DependencyContainer.current.resolveIfRegistered(HTTPClient.self) else { return }
+        let payload = [
+            "message": "[native] \(error)",
+            "stackTrace": Thread.callStackSymbols.joined(separator: "\n"),
+        ]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        Task.detached {
+            _ = try? await client.send(.clientErrorLog, body: body, silent: true)
+        }
     }
 
     /// `FirebaseCrashlytics.instance.log(...)` in Dart

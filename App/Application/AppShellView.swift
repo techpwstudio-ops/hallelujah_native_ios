@@ -22,6 +22,7 @@ struct AppShellView: View {
     // not constructed fresh — this must be the SAME engine instance every
     // other player surface reads.
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
+    @State private var queueController: QueueController = DependencyContainer.current.resolve()
     // T35 — shared between the mini player (`AppBottomDockView`) and the
     // full player (`FullScreenDestinationView`'s `.player` case) so the
     // latter's zoom transition can originate from the former's exact frame.
@@ -55,13 +56,18 @@ struct AppShellView: View {
             AppBottomDockView(playerTransitionNamespace: playerTransitionNamespace)
         }
         .toastOverlay()
+        .appInfrastructureHost()
         .environment(coordinator)
         .environment(networkStatus)
         // T18 — this is the earliest point a coordinator exists to route a
         // deep link to; DeepLinkService buffers anything that arrived before
         // this fires (cold launch racing the splash/auth flow) and dispatches
         // it here instead of dropping it.
-        .onAppear { DeepLinkService.shared.attach(coordinator: coordinator) }
+        .onAppear {
+            DeepLinkService.shared.attach(coordinator: coordinator)
+            // End-of-queue hand-off toasts ("Up next · …" / "End of queue").
+            queueController.onNotice = { ToastCenter.shared.show($0) }
+        }
         .onDisappear { DeepLinkService.shared.detach() }
         // T66 — same "earliest point a coordinator exists" reasoning as
         // `DeepLinkService`'s own attach/detach immediately above.

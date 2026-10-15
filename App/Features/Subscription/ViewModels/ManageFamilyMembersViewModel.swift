@@ -106,9 +106,9 @@ final class ManageFamilyMembersViewModel {
     /// on success / `"Something went wrong"` on failure.
     func resendInvitation(_ invite: FamilyInvite) async -> String {
         do {
-            let status = try await repository.resendInvitation(inviteId: invite.id)
-            if let data { self.data = data.updatingInviteStatus(invite.id, status: status) }
-            return "Invite resent."
+            let result = try await repository.resendInvitation(inviteId: invite.id)
+            if let data { self.data = data.updatingInviteStatus(invite.id, status: result.status) }
+            return result.message ?? "Invite resent."
         } catch let error as SubscriptionError {
             return error.message
         } catch {
@@ -122,9 +122,9 @@ final class ManageFamilyMembersViewModel {
     /// native `.confirmationDialog` at the call site here).
     func cancelInvitation(_ invite: FamilyInvite) async -> String {
         do {
-            try await repository.cancelInvitation(inviteId: invite.id)
+            let message = try await repository.cancelInvitation(inviteId: invite.id)
             if let data { self.data = data.removingInvite(invite.id) }
-            return "Invite cancelled."
+            return message ?? "Invite cancelled."
         } catch let error as SubscriptionError {
             return error.message
         } catch {
@@ -143,9 +143,9 @@ final class ManageFamilyMembersViewModel {
     /// this task's own done criterion.
     func removeMember(_ member: FamilyMember) async -> String {
         do {
-            try await repository.removeMember(memberId: member.id)
+            let message = try await repository.removeMember(memberId: member.id)
             if let data { self.data = data.removingMember(member.id) }
-            return "Member removed."
+            return message ?? "Member removed."
         } catch let error as SubscriptionError {
             return error.message
         } catch {

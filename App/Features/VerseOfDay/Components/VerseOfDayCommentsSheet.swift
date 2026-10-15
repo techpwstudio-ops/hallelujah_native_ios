@@ -75,6 +75,19 @@ struct VerseOfDayCommentsSheet: View {
         .task {
             await viewModel.onAppear()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .verseOfDayCommentAdded)) { note in
+            guard let comment = note.userInfo?["comment"] as? VerseOfDayComment else { return }
+            Task { @MainActor in viewModel.applyLiveComment(comment) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .verseOfDayCommentLikesChanged)) { note in
+            guard let info = note.userInfo,
+                  let commentId = info["commentId"] as? String,
+                  let likes = info["likes"] as? Int,
+                  let verseOfDayId = info["verseOfDayId"] as? String else { return }
+            Task { @MainActor in
+                viewModel.applyLiveLikes(commentId: commentId, likes: likes, verseOfDayId: verseOfDayId)
+            }
+        }
     }
 }
 

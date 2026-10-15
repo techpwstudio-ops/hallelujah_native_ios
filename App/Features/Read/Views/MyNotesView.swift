@@ -70,7 +70,7 @@ struct MyNotesView: View {
         var order: [String] = []
         var groups: [String: [BibleNoteEntry]] = [:]
         for note in usable {
-            let key = "\(note.bookNumber)|\(note.chapterNumber)"
+            let key = "\(note.bookNumber)|\(note.chapterNumber)|\(note.languageName ?? "")"
             if groups[key] == nil {
                 order.append(key)
                 groups[key] = []
@@ -98,7 +98,8 @@ struct MyNotesView: View {
     }
 
     private func bookName(for entry: BibleNoteEntry) -> String {
-        books.first(where: { $0.bookNumber == entry.bookNumber })?.name ?? ""
+        let book = books.first(where: { $0.bookNumber == entry.bookNumber })
+        return book?.translate(entry.languageName) ?? ""
     }
 
     var body: some View {

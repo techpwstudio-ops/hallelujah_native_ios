@@ -12,7 +12,6 @@ import SwiftUI
 /// Non-owners get the Follow button (`FollowButton`: add-circle / green
 /// check-circle, 30pt, unfollow leaves the page); everyone gets Share.
 ///
-/// Not ported (no repository support): the owner's name line.
 struct UserPlaylistDetailView: View {
     @State private var viewModel: UserPlaylistDetailViewModel
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
@@ -124,6 +123,11 @@ struct UserPlaylistDetailView: View {
                 .foregroundStyle(Color.white)
 
             Spacer().frame(height: 6)
+            if let ownerName = playlist.ownerName, !ownerName.isEmpty {
+                Text(ownerName)
+                    .typography(ParityHeroText.labelMedium)
+                    .foregroundStyle(ParityColor.white60)
+            }
             Spacer().frame(height: 8)
 
             HStack(spacing: 4) {

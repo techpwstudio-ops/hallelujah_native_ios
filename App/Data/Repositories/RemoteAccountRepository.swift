@@ -6,9 +6,9 @@ import Foundation
 /// an independent teardown path. See `AccountRepository`'s doc comment for
 /// why no separate navigation call belongs here.
 final class RemoteAccountRepository: AccountRepository {
-    private let client: HTTPClient
+    fileprivate let client: HTTPClient
     private let session: Session
-    private let currentUserStore: CurrentUserStore
+    fileprivate let currentUserStore: CurrentUserStore
 
     init(client: HTTPClient, session: Session, currentUserStore: CurrentUserStore) {
         self.client = client
@@ -33,6 +33,26 @@ final class RemoteAccountRepository: AccountRepository {
         await currentUserStore.clear()
         return AccountDeletionResult(succeeded: true, message: message)
     }
+}
+
+extension RemoteAccountRepository {
+    func cancelAccountDeletion() async throws -> AccountDeletionResult {
+        let response = try await client.send(.cancelAccountDeletion)
+        let decoded = try? JSONDecoder().decode(CancelDeletionResponseDTO.self, from: response.data)
+        let message = decoded?.message ?? "Something went wrong. Please try again."
+        guard response.statusCode == 200 else {
+            return AccountDeletionResult(succeeded: false, message: message)
+        }
+        if var user = await currentUserStore.user {
+            user.deletingDate = nil
+            await currentUserStore.setUser(user)
+        }
+        return AccountDeletionResult(succeeded: true, message: message)
+    }
+}
+
+private struct CancelDeletionResponseDTO: Decodable {
+    let message: String?
 }
 
 private struct DeleteAccountResponseDTO: Decodable {

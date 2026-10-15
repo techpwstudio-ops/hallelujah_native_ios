@@ -10,9 +10,10 @@ import Observation
 ///   downloaded, is trusted until explicitly removed and re-downloaded.
 /// - No "skip books already cached from ordinary reading" pre-check
 ///   (`_isBookCached`) — every `downloadLanguage` run fetches every book.
-/// - No notification-tray progress/result posting — there is no native
-///   equivalent wired for local download-progress notifications yet;
-///   `status` is the only progress surface, for in-app UI to observe.
+/// - Tray notifications: iOS has no progress bar in a notification, so (as in
+///   Dart on iOS) a user-requested download (`announce`) posts one opening
+///   "Saving <language> Bible" notice and then the result; `status` remains the
+///   in-app progress surface.
 @MainActor
 @Observable
 final class BibleOfflineDownloadService {
@@ -37,6 +38,10 @@ final class BibleOfflineDownloadService {
     private var activeTasks: [String: Task<Bool, Never>] = [:]
     private var activeProgress: [String: BibleOfflineProgress] = [:]
     private var downloadedLanguages: Set<String>
+    /// Languages whose download the user asked for (tray notices on) — `announce`.
+    private var announcedLanguages: Set<String> = []
+    private var openingNoticePosted: Set<String> = []
+    private let notificationScheduler = LocalNotificationScheduler()
 
     /// Mirrors `_snapshotTriggerResult`/`_snapshotTriggerInFlight`: one
     /// trigger-and-poll cycle per language per download run, shared by every
@@ -73,9 +78,13 @@ final class BibleOfflineDownloadService {
     /// Starts (or joins) downloading `language`'s whole Bible for offline
     /// reading. Safe to call repeatedly — a language already saved returns
     /// `true` immediately, one already downloading is joined.
+    /// `announce` marks a download the user asked for: it speaks (tray notices
+    /// for the start and the result). The automatic post-login cache of the
+    /// default language leaves it off and stays silent.
     @discardableResult
-    func downloadLanguage(_ language: String) async -> Bool {
+    func downloadLanguage(_ language: String, announce: Bool = false) async -> Bool {
         if isLanguageDownloaded(language) { return true }
+        if announce { announcedLanguages.insert(language) }
         if let existing = activeTasks[language] {
             return await existing.value
         }
@@ -100,7 +109,54 @@ final class BibleOfflineDownloadService {
             downloadedLanguages.insert(language)
             persistDownloadedLanguages()
         }
+        announceResult(language: language, success: result)
         return result
+    }
+
+    /// `ensureDefaultLanguageCached`: caches the user's saved Bible language
+    /// (else English) right after login so offline reading works without being
+    /// asked. No-ops when it is already saved, already downloading or offline;
+    /// runs silently.
+    func ensureDefaultLanguageCached() async {
+        var language = "English"
+        if let userStore = DependencyContainer.current.resolveIfRegistered(CurrentUserStore.self),
+           let saved = await userStore.user?.bibleLanguage?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !saved.isEmpty {
+            language = saved
+        }
+        if isLanguageDownloaded(language) || isDownloading(language) { return }
+        let reachability = DependencyContainer.current.resolveIfRegistered((any ReachabilityMonitoring).self)
+        if let reachability, !reachability.isOnline { return }
+        await downloadLanguage(language)
+    }
+
+    /// `_announceResult` — the tray is the only place left to reach the reader
+    /// once they have left the sheet that started a 66-book download.
+    private func announceResult(language: String, success: Bool) {
+        let announced = announcedLanguages.remove(language) != nil
+        openingNoticePosted.remove(language)
+        guard announced else { return }
+        let scheduler = notificationScheduler
+        let notificationID = "bible-offline-\(language)"
+        Task {
+            await scheduler.post(
+                id: notificationID,
+                title: success ? "\(language) Bible downloaded" : "Failed to download \(language) Bible",
+                body: success ? "Available for offline reading." : "Check your connection and try again."
+            )
+        }
+    }
+
+    /// The opening tray notice of an announced download, once its book count is known.
+    private func postOpeningNoticeIfNeeded(_ progress: BibleOfflineProgress) {
+        guard announcedLanguages.contains(progress.language), progress.total > 0,
+              openingNoticePosted.insert(progress.language).inserted else { return }
+        let scheduler = notificationScheduler
+        let notificationID = "bible-offline-\(progress.language)"
+        let detail = "\(progress.completed) of \(progress.total) books \u{00B7} \(progress.percent)%"
+        Task {
+            await scheduler.post(id: notificationID, title: "Saving \(progress.language) Bible", body: detail)
+        }
     }
 
     /// Removes `language`'s cached chapters and downloaded flag. Refuses (returns
@@ -132,6 +188,7 @@ final class BibleOfflineDownloadService {
 
         activeProgress[language] = BibleOfflineProgress(language: language, completed: 0, total: books.count)
         emitStatus()
+        postOpeningNoticeIfNeeded(BibleOfflineProgress(language: language, completed: 0, total: books.count))
 
         var failures = 0
         var completed = 0

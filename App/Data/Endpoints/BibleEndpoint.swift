@@ -23,9 +23,16 @@ extension Endpoint {
     ) -> Endpoint {
         .get(
             "/book/chapter/verses?bookNumber=\(bookNumber)&chapterNumber=\(chapterNumber)" +
-                "&languageName=\(languageName)&isBookNumberChanged=\(isBookNumberChanged)" +
+                "&languageName=\(percentEncodedQuery(languageName))&isBookNumberChanged=\(isBookNumberChanged)" +
                 "&isChapterNumberChanged=\(isChapterNumberChanged)"
         )
+    }
+
+    /// `updateUserReadLanguagesApi` (`end_points.dart`, `/user/save/bible-language`)
+    /// is commented `// PUT/PATCH`, but `OurSession.changeReadLanguage`
+    /// actually calls it with `DioApi.postData({'language': lang})`.
+    static var saveBibleLanguage: Endpoint {
+        .post("/user/save/bible-language")
     }
 
     /// `POST /book/verse/highlight/sync`.

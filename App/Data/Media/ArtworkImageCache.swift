@@ -25,8 +25,34 @@ actor ArtworkImageCache {
 
     private let cache: NSCache<NSString, UIImage> = {
         let cache = NSCache<NSString, UIImage>()
-        cache.countLimit = 200 // matches the cap AppImageCacheManager's own Dart-side doc comment calls out as the fix target — see image_loader.dart
+        // `main()`: `imageCache.maximumSize = 1000` entries and
+        // `maximumSizeBytes = 100 MB`. The ENTRY count belongs at 1000, not
+        // the 200 it was dropped to alongside the byte cap: every decode is
+        // downsampled to its display size, so entries are small and 200 of
+        // them just evict artwork a scroll-back is about to ask for again,
+        // while the byte ceiling is what actually bounds memory.
+        cache.countLimit = 1000
+        cache.totalCostLimit = 100 * 1024 * 1024
         return cache
+    }()
+
+    /// `AppImageCacheManager` (`lib/services/image_cache_manager.dart`): a
+    /// dedicated disk cache for artwork. `URLSession.shared`'s default
+    /// `URLCache` holds ~10 MB, which a single pass through the home feed
+    /// overflows — from then on every scroll-back re-downloads artwork that
+    /// was fetched seconds earlier, exactly the permanent-eviction problem
+    /// the Dart manager exists to fix (2000 objects, 30 days). Variant files
+    /// are small (2-20 KB), so 150 MB comfortably covers 2000+ entries; the
+    /// OS reclaims it under pressure like any caches-directory content.
+    private static let session: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.urlCache = URLCache(
+            memoryCapacity: 16 * 1024 * 1024,
+            diskCapacity: 150 * 1024 * 1024,
+            directory: nil // default: <Caches>/<bundle id>
+        )
+        configuration.requestCachePolicy = .returnCacheDataElseLoad
+        return URLSession(configuration: configuration)
     }()
     private var inFlight: [String: Task<SendableImage?, Never>] = [:]
 
@@ -54,7 +80,10 @@ actor ArtworkImageCache {
         inFlight[key] = nil
 
         if let result {
-            cache.setObject(result.image, forKey: key as NSString)
+            // Cost in decoded bytes (4 per pixel) so `totalCostLimit` is a real
+            // memory bound.
+            let pixels = Int(result.image.size.width * result.image.scale * result.image.size.height * result.image.scale)
+            cache.setObject(result.image, forKey: key as NSString, cost: pixels * 4)
         }
         return result?.image
     }
@@ -76,7 +105,7 @@ actor ArtworkImageCache {
     private static func fetchAndDownsample(url: URL, maxPixelSize: CGFloat, headers: [String: String]?) async -> UIImage? {
         var request = URLRequest(url: url)
         headers?.forEach { request.setValue($1, forHTTPHeaderField: $0) }
-        guard let (data, _) = try? await URLSession.shared.data(for: request) else { return nil }
+        guard let (data, _) = try? await session.data(for: request) else { return nil }
 
         let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else { return nil }

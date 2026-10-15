@@ -173,6 +173,10 @@ final class PlaybackAnalyticsRecorder {
         songDurationMS = (song.duration ?? 0) * 1000
         let quality = await qualitySelector.targetQuality()
         audioQuality = quality.rawValue
+        // `OurSession.instance.membership?.subscription` — resolved lazily
+        // from the container so the recorder's init (composition-owned)
+        // doesn't have to change.
+        let subscription = await DependencyContainer.current.resolveIfRegistered(MembershipStore.self)?.membership?.subscription
 
         analytics.track(PlaybackSessionStartEvent(
             sessionID: newSessionID,
@@ -187,11 +191,29 @@ final class PlaybackAnalyticsRecorder {
             // No native `Membership`/subscription entity exists yet (grepped
             // `App/Domain/Entities` — none found); that feature isn't built,
             // not merely unwired, so these stay `nil` rather than guessing.
-            planID: nil,
-            planName: nil,
+            planID: subscription?.planId,
+            planName: subscription?.planName,
             batteryLevel: Self.currentBatteryLevel()
         ))
         insertTrackingEvent(type: .start, positionMS: 0)
+        // `SongAnalyticsManager.startSession`: the session row now exists, so
+        // CarPlay's Recents tab can refresh to include it.
+        CarIntegrationNotifier.recentPlayed()
+
+        // `syncToRecentlyPlayedSongApi`: fire-and-forget source attribution.
+        let attribution = queueController.queue?.source
+        let queueSongs = queueController.queue?.songs ?? []
+        let rankIndex = queueSongs.firstIndex(where: { $0.id == song.id })
+        DependencyContainer.current.resolveIfRegistered(HTTPClient.self).map(RecentlyPlayedSyncer.init(client:))?.sync(
+            RecentlyPlayedSyncer.Payload(
+                songID: song.id,
+                sessionID: newSessionID,
+                playSource: playSource,
+                sourceID: RecentlyPlayedSyncer.sourceID(from: attribution?.id),
+                sourceRank: rankIndex.map { $0 + 1 },
+                searchQuery: nil
+            )
+        )
 
         progressStore.recordPlay(
             playerType: queueController.queue?.source.playerType,

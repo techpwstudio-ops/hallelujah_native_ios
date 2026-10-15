@@ -71,9 +71,14 @@ struct ReaderView: View {
         .preferredColorScheme(.dark)
         .toolbar(.hidden, for: .navigationBar)
         .task { await viewModel.loadIfNeeded() }
+        // `OurSession` caches the default Bible language silently after login.
+        .task { await offlineService.ensureDefaultLanguageCached() }
         // A verse-of-day tap/push/deep link can set `pendingTarget` before or
         // after the book list has loaded, so both orderings are watched.
         .onChange(of: viewModel.state) { _, _ in consumePendingTarget() }
+        .onChange(of: viewModel.isChapterLoading) { _, loading in
+            if !loading { viewModel.healEmptyChapterIfNeeded() }
+        }
         .onChange(of: navigationStore.pendingTarget) { _, _ in consumePendingTarget() }
         .onChange(of: viewModel.boundaryMessage) { _, message in
             guard let message else { return }
@@ -93,6 +98,8 @@ struct ReaderView: View {
                 currentLanguage: viewModel.currentLanguage
             ) { language in
                 showLanguage = false
+                // `OurSession.changeReadLanguage`: persist on the account, fire-and-forget.
+                Task { await ReadLanguageSaver().save(language: language) }
                 viewModel.select(language: language)
             }
         }
@@ -118,7 +125,8 @@ struct ReaderView: View {
         ) {
             BookTableOfContentsSheet(
                 books: viewModel.books,
-                currentBookNumber: viewModel.currentBook?.bookNumber
+                currentBookNumber: viewModel.currentBook?.bookNumber,
+                language: viewModel.currentLanguage
             ) { book in
                 showTableOfContents = false
                 pendingAfterDismiss = { chapterGridBook = book }
@@ -127,6 +135,7 @@ struct ReaderView: View {
         .readSheet(item: $chapterGridBook, onDismiss: runPendingAction, detents: [.fraction(0.7)]) { book in
             ChapterGridSheet(
                 book: book,
+                language: viewModel.currentLanguage,
                 currentChapter: viewModel.currentChapterNumber,
                 currentBookNumber: viewModel.currentBook?.bookNumber,
                 onBack: {
@@ -161,9 +170,9 @@ struct ReaderView: View {
         ) { item in
             VerseOfDayCommentsSheet(verseOfDayId: item.id, showsVerseOfDay: true)
         }
-        .sheet(item: $askEmetVerse) { verse in
+        .fullScreenCover(item: $askEmetVerse) { verse in
             AIVerseInsightDialogView(
-                target: .fromBibleVerse(verse, bookName: viewModel.currentBook?.name, languageName: viewModel.currentLanguage)
+                target: .fromBibleVerse(verse, bookName: viewModel.currentBook?.translate(viewModel.currentLanguage), languageName: viewModel.currentLanguage)
             )
         }
     }
@@ -347,10 +356,11 @@ struct ReaderView: View {
                 emptyState
             }
         case .loaded:
-            if viewModel.isChapterLoading {
+            if viewModel.isChapterLoading || viewModel.isAutoHealing {
                 ReadSpinner()
             } else if viewModel.verses.isEmpty {
                 emptyState
+                    .onAppear { viewModel.healEmptyChapterIfNeeded() }
             } else {
                 verseList
             }
@@ -434,7 +444,7 @@ struct ReaderView: View {
                 showTableOfContents = true
             } label: {
                 HStack(spacing: 4) {
-                    Text(viewModel.currentBook?.name ?? "Loading...")
+                    Text(viewModel.currentBook?.translate(viewModel.currentLanguage) ?? "Loading...")
                         .readText(Typography.titleMedium, weight: .bold)
                         .lineLimit(1)
                         .truncationMode(.tail)

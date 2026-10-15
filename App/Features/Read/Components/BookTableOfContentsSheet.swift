@@ -10,6 +10,8 @@ import SwiftUI
 struct BookTableOfContentsSheet: View {
     let books: [BibleBook]
     let currentBookNumber: Int?
+    /// The reader's Bible language — book names are shown translated into it.
+    var language: String? = nil
     let onSelect: (BibleBook) -> Void
 
     var body: some View {
@@ -47,7 +49,7 @@ struct BookTableOfContentsSheet: View {
             onSelect(book)
         } label: {
             HStack(spacing: 0) {
-                Text(book.name)
+                Text(book.translate(language))
                     .readText(
                         Typography.titleMedium,
                         weight: .bold,

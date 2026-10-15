@@ -14,14 +14,8 @@ import Observation
 /// first step, then hands off to a freshly constructed `AIChatViewModel` for
 /// the actual send/stream/retry machinery T58 already built.
 ///
-/// No conversation title is set at creation — `AIChatRepository
-/// .createConversation()` takes no title parameter, unlike what
-/// `VerseInsightRequest.title` (ported from Flutter, where
-/// `VerseInsightRequest.title` names the Emet history entry) seems to
-/// expect. Adding one would be a new backend contract, which this task was
-/// scoped to avoid; the resulting conversation shows up in AI history
-/// (`AIChatHistoryView`, already built by T58) with the same "New
-/// conversation" fallback title any other untitled conversation gets.
+/// The conversation is created with `request.title` (the verse reference,
+/// capped at 60 characters), like `createConversation(title: request.title)`.
 @MainActor
 @Observable
 final class VerseInsightViewModel {
@@ -50,14 +44,16 @@ final class VerseInsightViewModel {
         defer { isAsking = false }
 
         do {
-            let conversation = try await repository.createConversation()
+            let conversation = try await repository.createConversation(title: request.title)
             conversationID = conversation.id
             let viewModel = AIChatViewModel(conversationID: conversation.id, container: container)
             chatViewModel = viewModel
             await viewModel.sendMessage(payload: AISendPayload(message: request.prompt, attachments: []))
         } catch let createError {
             logger.warning("verse insight ask failed: \(createError)")
-            askError = "Couldn't reach Emet. Please try again."
+            // `AppErrorParser.parse(e)`: empty (cancelled) shows nothing.
+            let message = AIErrorParser.parse(createError)
+            askError = message.isEmpty ? nil : message
         }
     }
 

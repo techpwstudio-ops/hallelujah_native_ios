@@ -42,6 +42,11 @@ final class CarPlayController {
 
     private var likedList: LiveList?
     private var downloadsList: LiveList?
+    private var playlistsList: LiveList?
+    /// Open user-playlist drill-downs, by playlist id, so a playlist edit made
+    /// elsewhere can re-fetch the one on screen.
+    private var playlistSongLists: [String: LiveList] = [:]
+    private var changeObserver: NSObjectProtocol?
 
     private var likeButton: CPNowPlayingImageButton?
     private var lastFavouriteState: (songID: String, isFavorited: Bool)?
@@ -72,6 +77,7 @@ final class CarPlayController {
         interfaceController.setRootTemplate(tabBar, animated: false, completion: nil)
 
         observeEngine()
+        observeIntegrationChanges()
         refreshLikeButton()
 
         Task { await loadAllTabs() }
@@ -81,6 +87,51 @@ final class CarPlayController {
         isActive = false
         likedList = nil
         downloadsList = nil
+        playlistsList = nil
+        playlistSongLists = [:]
+        if let changeObserver { NotificationCenter.default.removeObserver(changeObserver) }
+        changeObserver = nil
+    }
+
+    // MARK: - Integration change notifications
+
+    /// `CarIntegrationNotifier` (`car_integration_notifier.dart`): the Recents
+    /// tab is fetched once at connect and the Library drill-downs on tap, so
+    /// both go stale the moment something changes elsewhere. A list is
+    /// re-fetched in place only while it is still the template on top of the
+    /// stack, exactly like the Dart/Swift `refresh*` handlers.
+    private func observeIntegrationChanges() {
+        guard changeObserver == nil else { return }
+        changeObserver = NotificationCenter.default.addObserver(
+            forName: CarIntegrationNotifier.didChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            let change = CarIntegrationNotifier.change(from: notification)
+            let playlistID = CarIntegrationNotifier.playlistID(from: notification)
+            MainActor.assumeIsolated { self?.handleIntegrationChange(change, playlistID: playlistID) }
+        }
+    }
+
+    private func handleIntegrationChange(_ change: CarIntegrationNotifier.Change?, playlistID: String?) {
+        guard isActive, let change else { return }
+        switch change {
+        case .recentPlayed:
+            Task { await loadRecentsTab() }
+        case .favourites:
+            refreshIfOnTop(likedList)
+        case .downloads:
+            refreshIfOnTop(downloadsList)
+        case .playlists:
+            refreshIfOnTop(playlistsList)
+        case .playlistSongs:
+            if let playlistID { refreshIfOnTop(playlistSongLists[playlistID]) }
+        }
+    }
+
+    private func refreshIfOnTop(_ list: LiveList?) {
+        guard let list, interfaceController.topTemplate === list.template else { return }
+        Task { await refresh(list) }
     }
 
     private static func makeTab(titleKey: String.LocalizationValue, symbol: String) -> CPListTemplate {
@@ -206,12 +257,13 @@ final class CarPlayController {
     }
 
     private func pushAllPlaylists() {
-        pushList(title: String(localized: "carplay.library.playlists.title")) { [weak self] in
-            guard let self else { return [] }
-            let rows = await provider.allPlaylistRows()
-            let group = CarPlayRowGroup(rows: rows, songs: [], source: Self.noSource)
-            return await makeListItems(group, emptyKey: "carplay.playlists.empty")
-        }
+        playlistsList = pushSongList(
+            title: String(localized: "carplay.library.playlists.title"),
+            emptyKey: "carplay.playlists.empty",
+            load: { [provider] in
+                CarPlayRowGroup(rows: await provider.allPlaylistRows(), songs: [], source: Self.noSource)
+            }
+        )
     }
 
     private func pushGroup(title: String, load: @escaping () async -> CarPlayRowGroup) {
@@ -315,7 +367,11 @@ final class CarPlayController {
         case .creatorPlaylist(let id):
             pushGroup(title: row.title) { [provider] in await provider.creatorPlaylistSongs(id: id, title: row.title) }
         case .userPlaylist(let id):
-            pushGroup(title: row.title) { [provider] in await provider.userPlaylistSongs(id: id, title: row.title) }
+            playlistSongLists[id] = pushSongList(
+                title: row.title,
+                emptyKey: "carplay.noSongs",
+                load: { [provider] in await provider.userPlaylistSongs(id: id, title: row.title) }
+            )
         case .genre(let id):
             pushGroup(title: row.title) { [provider] in await provider.genreSongs(id: id, title: row.title) }
         }

@@ -3,9 +3,7 @@ import Foundation
 extension Endpoint {
     // MARK: Family members (T63) — `manage_premium_service.dart`'s
     // family-member call sites, routes confirmed against
-    // `end_points.dart:307-323`. `acceptSubscriptionInviteApi`/
-    // `declineSubscriptionInviteApi` have no case here — see
-    // `FamilyMembersRepository`'s doc comment for why.
+    // `end_points.dart:307-323`. accept/decline included.
 
     /// `getSubscriptionMembersApi` — `/premium/subscription/members`.
     static let familyMembers = Endpoint.get("/premium/subscription/members")
@@ -28,4 +26,12 @@ extension Endpoint {
     static func removeFamilyMember(memberId: String) -> Endpoint {
         .delete("/premium/subscription/member/\(memberId)")
     }
+
+    /// `acceptSubscriptionInviteApi` — `/premium/subscription/invite/accept`,
+    /// body `{inviteId}`.
+    static let acceptFamilyMemberInvite = Endpoint.post("/premium/subscription/invite/accept")
+
+    /// `declineSubscriptionInviteApi` — `/premium/subscription/invite/decline`,
+    /// body `{inviteId}`.
+    static let declineFamilyMemberInvite = Endpoint.post("/premium/subscription/invite/decline")
 }

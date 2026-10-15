@@ -26,6 +26,12 @@ struct UserPlaylist: Sendable, Equatable, Identifiable {
     let duration: Int?
     let ownerUserID: String?
     let createdAt: Date?
+    /// `UserPlaylist.songs` (ids of the songs it holds) — the add-to-playlist
+    /// sheet reads it to show add vs remove per row. Empty when the endpoint
+    /// omits `songs`.
+    var songIDs: [String] = []
+    /// `UserPlaylist.adminName` (`user.fName`): the owner's first name.
+    var ownerName: String? = nil
 
     func isOwned(by currentUserID: String?) -> Bool {
         guard let currentUserID, let ownerUserID else { return false }

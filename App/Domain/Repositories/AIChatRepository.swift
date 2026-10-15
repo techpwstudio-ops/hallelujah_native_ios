@@ -12,7 +12,7 @@ protocol AIChatRepository: Sendable {
     /// page. See `AIChatDTOs.swift`'s `AICursorPageDTO.toPaginated(_:)` for
     /// why the returned `Paginated<AIConversation>` can't carry the wire's
     /// own `nextCursor` back out.
-    func getConversations(cursor: String?) async throws -> Paginated<AIConversation>
+    func getConversations(cursor: String?, page: Int) async throws -> Paginated<AIConversation>
 
     /// `POST /ai/conversations` — creates and returns a fresh conversation.
     /// `createConversation({title})` — Flutter titles a chat with the first 60
@@ -37,6 +37,10 @@ protocol AIChatRepository: Sendable {
 }
 
 extension AIChatRepository {
+    func getConversations(cursor: String?) async throws -> Paginated<AIConversation> {
+        try await getConversations(cursor: cursor, page: 1)
+    }
+
     func createConversation() async throws -> AIConversation {
         try await createConversation(title: nil)
     }

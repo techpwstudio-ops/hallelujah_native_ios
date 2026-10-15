@@ -14,10 +14,12 @@ extension Endpoint {
     /// `GET /ai/conversations` — `cursor` is left off the query string
     /// entirely on the first page, same optional-query-param convention as
     /// `search(...)`'s `filter`/`userPlaylistId` (`Endpoint.swift`).
-    static func aiConversations(cursor: String?) -> Endpoint {
-        var path = "/ai/conversations"
+    static func aiConversations(cursor: String?, page: Int = 1) -> Endpoint {
+        // `AiService.getConversations`: `?page=N&limit=20` (the cursor, when a
+        // server sends one, is forwarded too).
+        var path = "/ai/conversations?page=\(page)&limit=20"
         if let cursor {
-            path += "?cursor=\(aiChatPercentEncoded(cursor))"
+            path += "&cursor=\(aiChatPercentEncoded(cursor))"
         }
         return .get(path)
     }
@@ -34,9 +36,10 @@ extension Endpoint {
     /// `GET /ai/conversations/:id/messages` — same `cursor` convention as
     /// `aiConversations(cursor:)` above.
     static func aiMessages(conversationID: String, cursor: String?) -> Endpoint {
-        var path = "/ai/conversations/\(conversationID)/messages"
+        // `AiService.getMessages`: `limit=30` plus the cursor after page one.
+        var path = "/ai/conversations/\(conversationID)/messages?limit=30"
         if let cursor {
-            path += "?cursor=\(aiChatPercentEncoded(cursor))"
+            path += "&cursor=\(aiChatPercentEncoded(cursor))"
         }
         return .get(path)
     }

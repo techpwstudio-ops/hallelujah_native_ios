@@ -17,6 +17,8 @@ final class AIConversationsViewModel {
     /// specified, deduping by id on append so re-fetching the same page
     /// can't insert duplicate `Identifiable` rows.
     private(set) var nextCursor: String?
+    /// Conversations are page-number paginated (`AiConversationsState.page`).
+    private var currentPage = 1
     private(set) var error: String?
 
     private let repository: any AIChatRepository
@@ -33,11 +35,13 @@ final class AIConversationsViewModel {
         conversations = []
         hasMore = false
         nextCursor = nil
+        currentPage = 1
         do {
-            let page = try await repository.getConversations(cursor: nil)
+            let page = try await repository.getConversations(cursor: nil, page: 1)
             conversations = page.items
             hasMore = page.hasMore
-            nextCursor = nil
+            nextCursor = page.nextCursor
+            currentPage = page.page
             isLoading = false
         } catch let loadError {
             logger.warning("load conversations failed: \(loadError)")
@@ -50,11 +54,12 @@ final class AIConversationsViewModel {
         guard !isLoading, hasMore else { return }
         isLoading = true
         do {
-            let page = try await repository.getConversations(cursor: nextCursor)
+            let page = try await repository.getConversations(cursor: nextCursor, page: currentPage + 1)
             let existingIDs = Set(conversations.map(\.id))
             conversations.append(contentsOf: page.items.filter { !existingIDs.contains($0.id) })
             hasMore = page.hasMore
-            nextCursor = nil
+            nextCursor = page.nextCursor
+            currentPage = max(page.page, currentPage + 1)
             isLoading = false
         } catch let loadMoreError {
             logger.warning("load more conversations failed: \(loadMoreError)")
@@ -67,9 +72,9 @@ final class AIConversationsViewModel {
     /// on success (a caller typically navigates into it immediately) or
     /// `nil` on failure, with `error` set.
     @discardableResult
-    func createConversation() async -> AIConversation? {
+    func createConversation(title: String? = nil) async -> AIConversation? {
         do {
-            let conversation = try await repository.createConversation()
+            let conversation = try await repository.createConversation(title: title)
             conversations.insert(conversation, at: 0)
             return conversation
         } catch let createError {

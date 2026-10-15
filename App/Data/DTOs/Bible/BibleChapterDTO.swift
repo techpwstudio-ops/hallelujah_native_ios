@@ -35,9 +35,10 @@ struct VerseNoteDTO: Decodable {
     let verseNumber: Int
     let content: String
     let updatedAt: String?
+    let createdAt: String?
 
     func toDomain() -> VerseNote {
-        VerseNote(id: id, verseId: verseId, content: content)
+        VerseNote(id: id, verseId: verseId, content: content, createdAt: createdAt)
     }
 }
 

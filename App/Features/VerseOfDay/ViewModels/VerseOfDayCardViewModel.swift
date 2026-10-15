@@ -38,8 +38,13 @@ final class VerseOfDayCardViewModel {
             shareURL = nil
             return
         }
+        let previousID = verse?.id
         verse = await repository.cachedVerse(id: id)
-        shareURL = try? await repository.shareURL(id: id)
+        if verse == nil {
+            shareURL = nil
+        } else if shareURL == nil || previousID != id {
+            shareURL = try? await repository.shareURL(id: id)
+        }
     }
 
     /// `showVerseOfDayOptionsSheet`'s "Hide for Today" row.

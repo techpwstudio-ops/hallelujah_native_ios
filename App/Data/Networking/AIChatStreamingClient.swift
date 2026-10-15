@@ -104,7 +104,10 @@ final class AIChatStreamingClient: Sendable {
                 }
                 return
             case "error":
-                continuation.yield(.error(stringValue(from: envelope.message) ?? ""))
+                // `ai_service.dart` throws a fixed message for the server's
+                // error event; the server's own text is never shown.
+                _ = stringValue(from: envelope.message)
+                continuation.yield(.error("Something went wrong, please try again after sometime."))
                 return
             case "user_message", "tts_ready":
                 continue

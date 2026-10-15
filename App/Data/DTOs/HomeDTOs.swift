@@ -181,6 +181,12 @@ enum HomeSectionContentDecoder {
             return .playlists(paginate(decodeRows(rows, as: CreatorPlaylistDTO.self).map { $0.toDomain() }))
         case "recentMixed":
             return .recentItems(paginate(decodeRows(rows, as: RecentContentItemDTO.self).map { $0.toDomain() }))
+        case "verseOfDay":
+            // Not a rail: `syncHomePageUiItems*` stores the first row and makes
+            // it the current verse (`last_verse_of_day_id`); `VerseOfDayCardView`
+            // renders it from that cache.
+            VerseOfDayIngest.ingestHomeRows(rows)
+            return .unsupported(viewType: viewType)
         default:
             return .unsupported(viewType: viewType)
         }

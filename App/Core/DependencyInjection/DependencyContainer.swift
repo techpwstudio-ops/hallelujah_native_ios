@@ -27,6 +27,18 @@ final class DependencyContainer: @unchecked Sendable {
 }
 
 extension DependencyContainer {
+    /// Like `resolve()`, but `nil` instead of a crash when nothing is
+    /// registered — for optional collaborators (tests and previews build
+    /// partial containers).
+    func resolveIfRegistered<Value>(_ type: Value.Type = Value.self) -> Value? {
+        lock.lock()
+        let factory = factories[ObjectIdentifier(type)]
+        lock.unlock()
+        return factory?() as? Value
+    }
+}
+
+extension DependencyContainer {
     /// The container the running app resolves against. `AppComposition`
     /// installs the real one at launch; previews and tests install their own.
     nonisolated(unsafe) static var current = DependencyContainer()

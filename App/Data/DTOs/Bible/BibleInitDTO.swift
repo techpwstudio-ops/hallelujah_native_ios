@@ -13,19 +13,24 @@ struct BibleBookDTO: Decodable {
     let chapters: Int?
     let bookNumber: Int?
 
-    // `translations` (per-book `[{id, bibleBookId, language, translatedName,
-    // isUserCorrected}]`) exists on the wire but is intentionally not
-    // decoded — T54 always renders `BibleBook.name` (the canonical English
-    // name); resolving a per-user translated name needs the user's
-    // content-language preference threaded through, a cross-cutting concern
-    // owned elsewhere, not this endpoint's contract. Scope cut.
+    /// `translations`: per-book `[{id, bibleBookId, language, translatedName,
+    /// isUserCorrected}]`; the reader shows `translate(currentLanguage)`.
+    let translations: [BibleBookTranslationDTO]?
 
     /// `bookNumber`/`chapters` are nullable in the schema even though
     /// always populated in practice — mapped defensively, dropping any book
     /// missing either.
     func toDomain() -> BibleBook? {
         guard let bookNumber, let chapters else { return nil }
-        return BibleBook(id: id, bookNumber: bookNumber, name: name, chapters: chapters)
+        return BibleBook(
+            id: id,
+            bookNumber: bookNumber,
+            name: name,
+            chapters: chapters,
+            translations: (translations ?? []).map {
+                BibleBookTranslation(language: $0.language, translatedName: $0.translatedName)
+            }
+        )
     }
 }
 
@@ -36,4 +41,9 @@ struct BibleLanguageDTO: Decodable {
     func toDomain() -> BibleLanguage {
         BibleLanguage(id: id, language: language)
     }
+}
+
+struct BibleBookTranslationDTO: Decodable {
+    let language: String?
+    let translatedName: String?
 }

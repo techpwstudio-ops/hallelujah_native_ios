@@ -13,6 +13,8 @@ struct SleepTimerSheet: View {
     let controller: SleepTimerController
     let onDismiss: () -> Void
 
+    @Environment(\.toastCenter) private var toastCenter
+
     private static let titleToken = TypographyToken(size: 18, weight: .bold, lineHeightMultiple: 1.2)
     private static let subtitleToken = TypographyToken(size: 12, weight: .regular, lineHeightMultiple: 1.2)
 
@@ -67,6 +69,8 @@ struct SleepTimerSheet: View {
         let isSelected = controller.selectedMinutes == minutes
         return Button {
             controller.start(minutes: minutes)
+            // `_onSetSleepTimer`'s snackbar.
+            toastCenter.show("Sleep timer set for \(minutes) minutes")
             onDismiss()
         } label: {
             HStack {
@@ -99,6 +103,8 @@ struct SleepTimerSheet: View {
                     .frame(height: 1)
                 Button {
                     controller.cancel()
+                    // `_onCancelSleepTimer`'s snackbar.
+                    toastCenter.show("Sleep timer turned off")
                     onDismiss()
                 } label: {
                     HStack(spacing: 16) {

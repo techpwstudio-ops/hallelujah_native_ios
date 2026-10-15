@@ -179,25 +179,51 @@ extension AIMessage {
 
 // MARK: - Send payload
 
-/// A future attachment-send entry's shape. v1 callers always pass an empty
-/// `[AIAttachmentPayload]()` — attachment/image upload UI is out of T58 v1
-/// scope — this type exists only so a later attachment feature doesn't need
-/// to reshape `AISendPayload` itself.
+/// `AiAttachmentPayload` (`lib/models/ai/ai_message.dart`): an already
+/// uploaded attachment on the message being sent.
 struct AIAttachmentPayload: Sendable {
     let key: String
     let mimeType: String
+
+    /// `AiAttachmentPayload.type`: derived from the MIME type, defaulting to image.
+    var type: String {
+        if mimeType.hasPrefix("image/") { return "image" }
+        if mimeType.hasPrefix("audio/") { return "audio" }
+        if mimeType.hasPrefix("video/") { return "video" }
+        if mimeType == "application/pdf" { return "pdf" }
+        return "image"
+    }
 }
 
+/// `AiSendPayload` (`lib/models/ai/ai_message.dart`).
 struct AISendPayload: Sendable {
     let message: String?
+    let audioKey: String?
+    let audioMimeType: String?
+    let provider: String?
     let attachments: [AIAttachmentPayload]
+    let tts: Bool
 
-    /// v1 has no audio/TTS send path, so streaming (`AIChatStreamingClient`)
-    /// is the only send mode whenever there are no attachments to upload
-    /// first; the moment `attachments` is non-empty, sending falls back to
-    /// the non-streaming `AIChatRepository.sendMessage` path instead.
+    init(
+        message: String?,
+        audioKey: String? = nil,
+        audioMimeType: String? = nil,
+        provider: String? = nil,
+        attachments: [AIAttachmentPayload] = [],
+        tts: Bool = false
+    ) {
+        self.message = message
+        self.audioKey = audioKey
+        self.audioMimeType = audioMimeType
+        self.provider = provider
+        self.attachments = attachments
+        self.tts = tts
+    }
+
+    /// Streaming is safe only for plain text-only messages
+    /// (`audioKey == null && attachments.isEmpty && tts == false`).
     var shouldStream: Bool {
-        attachments.isEmpty
+        audioKey == nil && attachments.isEmpty && !tts
     }
 }
 

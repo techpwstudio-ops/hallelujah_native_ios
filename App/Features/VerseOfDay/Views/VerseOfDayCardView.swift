@@ -24,6 +24,11 @@ struct VerseOfDayCardView: View {
         .task {
             await viewModel.refresh()
         }
+        // The Home feed, a delivered push or a realtime update just stored a
+        // newer verse / count (Flutter's `VerseOfDayHistoryBloc` state stream).
+        .onReceive(NotificationCenter.default.publisher(for: .verseOfDayDidChange)) { _ in
+            Task { @MainActor in await viewModel.refresh() }
+        }
     }
 }
 
@@ -95,7 +100,7 @@ private struct VerseOfDayCardContentView: View {
                 onClose: { showOptionsSheet = false }
             )
         }
-        .sheet(isPresented: $showAskEmetSheet) {
+        .fullScreenCover(isPresented: $showAskEmetSheet) {
             AIVerseInsightDialogView(target: .fromVerseOfDay(verse))
         }
         .readSheet(isPresented: $showCommentsSheet, detents: [.fraction(0.65), .fraction(0.95)]) {

@@ -24,6 +24,9 @@ final class RealtimeConnectionManager {
         case connected
     }
 
+    /// Mirrors `WebSocketService.useSocket`.
+    static let useSocket = false
+
     private(set) var status: Status = .disconnected
 
     private let configuration: AppConfiguration
@@ -54,6 +57,12 @@ final class RealtimeConnectionManager {
     /// is a no-op, matching Dart's own `_isConnecting`/`_isConnected && _token
     /// == token` guards.
     func connect() async {
+        // `WebSocketService.useSocket = false` (`websocket.dart`): the Flutter
+        // app never opens the socket — `init()` returns on its first line —
+        // and every realtime event it handles arrives over FCM instead
+        // (`PushNotificationService.handleIncoming`). Flip to `true` only
+        // together with the Dart flag.
+        guard Self.useSocket else { return }
         guard status != .connecting else { return }
         guard let token = await authProvider.currentAccessToken(), !token.isEmpty else {
             logger.warning("realtime connect skipped — no access token")

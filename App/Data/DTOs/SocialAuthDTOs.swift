@@ -8,10 +8,6 @@ import Foundation
 /// same reason `deviceId`/`membership`/`isPasswordSet` already are (see that
 /// type's doc comment) — no native consumer exists yet.
 ///
-/// `refer` (Dart's best-effort deep-link attribution) isn't ported either,
-/// matching `AuthOTPSendRequest`'s precedent: `DeepLinkService` has no
-/// cached-initial/latest-link query, and the server already tolerates the
-/// field's absence.
 struct SocialAuthVerifyRequest: Encodable, Sendable {
     struct User: Encodable, Sendable {
         let name: String?
@@ -39,4 +35,6 @@ struct SocialAuthVerifyRequest: Encodable, Sendable {
     /// parameter nothing yet needs to vary.
     let isLogin: Bool
     let provider: Provider
+    /// `_getRefer()` — deep-link attribution (`ReferralAttributionStore`).
+    var refer: ReferAttribution? = nil
 }

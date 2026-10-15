@@ -28,7 +28,17 @@ extension JSONEncoder {
 extension JSONDecoder {
     static var authTokens: JSONDecoder {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        // Not bare `.iso8601`: the backend serialises expiries with
+        // fractional seconds (`2024-01-10T08:30:00.000Z`), which that
+        // strategy rejects, while `DateTime.parse` in Dart takes both.
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let string = try container.decode(String.self)
+            guard let date = Date.parseFlexibleISO8601(string) else {
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Not a valid ISO 8601 date: \(string)")
+            }
+            return date
+        }
         return decoder
     }
 }

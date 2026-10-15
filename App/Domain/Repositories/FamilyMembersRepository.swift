@@ -7,14 +7,13 @@ import Foundation
 /// reserves family-member management for T63 without adding a method there,
 /// matching how T62 (Razorpay)/T64 (Tips) each own their own call sites too.
 ///
-/// `acceptInvitation`/`declineInvitation` (`EndPoints.acceptSubscriptionInviteApi`/
-/// `declineSubscriptionInviteApi`) have no method here — those back the
-/// invite *recipient's* accept/decline screen (reached from a push
-/// notification/deep link, per `ManagePremiumService.acceptInvitation`'s own
-/// `NavigationService.back()` + `showSubscribedSuccessSheet()` flow), not
-/// `ManageFamilyMembersPage` (the owner's management screen this ports).
-/// That recipient-side flow has no native screen yet and is out of this
-/// task's scope.
+/// `acceptInvitation`/`declineInvitation` back the invite *recipient's*
+/// sheet (`showInviteReceivedSheet`, `PremiumInviteCoordinator`), reached from
+/// the sync payload's `invite` key or the `premium.member.invite` realtime
+/// event.
+///
+/// Every success returns the server's own `message` (Dart toasts
+/// `res.data['message']` verbatim after each of these calls).
 protocol FamilyMembersRepository: Sendable {
     /// `getSubscriptionMembers` — `GET /premium/subscription/members`.
     func fetchMembers() async throws -> FamilyMembers
@@ -29,11 +28,12 @@ protocol FamilyMembersRepository: Sendable {
     /// /premium/subscription/invite/resend`, body `{inviteId}`. Returns the
     /// invite's refreshed status (`res.data['data']['status']`), the exact
     /// value `updateInviteStatus` applies locally.
-    func resendInvitation(inviteId: String) async throws -> String
+    func resendInvitation(inviteId: String) async throws -> FamilyInviteResendResult
 
     /// `ManagePremiumService.deleteInvitation` — `DELETE
     /// /premium/subscription/invite/:inviteId`.
-    func cancelInvitation(inviteId: String) async throws
+    @discardableResult
+    func cancelInvitation(inviteId: String) async throws -> String?
 
     /// `ManagePremiumService.deleteMember` — `DELETE
     /// /premium/subscription/member/:memberId`. The reference's own
@@ -41,5 +41,29 @@ protocol FamilyMembersRepository: Sendable {
     /// flow`, `ManageFamilyMembersPage.dart`) even though the service method
     /// is fully implemented — this task wires that missing call, since
     /// "add/remove member round-trips" is the done criterion.
-    func removeMember(memberId: String) async throws
+    @discardableResult
+    func removeMember(memberId: String) async throws -> String?
+
+    /// `ManagePremiumService.acceptInvitation` — `POST
+    /// /premium/subscription/invite/accept`, body `{inviteId}`. On 200 the
+    /// body's `data` is the recipient's new membership
+    /// (`OurSession.setMembershipDetails(res.data['data'])`).
+    func acceptInvitation(inviteId: String) async throws -> FamilyInviteActionResult
+
+    /// `ManagePremiumService.declineInvitation` — `POST
+    /// /premium/subscription/invite/decline`, body `{inviteId}`.
+    func declineInvitation(inviteId: String) async throws -> FamilyInviteActionResult
+}
+
+struct FamilyInviteResendResult: Sendable, Equatable {
+    /// `res.data['data']['status']`.
+    let status: String
+    /// `res.data['message']`.
+    let message: String?
+}
+
+struct FamilyInviteActionResult: Sendable, Equatable {
+    let message: String?
+    /// Accept only; `nil` for decline.
+    let membership: Membership?
 }

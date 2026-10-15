@@ -39,7 +39,8 @@ final class RemoteAuthRepository: AuthRepository {
             secret1: configuration.otpSecret1,
             secret2: configuration.otpSecret2,
             appCheck: await appCheck.limitedUseToken(),
-            requestId: requestID
+            requestId: requestID,
+            refer: resend ? nil : ReferralAttributionStore.shared.snapshot
         )
         let body = try JSONEncoder().encode(request)
         let response = try await client.send(resend ? .authOTPResend : .authOTPSend, body: body)
@@ -65,6 +66,8 @@ final class RemoteAuthRepository: AuthRepository {
         }
         let decoded = try JSONDecoder.authTokens.decode(AuthOTPVerifyResponse.self, from: response.data)
 
+        // `createSession(deviceId:)` — echoed back as the `device-id` header.
+        DeviceIdentityStore.shared.update(decoded.deviceId)
         try await session.store(decoded.tokens)
         await currentUserStore.setUser(decoded.user)
         await membershipStore.setMembership(decoded.membership)
@@ -97,7 +100,8 @@ final class RemoteAuthRepository: AuthRepository {
             secret2: configuration.otpSecret2,
             appCheck: await appCheck.limitedUseToken(),
             isLogin: true,
-            provider: SocialAuthVerifyRequest.Provider(name: provider.rawValue, secrete: secrete)
+            provider: SocialAuthVerifyRequest.Provider(name: provider.rawValue, secrete: secrete),
+            refer: ReferralAttributionStore.shared.snapshot
         )
         let body = try JSONEncoder().encode(request)
         let response = try await client.send(.authOAuthVerify, body: body)
@@ -106,6 +110,8 @@ final class RemoteAuthRepository: AuthRepository {
         }
         let decoded = try JSONDecoder.authTokens.decode(AuthOTPVerifyResponse.self, from: response.data)
 
+        // `createSession(deviceId:)` — echoed back as the `device-id` header.
+        DeviceIdentityStore.shared.update(decoded.deviceId)
         try await session.store(decoded.tokens)
         await currentUserStore.setUser(decoded.user)
         await membershipStore.setMembership(decoded.membership)
@@ -170,6 +176,18 @@ final class RemoteAuthRepository: AuthRepository {
             user.status = status
         }
         await currentUserStore.setUser(user)
+
+        // The rest of `changeContentLanguages`: re-run the push topic sync
+        // (FCM subscriptions can only be moved by the device), wipe the
+        // cached home layouts so the next load is in the new language, and
+        // refresh `/dashboard/init` (books, genres, languages, topics).
+        await FCMTopicManager.shared.contentLanguagesDidChange()
+        if let homeCache = DependencyContainer.current.resolveIfRegistered(HomeFeedCache.self) {
+            for type in [HomeContentType.all, .music, .episode] {
+                await homeCache.clear(type: type)
+            }
+        }
+        Task { await AppDataSync.shared.sync(force: true, silent: true) }
     }
 
     /// A 403/404 logs the session out and throws, matching
@@ -201,11 +219,38 @@ final class RemoteAuthRepository: AuthRepository {
     }
 
     func logout() async {
-        // Fire-and-forget, matching `session.dart`'s `logout()`: errors are
-        // logged, never surfaced or allowed to block the local teardown.
+        await logout(reason: "manual")
+    }
+
+    /// `OurSession.logout(reason:)`: an audit entry (`_trackLogoutEvent`) and
+    /// the server-side logout (`GET /user/logout?delete=<reason>`) are both
+    /// fire-and-forget — errors are logged, never surfaced or allowed to block
+    /// the local teardown.
+    func logout(reason: String) async {
+        let userID = await currentUserStore.user?.id
+        let deviceID = DeviceIdentityStore.shared.deviceID
+        let client = client
+        let logger = logger
+        Task.detached {
+            let deviceValue: Any = deviceID ?? NSNull()
+            let userValue: Any = userID ?? NSNull()
+            let metadata: [String: Any] = ["reason": reason, "deviceId": deviceValue]
+            let payload: [String: Any] = [
+                "action": "logout",
+                "entity": "user_session",
+                "entityId": userValue,
+                "metadata": metadata,
+            ]
+            guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
+            do {
+                _ = try await client.send(.auditLog, body: body)
+            } catch {
+                logger.warning("logout audit entry failed: \(error)")
+            }
+        }
+
         do {
-            let body = try JSONEncoder().encode(["delete": "manual"])
-            let response = try await client.send(.logout, body: body)
+            let response = try await client.send(.logout(reason: reason))
             if response.statusCode != 200 {
                 logger.warning("logout endpoint returned \(response.statusCode)")
             }

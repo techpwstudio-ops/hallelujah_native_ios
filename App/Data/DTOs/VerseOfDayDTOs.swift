@@ -22,6 +22,10 @@ struct VerseOfDayDTO: Decodable, Sendable {
     let shares: Int?
     let comments: Int?
     let isLinked: Bool?
+    /// `getVerseOfDayFromJson` derives "liked" from this list being non-empty
+    /// (the current user's own `favoriteVerseOfDays` rows) and ignores
+    /// `isLinked`; honoured first here, `isLinked` is the fallback.
+    let favoriteVerseOfDays: [JSONValue]?
     let scheduledAt: String?
     let sentAt: String?
     let createdAt: String?
@@ -46,7 +50,7 @@ extension VerseOfDayDTO {
             likes: likes ?? 0,
             shares: shares ?? 0,
             comments: comments ?? 0,
-            isLiked: isLinked ?? false,
+            isLiked: favoriteVerseOfDays.map { !$0.isEmpty } ?? isLinked ?? false,
             scheduledAt: Date.parseFlexibleISO8601(scheduledAt),
             sentAt: Date.parseFlexibleISO8601(sentAt),
             createdAt: Date.parseFlexibleISO8601(createdAt),
@@ -115,6 +119,8 @@ struct VerseOfDayCommentDTO: Decodable, Sendable {
     let content: String
     let likes: Int?
     let isLinked: Bool?
+    /// `getVerseOfDayCommentFromJson`: liked == `verseOfDayCommentLikes` non-empty.
+    let commentLikes: [JSONValue]?
     let createdAt: String?
     let updatedAt: String?
     let userId: String?
@@ -123,7 +129,8 @@ struct VerseOfDayCommentDTO: Decodable, Sendable {
     let userImageVariants: String?
 
     private enum CodingKeys: String, CodingKey {
-        case id, verseOfDayId, content, likes, isLinked, createdAt, updatedAt, user
+        case id, verseOfDayId, content, likes, isLinked, createdAt, updatedAt, user, userId
+        case commentLikes = "verseOfDayCommentLikes"
     }
 
     /// The wire's nested `user` object — decoded into this small private
@@ -142,11 +149,12 @@ struct VerseOfDayCommentDTO: Decodable, Sendable {
         content = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
         likes = try container.decodeIfPresent(Int.self, forKey: .likes)
         isLinked = try container.decodeIfPresent(Bool.self, forKey: .isLinked)
+        commentLikes = try? container.decodeIfPresent([JSONValue].self, forKey: .commentLikes)
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
         updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
 
         let user = try container.decodeIfPresent(UserDTO.self, forKey: .user)
-        userId = user?.id
+        userId = user?.id ?? (try? container.decodeIfPresent(String.self, forKey: .userId))
         userName = user?.name
         userImage = user?.image
         userImageVariants = user?.imageVariants
@@ -164,7 +172,7 @@ extension VerseOfDayCommentDTO {
             userImage: verseOfDaySanitized(userImage),
             userImageVariants: verseOfDaySanitized(userImageVariants),
             likes: likes ?? 0,
-            isLiked: isLinked ?? false,
+            isLiked: commentLikes.map { !$0.isEmpty } ?? isLinked ?? false,
             createdAt: Date.parseFlexibleISO8601(createdAt),
             updatedAt: Date.parseFlexibleISO8601(updatedAt)
         )

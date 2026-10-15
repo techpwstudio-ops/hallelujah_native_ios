@@ -21,11 +21,10 @@ import Observation
 ///   (`_mapStringToDownloadTaskStatus`/`updateTask` never round-trips a real
 ///   plugin taskId back in), so it silently no-ops in practice. This does
 ///   the real thing: reset to `.queued` and let normal promotion restart it.
-/// - No Wi-Fi-only download toggle. Dart reads a `download_wifi_only` flag
-///   from `StorageService` into `FlutterDownloader.enqueue(requiresWifi:)`.
-///   Nothing in this task's contract wires a settings store into this
-///   engine's `init`, so that preference isn't ported — a real feature gap
-///   if this app wants parity, but out of scope for this file to invent.
+/// - The Wi-Fi-only toggle IS honoured: the `download_wifi_only` flag Settings
+///   writes (`SettingsView`) is read at the moment each transfer's request is
+///   built and mapped to `allowsCellularAccess = false`, the native analog of
+///   `FlutterDownloader.enqueue(allowCellular:)`.
 ///
 /// ## Song snapshots, not a cache
 /// There is no local `Song` cache anywhere in this app yet (`Database.swift`'s
@@ -219,15 +218,16 @@ final class DownloadEngine {
         // the `Song` needed to resolve a fresh source URL; otherwise this is
         // a no-op the caller has to work around by re-triggering `enqueue`
         // with a freshly-fetched `Song` (see this file's top doc comment).
-        guard songs[songID] != nil else {
-            logger.warning("resume requested for song \(songID) with no cached Song this session; ignoring")
-            return
-        }
+        // Otherwise re-fetch the song (`DownloaderBloc` re-reads it from the
+        // API when Realm lacks it) so the transfer can still restart.
         task.state = .queued
         task.updatedAt = Date()
         tasks[songID] = task
         persist()
-        Task { await startNextQueuedIfNeeded() }
+        Task {
+            await restoreSongIfNeeded(songID: songID)
+            await startNextQueuedIfNeeded()
+        }
     }
 
     func cancel(songID: String) {
@@ -249,11 +249,13 @@ final class DownloadEngine {
     /// A REAL re-enqueue, unlike Dart's dead `retryDownload` (see top doc
     /// comment) — resets to `.queued` and lets normal promotion restart it.
     func retry(songID: String) async {
-        guard var task = tasks[songID], task.state == .failed else { return }
+        guard tasks[songID]?.state == .failed else { return }
+        await restoreSongIfNeeded(songID: songID)
         guard songs[songID] != nil else {
-            logger.warning("retry requested for song \(songID) with no cached Song this session; ignoring")
+            logger.warning("retry requested for song \(songID) and the song could not be re-fetched; ignoring")
             return
         }
+        guard var task = tasks[songID], task.state == .failed else { return }
         task.state = .queued
         task.bytesWritten = 0
         task.totalBytes = nil
@@ -270,6 +272,7 @@ final class DownloadEngine {
         tasks[songID] = nil
         songs[songID] = nil
         persist()
+        CarIntegrationNotifier.downloadsChanged()
     }
 
     /// Called by `AppComposition`'s sign-out closure and the "delete all
@@ -296,6 +299,7 @@ final class DownloadEngine {
             }
         }
         persist()
+        CarIntegrationNotifier.downloadsChanged()
     }
 
     func isDownloaded(songID: String) -> Bool {
@@ -378,6 +382,7 @@ final class DownloadEngine {
         }
 
         var request = URLRequest(url: resolved.url)
+        request.allowsCellularAccess = Self.allowsCellularDownloads()
         if resolved.requiresAuthHeader {
             // Tier-2 proxy only (tier-1 presigned CloudFront never needs
             // this). May go stale by the time the OS actually runs the
@@ -414,6 +419,25 @@ final class DownloadEngine {
         downloadTask.resume()
     }
 
+    /// After a relaunch the in-memory `songs` cache is empty, but resolving a
+    /// fresh source URL needs the full `Song`. Re-fetch it (`saveSong` in
+    /// `DownloaderBloc._load`) so a failed or paused download stays retryable.
+    private func restoreSongIfNeeded(songID: String) async {
+        guard songs[songID] == nil,
+              let repository = DependencyContainer.current.resolveIfRegistered((any SongRepository).self),
+              let song = try? await repository.fetchSong(id: songID)
+        else { return }
+        songs[songID] = song
+    }
+
+    /// `!(StorageService.getBoolean("download_wifi_only") == true)`.
+    nonisolated static let wifiOnlyKey = "download_wifi_only"
+
+    private static func allowsCellularDownloads() -> Bool {
+        let store: any KeyValueStoring = DependencyContainer.current.resolve()
+        return !store.bool(forKey: wifiOnlyKey)
+    }
+
     private func startTracking(_ downloadTask: URLSessionDownloadTask, songID: String, destinationFileName: String) {
         activeDownloadTasks[songID] = downloadTask
         sessionDelegate.register(taskIdentifier: downloadTask.taskIdentifier, songID: songID, destinationFileName: destinationFileName)
@@ -436,6 +460,7 @@ final class DownloadEngine {
         songs[songID] = nil
 
         notifyServerOfCompletedDownload(songID: songID)
+        CarIntegrationNotifier.downloadsChanged()
         await startNextQueuedIfNeeded()
     }
 

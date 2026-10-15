@@ -16,14 +16,12 @@ import SwiftUI
 /// "read ground truth, act only on a genuine difference" shape, so there's
 /// nothing to echo.
 ///
-/// **Not ported**: Dart's overscroll-past-the-queue-edge gesture (`>48pt`
-/// past the first/last page dispatches `SeekToNextSongEvent`/
-/// `SeekToPreviousSongEvent(allowRestart:false)`, letting a swipe run
-/// past the queue's boundary into skipping tracks). `TabView(.page)`
-/// exposes no rubber-band/overscroll-distance hook to build this against,
-/// and a hand-rolled paging `DragGesture` replacement risks getting the
-/// core swipe-to-scrub behavior wrong for a rarely-used edge nicety —
-/// flagged as a deliberate scope cut, not an oversight.
+/// Overscroll past the queue's edge (`_onScroll`): `TabView(.page)` exposes no
+/// rubber-band distance, so a simultaneous `DragGesture` stands in — a pull
+/// of more than 48pt towards "nothing there" while on the last / first page
+/// dispatches `skipToNext()` / `skipToPrevious(allowRestart: false)`, the same
+/// events the Next button and the Dart pager use, so the swipe reaches the
+/// recommended-playlist hand-off identically.
 struct PlayerArtworkPager: View {
     let queueController: QueueController
 
@@ -58,6 +56,38 @@ struct PlayerArtworkPager: View {
         // real one.
         .aspectRatio(currentSong?.displayAspectRatio ?? 1, contentMode: .fit)
         .frame(maxWidth: .infinity)
+        .simultaneousGesture(edgeOverscrollGesture)
+    }
+
+    /// How far past the end the user has to pull for it to count as "next".
+    static let overscrollThreshold: CGFloat = 48
+
+    /// Pure decision behind the gesture, kept static for unit tests.
+    /// `translation` is the drag's horizontal travel (negative = towards the
+    /// next page). Returns `.next` / `.previous` only when the pull exceeds
+    /// the threshold in the direction that has no page behind it.
+    enum EdgeAction: Equatable { case next, previous }
+
+    static func edgeAction(translation: CGFloat, index: Int, count: Int) -> EdgeAction? {
+        guard count > 0, index >= 0 else { return nil }
+        if index == count - 1, -translation > overscrollThreshold { return .next }
+        if index == 0, translation > overscrollThreshold { return .previous }
+        return nil
+    }
+
+    private var edgeOverscrollGesture: some Gesture {
+        DragGesture(minimumDistance: 10)
+            .onEnded { value in
+                let index = queueController.queue?.currentIndex ?? 0
+                switch Self.edgeAction(translation: value.translation.width, index: index, count: songs.count) {
+                case .next:
+                    Task { await queueController.skipToNext() }
+                case .previous:
+                    Task { await queueController.skipToPrevious(allowRestart: false) }
+                case nil:
+                    break
+                }
+            }
     }
 
     private var selectionBinding: Binding<String?> {

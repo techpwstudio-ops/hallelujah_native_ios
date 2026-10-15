@@ -16,9 +16,9 @@ import SwiftUI
 /// The ad takeover (`PlayerAdOverlay`) covers the artwork pager and the
 /// lingering `AdCompanionBanner` is pinned to the bottom, as in Flutter.
 ///
-/// Not ported (data or services this codebase lacks): the creator card,
-/// credits, the related-content rail and the artwork pager's
-/// overscroll-to-skip gesture.
+/// The creator card, credits and "More like this" rail come from
+/// `SongMetaSections`. Not ported: the artwork pager's overscroll-to-skip
+/// gesture.
 struct FullPlayerView: View {
     @Environment(\.appTheme) private var theme
     @Environment(AppNavigationCoordinator.self) private var coordinator
@@ -274,11 +274,21 @@ struct FullPlayerView: View {
                 PlayerLyricsPreviewCard(song: song, currentPosition: engine.currentPosition) {
                     coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? "Lyrics"))
                 }
-                Text("Description")
-                    .typography(Typography.bodyMedium)
-                    .foregroundStyle(PlayerStyle.white)
-                    .padding(.top, 16)
-                PlayerExpandableText(text: song.description ?? "")
+                // Creator card, credits, then the description, then the
+                // "More like this" rail (`SongMetaDataUi` order).
+                SongMetaSections(
+                    songId: song.id,
+                    excludeId: RecentlyPlayedSyncer.sourceID(from: queueController.queue?.source.id),
+                    middle: AnyView(
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Description")
+                                .typography(Typography.bodyMedium)
+                                .foregroundStyle(PlayerStyle.white)
+                            PlayerExpandableText(text: song.description ?? "")
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    )
+                )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

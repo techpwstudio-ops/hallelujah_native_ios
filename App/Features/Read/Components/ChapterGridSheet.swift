@@ -9,6 +9,8 @@ import SwiftUI
 /// chapter into view when its row is the 7th or later.
 struct ChapterGridSheet: View {
     let book: BibleBook
+    /// The reader's Bible language — the back row shows the translated name.
+    var language: String? = nil
     /// Chapter currently open in the reader, only meaningful when
     /// `currentBookNumber == book.bookNumber`.
     let currentChapter: Int
@@ -38,7 +40,7 @@ struct ChapterGridSheet: View {
                         .font(.system(size: 18, weight: .regular))
                         .foregroundStyle(ReadPalette.white)
                         .frame(width: 24, height: 24)
-                    Text(book.name)
+                    Text(book.translate(language))
                         .readText(Typography.bodyLarge, weight: .regular, color: ReadPalette.secondaryText)
                 }
                 .contentShape(Rectangle())

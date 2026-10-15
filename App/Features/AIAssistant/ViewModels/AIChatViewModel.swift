@@ -63,11 +63,12 @@ final class AIChatViewModel {
             let page = try await repository.getMessages(conversationID: conversationID, cursor: nil)
             messages = Array(page.items.reversed())
             hasMore = page.hasMore
-            nextCursor = nil
+            nextCursor = page.nextCursor
             isInitialLoading = false
         } catch let loadError {
             logger.warning("load messages for conversation \(conversationID) failed: \(loadError)")
-            error = "Couldn't load messages. Please try again."
+            let message = AIErrorParser.parse(loadError)
+            error = message.isEmpty ? nil : message
             isInitialLoading = false
         }
     }
@@ -82,10 +83,11 @@ final class AIChatViewModel {
             let olderMessages = page.items.reversed().filter { !existingIDs.contains($0.id) }
             messages.append(contentsOf: olderMessages)
             hasMore = page.hasMore
-            nextCursor = nil
+            nextCursor = page.nextCursor
         } catch let loadMoreError {
             logger.warning("load more messages for conversation \(conversationID) failed: \(loadMoreError)")
-            error = "Couldn't load more messages. Please try again."
+            let message = AIErrorParser.parse(loadMoreError)
+            error = message.isEmpty ? nil : message
             // Existing rows are left untouched — `hasMore`/`messages` both
             // keep their pre-failure values, so the view's own retry
             // affordance (calling `loadMore()` again) has something
@@ -128,18 +130,7 @@ final class AIChatViewModel {
         guard sourceIndex < messages.count else { return }
         let source = messages[sourceIndex]
 
-        guard source.content != nil || !source.attachments.isEmpty else { return }
-
-        let payload = AISendPayload(
-            message: source.content,
-            // v1 never actually populates this (no attachment/image upload
-            // UI in scope), but a persisted row could in principle carry
-            // one; `AIAttachment.mimeType` is optional on the wire, while
-            // `AIAttachmentPayload.mimeType` isn't, so a missing mime type
-            // falls back to an empty string rather than dropping the
-            // attachment from the resend entirely.
-            attachments: source.attachments.map { AIAttachmentPayload(key: $0.key, mimeType: $0.mimeType ?? "") }
-        )
+        guard let payload = Self.payload(for: source) else { return }
 
         // Remove the failed pair before resending — `sendMessage(payload:)`
         // below inserts a fresh optimistic pair of its own. Removing the
@@ -177,7 +168,20 @@ final class AIChatViewModel {
             source = index + 1 < messages.count ? messages[index + 1] : nil
         }
         guard let source else { return false }
-        return source.content != nil || !source.attachments.isEmpty
+        return Self.payload(for: source) != nil
+    }
+
+    /// `AiChatNotifier.payloadFor`: rebuilds a send payload from a user message,
+    /// or nil when nothing re-sendable is left (e.g. a failed voice upload).
+    static func payload(for message: AIMessage) -> AISendPayload? {
+        guard message.role == .user else { return nil }
+        let text = message.content?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let attachments = message.attachments.compactMap { attachment in
+            attachment.mimeType.map { AIAttachmentPayload(key: attachment.key, mimeType: $0) }
+        }
+        let hasText = !(text ?? "").isEmpty
+        guard hasText || !attachments.isEmpty else { return nil }
+        return AISendPayload(message: hasText ? text : nil, attachments: attachments)
     }
 
     // MARK: - Send (non-streaming)
@@ -201,7 +205,8 @@ final class AIChatViewModel {
             }
             isSending = false
             logger.warning("send message in conversation \(conversationID) failed: \(sendError)")
-            error = "Couldn't send your message. Please try again."
+            let message = AIErrorParser.parse(sendError)
+            error = message.isEmpty ? nil : message
         }
     }
 
@@ -250,7 +255,11 @@ final class AIChatViewModel {
                     finalizeStreamPartial(placeholderID: placeholder.id)
                 } else {
                     logger.warning("stream message in conversation \(conversationID) failed: \(error)")
-                    finalizeStreamError(placeholderID: placeholder.id, message: "Couldn't get a reply. Please try again.")
+                    let message = AIErrorParser.parse(error)
+                    finalizeStreamError(
+                        placeholderID: placeholder.id,
+                        message: message.isEmpty ? "Something went wrong. Please try again." : message
+                    )
                 }
             }
         }

@@ -58,6 +58,9 @@ final class NetworkStatusStore {
     private func apply(online: Bool) {
         let wasOffline = isOffline
         isOffline = !online
+        // `InternetService._applyStatus` also feeds `onStatusChange`, which the
+        // `/dashboard/init` retry (`ReconnectRetry`) listens to.
+        ReachabilityBroadcast.shared.publish(online: online)
 
         // `NetworkStatusBloc`'s reconnect trigger: on `wasOffline &&
         // !nowOffline`, Dart calls `PlaybackEventSyncService().syncPendingData()`.

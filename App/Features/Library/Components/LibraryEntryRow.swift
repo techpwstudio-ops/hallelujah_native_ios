@@ -41,7 +41,7 @@ struct LibraryEntryRow: View {
         switch entry {
         case let .playlist(playlist):
             return ArtworkURLResolver().resolve(path: playlist.image, variant: .sm, allowedVariants: playlist.imageVariants)
-        case let .userPlaylist(_, _, image, imageVariants, _, _):
+        case let .userPlaylist(_, _, image, imageVariants, _, _, _):
             return ArtworkURLResolver().resolve(path: image, variant: .sm, allowedVariants: imageVariants)
         }
     }
@@ -50,7 +50,7 @@ struct LibraryEntryRow: View {
         switch entry {
         case let .playlist(playlist):
             return playlist.title
-        case let .userPlaylist(_, title, _, _, _, _):
+        case let .userPlaylist(_, title, _, _, _, _, _):
             return title.isEmpty ? "Unnamed Playlist" : title.parityCapitalized
         }
     }
@@ -66,7 +66,8 @@ struct LibraryEntryRow: View {
                 if let name, !name.isEmpty { return "\(kind)\(parityDotSign)\(name)" }
                 return kind
             }
-        case .userPlaylist:
+        case let .userPlaylist(_, _, _, _, _, _, detail):
+            if let detail, !detail.isEmpty { return "Playlist\(parityDotSign)\(detail)" }
             return "Playlist"
         }
     }

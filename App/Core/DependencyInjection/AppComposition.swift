@@ -127,6 +127,8 @@ enum AppComposition {
                 Task { await membershipStore.clear() }
                 // A signed-out user's saved-library set must not carry over.
                 Task { @MainActor in librarySavedStore.clear() }
+                // Recommendations belong to the signed-out user's taste.
+                Task { @MainActor in container.resolve(RelatedContentService.self).clear() }
                 // T26 — tells `RootView` to fall back to the sign-in flow
                 // from wherever it currently is, matching `session.dart`'s
                 // `NavigationService.offAll(AuthenticationPage.routeName)`.
@@ -179,6 +181,19 @@ enum AppComposition {
         container.register((any PlaylistRepository).self) {
             RemotePlaylistRepository(client: HTTPClient(configuration: configuration, authProvider: session))
         }
+        // Related playlists/creators for the player's "More like this" rail and
+        // the end-of-queue hand-off. One shared service so its cache is shared.
+        container.register((any RelatedContentRepository).self) {
+            RemoteRelatedContentRepository(client: HTTPClient(configuration: configuration, authProvider: session))
+        }
+        let relatedContentService = MainActor.assumeIsolated {
+            RelatedContentService(
+                repository: RemoteRelatedContentRepository(client: HTTPClient(configuration: configuration, authProvider: session)),
+                playlists: RemotePlaylistRepository(client: HTTPClient(configuration: configuration, authProvider: session)),
+                creators: RemoteCreatorRepository(client: HTTPClient(configuration: configuration, authProvider: session))
+            )
+        }
+        container.register(RelatedContentService.self) { relatedContentService }
         // T40/T41 — same "no shared state to capture" reasoning as
         // `CreatorRepository`/`PlaylistRepository` above.
         container.register((any SearchRepository).self) {

@@ -47,6 +47,14 @@ struct LibraryUserPlaylistRowDTO: Decodable, Sendable {
     let imageVariants: String?
     let songsCount: Int?
     let isOwner: Bool?
+    /// Optional on the wire: `UserPlaylist.adminName` (`user.fName`) and
+    /// `visibility` feed the row's "Playlist · owner · Visibility" subtitle.
+    let visibility: String?
+    let user: Owner?
+
+    struct Owner: Decodable, Sendable {
+        let fName: String?
+    }
 }
 
 /// `creatorPlaylist`/`companyPlaylist` rows (`STRATEGIES.creatorPlaylist
@@ -141,7 +149,8 @@ extension LibraryItemRowDTO {
                 image: sanitized(dto.image),
                 imageVariants: sanitized(dto.imageVariants),
                 songsCount: dto.songsCount,
-                isOwner: dto.isOwner ?? false
+                isOwner: dto.isOwner ?? false,
+                detail: dto.subtitleDetail
             )
         case .unknown:
             return nil
@@ -194,4 +203,14 @@ struct LibraryToggleResponseDTO: Decodable, Sendable {
     }
 
     let data: Payload?
+}
+
+extension LibraryUserPlaylistRowDTO {
+    /// `UserPlaylistListItem._buildInfo`: `[adminName, Visibility]` joined with
+    /// the dot sign; nil when neither is known.
+    var subtitleDetail: String? {
+        let parts = [sanitized(user?.fName), sanitized(visibility).map { $0.prefix(1).uppercased() + $0.dropFirst() }]
+            .compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " \u{00B7} ")
+    }
 }

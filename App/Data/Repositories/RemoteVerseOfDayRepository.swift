@@ -106,4 +106,8 @@ final class RemoteVerseOfDayRepository: VerseOfDayRepository {
     func cachedVerse(id: String) async -> VerseOfDay? {
         await cache.verse(id: id)
     }
+
+    func store(_ verse: VerseOfDay) async {
+        await cache.store(verse)
+    }
 }

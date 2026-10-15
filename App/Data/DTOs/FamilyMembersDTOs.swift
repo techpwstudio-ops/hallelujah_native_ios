@@ -32,3 +32,14 @@ struct SendFamilyInviteRequest: Encodable {
 struct ResendFamilyInviteRequest: Encodable {
     let inviteId: String
 }
+
+/// Any family endpoint's `{message}` (Dart toasts `res.data['message']`).
+struct FamilyMessageResponseDTO: Decodable, Sendable {
+    let message: String?
+}
+
+/// `acceptInvitation`'s success body — `{message, data: <membership>}`.
+struct AcceptFamilyInviteResponseDTO: Decodable, Sendable {
+    let message: String?
+    let data: Membership?
+}

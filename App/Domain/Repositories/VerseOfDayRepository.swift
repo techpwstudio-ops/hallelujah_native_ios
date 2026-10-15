@@ -55,4 +55,8 @@ protocol VerseOfDayRepository: Sendable {
     /// its own. `nil` until a push (`markDelivered`) or a tap
     /// (`markClicked`) has cached something for this id.
     func cachedVerse(id: String) async -> VerseOfDay?
+
+    /// Writes a verse into the on-device mirror (`realm.add<VerseOfDay>(..., update: true)`):
+    /// home-feed rows, share-link rows and realtime count patches.
+    func store(_ verse: VerseOfDay) async
 }

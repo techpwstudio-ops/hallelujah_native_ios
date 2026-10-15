@@ -16,8 +16,8 @@ final class RemoteAIChatRepository: AIChatRepository {
         self.client = client
     }
 
-    func getConversations(cursor: String?) async throws -> Paginated<AIConversation> {
-        let response = try await client.send(.aiConversations(cursor: cursor))
+    func getConversations(cursor: String?, page: Int) async throws -> Paginated<AIConversation> {
+        let response = try await client.send(.aiConversations(cursor: cursor, page: page))
         guard response.statusCode == 200 else {
             throw AIChatRepositoryError.unexpectedStatus(response.statusCode)
         }
@@ -55,7 +55,7 @@ final class RemoteAIChatRepository: AIChatRepository {
     }
 
     func sendMessage(conversationID: String, payload: AISendPayload) async throws -> (userMessage: AIMessage, aiMessage: AIMessage) {
-        let body = try JSONEncoder().encode(AISendMessageRequestDTO(message: payload.message))
+        let body = try JSONEncoder().encode(AISendMessageRequestDTO(payload: payload))
         let response = try await client.send(.sendAIMessage(conversationID: conversationID), body: body)
         guard response.statusCode == 200 else {
             throw AIChatRepositoryError.unexpectedStatus(response.statusCode)

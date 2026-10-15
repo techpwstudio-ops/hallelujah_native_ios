@@ -126,7 +126,11 @@ struct AuthenticationView: View {
                 OTPView(
                     viewModel: phoneAuthViewModel,
                     mobile: context.mobile,
-                    onAuthSuccess: { _, requiresAccountSetup in onAuthenticated(requiresAccountSetup) },
+                    onAuthSuccess: { _, requiresAccountSetup in
+                        // `performUpdateAuth` toasts 'Authenticated' for both OTP channels.
+                        ToastCenter.shared.show("Authenticated")
+                        onAuthenticated(requiresAccountSetup)
+                    },
                     onEditPhoneNumber: { otpContext = nil }
                 )
             }
@@ -134,7 +138,11 @@ struct AuthenticationView: View {
                 EmailOTPView(
                     viewModel: emailAuthViewModel,
                     email: context.email,
-                    onAuthSuccess: { _, requiresAccountSetup in onAuthenticated(requiresAccountSetup) },
+                    onAuthSuccess: { _, requiresAccountSetup in
+                        // `performUpdateAuth` toasts 'Authenticated' for both OTP channels.
+                        ToastCenter.shared.show("Authenticated")
+                        onAuthenticated(requiresAccountSetup)
+                    },
                     onEditEmail: { emailOTPContext = nil }
                 )
             }

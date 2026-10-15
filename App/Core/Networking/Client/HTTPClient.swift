@@ -19,15 +19,18 @@ final class HTTPClient: Sendable {
     private let session: URLSession
     private let configuration: AppConfiguration
     private let authProvider: (any AuthTokenProviding)?
+    private let headerProvider: RequestHeaderProvider
     private let logger = AppLogger(category: .networking)
 
     init(
         configuration: AppConfiguration = .current,
         authProvider: (any AuthTokenProviding)? = nil,
-        session: URLSession? = nil
+        session: URLSession? = nil,
+        headerProvider: RequestHeaderProvider = .shared
     ) {
         self.configuration = configuration
         self.authProvider = authProvider
+        self.headerProvider = headerProvider
         if let session {
             self.session = session
         } else {
@@ -44,25 +47,56 @@ final class HTTPClient: Sendable {
     /// On a 401, triggers exactly one (single-flight) refresh via
     /// `authProvider` and replays this request once with the new token —
     /// it does not loop further if the replay is also a 401.
-    func send(_ endpoint: Endpoint, body: Data? = nil) async throws -> HTTPResponse {
+    ///
+    /// Response handling mirrors `DioApi`'s `_ResponseInterceptor`: an error
+    /// status (>= 400) whose body is not a JSON object is rewritten to
+    /// `{"message": ...}` so callers can always read `message`, and 429 / 5xx
+    /// raise the generic toast unless the request is silent
+    /// (`HTTPRequestPolicy`). The 401 replay is not toasted twice — only the
+    /// response the caller finally receives is.
+    ///
+    /// `silent` overrides `HTTPRequestPolicy.isSilent(path:)` for one call —
+    /// Dart's per-call `silent:` flag (a background retry of a request that is
+    /// normally user-visible passes `true`).
+    func send(_ endpoint: Endpoint, body: Data? = nil, silent: Bool? = nil) async throws -> HTTPResponse {
+        let isSilent = silent ?? HTTPRequestPolicy.isSilent(path: endpoint.path)
         let request = try await makeRequest(for: endpoint, body: body)
-        let response = try await send(request, endpoint: endpoint, attempt: 0)
+        var response = try await send(request, endpoint: endpoint, attempt: 0, silent: isSilent)
 
-        guard response.statusCode == 401, let authProvider else {
-            return response
+        if response.statusCode == 401, let authProvider {
+            var refreshed = false
+            do {
+                try await authProvider.refreshIfNeeded()
+                refreshed = true
+            } catch {
+                // Refresh failed; authProvider already logged out when that
+                // was the right call. The original 401 is what the caller sees.
+            }
+            if refreshed {
+                let retriedRequest = try await makeRequest(for: endpoint, body: body)
+                response = try await send(retriedRequest, endpoint: endpoint, attempt: 0, silent: isSilent)
+            }
         }
 
-        do {
-            try await authProvider.refreshIfNeeded()
-        } catch {
-            return response // refresh failed; authProvider already logged out
-        }
-
-        let retriedRequest = try await makeRequest(for: endpoint, body: body)
-        return try await send(retriedRequest, endpoint: endpoint, attempt: 0)
+        return finalised(response, silent: isSilent)
     }
 
-    private func send(_ request: URLRequest, endpoint: Endpoint, attempt: Int) async throws -> HTTPResponse {
+    private func finalised(_ response: HTTPResponse, silent: Bool) -> HTTPResponse {
+        var result = response
+        if let normalised = HTTPRequestPolicy.normalisedErrorBody(response.data, statusCode: response.statusCode) {
+            result = HTTPResponse(statusCode: response.statusCode, data: normalised)
+        }
+        if !silent, let message = HTTPRequestPolicy.responseToast(statusCode: response.statusCode) {
+            Self.showToast(message)
+        }
+        return result
+    }
+
+    private static func showToast(_ message: String) {
+        Task { @MainActor in ToastCenter.shared.show(message) }
+    }
+
+    private func send(_ request: URLRequest, endpoint: Endpoint, attempt: Int, silent: Bool) async throws -> HTTPResponse {
         logger.debug("\(endpoint.method.rawValue) \(endpoint.path) — attempt \(attempt + 1)/\(Self.maxAttempts)")
         do {
             let (data, response) = try await session.data(for: request)
@@ -71,12 +105,19 @@ final class HTTPClient: Sendable {
             }
             logger.debug("\(endpoint.method.rawValue) \(endpoint.path) — status \(httpResponse.statusCode)")
             return HTTPResponse(statusCode: httpResponse.statusCode, data: data)
-        } catch let error as URLError where Self.isRetryable(error) && attempt < Self.maxAttempts - 1 {
+        } catch let error as URLError where Self.isRetryable(error)
+            && HTTPRequestPolicy.allowsRetry(method: endpoint.method, path: endpoint.path)
+            && attempt < Self.maxAttempts - 1 {
             let delayMilliseconds = 500 * (attempt + 1)
             logger.warning("\(endpoint.path) failed (\(error.code.rawValue)), retrying in \(delayMilliseconds)ms")
             try? await Task.sleep(for: .milliseconds(delayMilliseconds))
-            return try await send(request, endpoint: endpoint, attempt: attempt + 1)
+            return try await send(request, endpoint: endpoint, attempt: attempt + 1, silent: silent)
         } catch let error as URLError {
+            // Every attempt spent (or not retryable): `_RetryInterceptor`'s
+            // closing toast. A cancelled request is the caller's own doing.
+            if error.code != .cancelled, Self.isRetryable(error), !silent {
+                Self.showToast(HTTPRequestPolicy.transportToast(for: error))
+            }
             throw APIError.transport(error)
         }
     }
@@ -115,22 +156,17 @@ final class HTTPClient: Sendable {
 
     private func headers() async -> [String: String] {
         let token = await authProvider?.currentAccessToken() ?? ""
-        return [
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Authorization": "Bearer \(token)",
-            "secure": configuration.apiSecureHeader,
-            // Dio's `buildHeaders()` sends this on every request; several
-            // endpoints branch on it server-side (`getPremiumPlans`/
-            // `createPaymentRequest`, T61 — `req.headers["os"]` resolves
-            // `platform`, which is what resolves `providerPlanId` to a real
-            // Apple product ID; omitting it silently defaults `platform`
-            // to `"web"` and no plan ever becomes purchasable). Hardcoded
-            // literal, not a per-platform switch — this target only ships iOS.
-            "os": "ios",
-            // device-id/device-model/app-version/build-number/app-check-token
-            // (buildHeaders() in DioService.dart) land as their sources do:
-            // device info, then Firebase App Check in T15.
-        ]
+        // `buildHeaders()` (`DioService.dart`): app-check-token, device-id,
+        // device-model, os, app-version, build-number. Several endpoints
+        // branch on `os` server-side (`getPremiumPlans`/
+        // `createPaymentRequest` resolve `providerPlanId` to a real Apple
+        // product ID from it — omitting it silently defaults the platform to
+        // `"web"` and no plan ever becomes purchasable).
+        var headers = await headerProvider.headers()
+        headers["Content-Type"] = "application/json"
+        headers["Accept"] = "application/json"
+        headers["Authorization"] = "Bearer \(token)"
+        headers["secure"] = configuration.apiSecureHeader
+        return headers
     }
 }
