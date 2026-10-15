@@ -463,8 +463,7 @@ struct ReaderView: View {
                         .foregroundStyle(ReadPalette.white)
                         .frame(width: 22, height: 22)
                 }
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -490,9 +489,13 @@ struct ReaderView: View {
                 }
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20)
+        .frame(height: 52)
         .glassCapsule()
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
+        // Breathing room so the pill never touches the tab bar below.
+        .padding(.top, 6)
+        .padding(.bottom, 10)
     }
 
     private func navIcon(systemName: String, action: @escaping () -> Void) -> some View {
@@ -500,7 +503,7 @@ struct ReaderView: View {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(ReadPalette.white)
-                .frame(width: 18, height: 18)
+                .frame(width: 36, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
