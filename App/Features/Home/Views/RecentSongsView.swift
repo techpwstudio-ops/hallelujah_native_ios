@@ -18,9 +18,12 @@ struct RecentSongsView: View {
         }
         .background(HomeColors.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Color.black, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .principal) {
+            // `centerTitle: false` — left-aligned beside the back button.
+            ToolbarItem(placement: .topBarLeading) {
                 Text("Recent")
                     .typography(Typography.titleLarge)
                     .fontWeight(.bold)

@@ -117,13 +117,20 @@ private struct TabRootView: View {
     var body: some View {
         // The banner now lives inside Home's scroll content (Flutter mounts
         // it as the first sliver of `home_screen.dart`).
-        content
-            .navigationTitle(Text(tab.titleKey))
-            .navigationBarTitleDisplayMode(.inline)
-            // Home draws its own profile header; Flutter has no app bar there.
-            // Emet draws its own "Emet" header row too — a second system title
-            // above it duplicated the name.
-            .toolbar(tab == .home || tab == .aiAssistant ? .hidden : .automatic, for: .navigationBar)
+        // Home / Emet / Bible draw their own header (no system bar at all).
+        // Search / Library have a Material `AppBar(centerTitle: false)` with
+        // an `appBarTextStyle` title, so the title is leading-aligned 20/w600.
+        Group {
+            if Self.drawsOwnHeader(tab) {
+                content
+                    .navigationTitle("")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar(.hidden, for: .navigationBar)
+            } else {
+                content
+                    .parityNavTitle(tab == .search ? "Search" : "Library", leading: true)
+            }
+        }
     }
 
     private static func drawsOwnHeader(_ tab: AppTab) -> Bool {
@@ -161,8 +168,10 @@ private struct AppRouteDestinationView: View {
 
     @ViewBuilder
     var body: some View {
+        // Inline everywhere: a pushed screen must never inherit a large title.
         if screenSetsOwnTitle {
             content
+                .navigationBarTitleDisplayMode(.inline)
         } else {
             content
                 .navigationTitle(navigationTitle)
