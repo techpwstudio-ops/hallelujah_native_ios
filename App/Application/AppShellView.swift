@@ -126,6 +126,13 @@ private struct TabRootView: View {
             .toolbar(tab == .home || tab == .aiAssistant ? .hidden : .automatic, for: .navigationBar)
     }
 
+    private static func drawsOwnHeader(_ tab: AppTab) -> Bool {
+        switch tab {
+        case .home, .aiAssistant, .read: true
+        case .search, .library: false
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         switch tab {
