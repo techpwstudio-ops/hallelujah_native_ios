@@ -63,6 +63,7 @@ struct AppShellView: View {
         .appInfrastructureHost()
         .environment(coordinator)
         .environment(networkStatus)
+        .adOptionsHost()
         // T18 — this is the earliest point a coordinator exists to route a
         // deep link to; DeepLinkService buffers anything that arrived before
         // this fires (cold launch racing the splash/auth flow) and dispatches

@@ -194,7 +194,8 @@ struct HomeRailAdSlot: View {
                 ad: ad,
                 onDismissAd: { dismissAd() },
                 size: Dimens.iconSizeSmall,
-                overlaySize: Dimens.spacing24
+                overlaySize: Dimens.spacing24,
+                usesSharedHost: true
             )
             .padding(inset)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)

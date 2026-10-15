@@ -168,7 +168,7 @@ struct HomeAdBannerSlot: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             // Opposite corner to the badge: the two together read as "this is
             // an ad, and here is what you can do about it".
-            AdOptionsButton(ad: ad, onDismissAd: { model.dismiss() }, size: 16, overlaySize: 24)
+            AdOptionsButton(ad: ad, onDismissAd: { model.dismiss() }, size: 16, overlaySize: 24, usesSharedHost: true)
                 .padding(Dimens.spacing8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         }
@@ -235,7 +235,7 @@ private struct HomeAdDetailsCard: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Color.clear.frame(width: Dimens.spacing8)
-                AdOptionsButton(ad: ad, onDismissAd: onDismissAd, style: .plain)
+                AdOptionsButton(ad: ad, onDismissAd: onDismissAd, style: .plain, usesSharedHost: true)
             }
             if !bodyText.isEmpty {
                 Color.clear.frame(height: Dimens.verticalSpacing + 4)

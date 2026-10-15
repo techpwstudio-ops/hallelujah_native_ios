@@ -1,4 +1,5 @@
 import SwiftUI
+import Observation
 
 private struct AdOptionsPresentationKey: EnvironmentKey {
     nonisolated(unsafe) static let defaultValue: (Bool) -> Void = { _ in }
@@ -25,12 +26,22 @@ struct AdOptionsButton: View {
     var style: Style = .overlay
     var size: CGFloat = 20
     var overlaySize: CGFloat = 32
+    /// Present from the app shell (`adOptionsHost()`) instead of from this
+    /// view. For feed ads, whose views are rebuilt/recycled while the sheet is
+    /// being read — a sheet owned by the view dies with it.
+    var usesSharedHost = false
 
     @State private var isPresented = false
     @Environment(\.adOptionsPresentationChanged) private var presentationChanged
 
     var body: some View {
-        Button { isPresented = true } label: {
+        Button {
+            if usesSharedHost {
+                AdOptionsPresenter.shared.present(ad: ad, onDismissAd: onDismissAd)
+            } else {
+                isPresented = true
+            }
+        } label: {
             Image(systemName: "ellipsis")
                 .rotationEffect(.degrees(90))
                 .font(.system(size: size))
@@ -50,7 +61,48 @@ struct AdOptionsButton: View {
     }
 }
 
+/// Owns the ⋮ sheet for feed ads so it outlives the ad view that opened it.
+@MainActor
+@Observable
+final class AdOptionsPresenter {
+    static let shared = AdOptionsPresenter()
+
+    struct Request: Identifiable {
+        let id = UUID()
+        let ad: AdCreative
+        let onDismissAd: (() -> Bool)?
+    }
+
+    var isPresented = false
+    private(set) var request: Request?
+
+    func present(ad: AdCreative, onDismissAd: (() -> Bool)?) {
+        request = Request(ad: ad, onDismissAd: onDismissAd)
+        isPresented = true
+    }
+}
+
+private struct AdOptionsHostModifier: ViewModifier {
+    @State private var presenter = AdOptionsPresenter.shared
+
+    func body(content: Content) -> some View {
+        content.appSheet(isPresented: $presenter.isPresented, detents: [.height(380), .large]) {
+            if let request = presenter.request {
+                AdOptionsSheet(
+                    ad: request.ad,
+                    onDismissAd: request.onDismissAd,
+                    close: { presenter.isPresented = false }
+                )
+            }
+        }
+    }
+}
+
 extension View {
+    /// Apply once on the signed-in shell; presents sheets requested by
+    /// `AdOptionsButton(usesSharedHost: true)`.
+    func adOptionsHost() -> some View { modifier(AdOptionsHostModifier()) }
+
     /// `showAdOptionsSheet`.
     func adOptionsSheet(isPresented: Binding<Bool>, ad: AdCreative, onDismissAd: (() -> Bool)?) -> some View {
         appSheet(isPresented: isPresented, detents: [.height(380), .large]) {
