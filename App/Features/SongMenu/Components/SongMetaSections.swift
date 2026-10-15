@@ -107,7 +107,7 @@ struct SongMetaSections: View {
                 creditsCard
                 Spacer().frame(height: Dimens.spacing16)
             }
-            middle
+            if let middle { middle }
             relatedRail
         }
         .task(id: Trigger(songId: songId, excludeId: excludeId)) {
