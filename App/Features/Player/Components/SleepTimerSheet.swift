@@ -31,7 +31,6 @@ struct SleepTimerSheet: View {
             Spacer().frame(height: 16)
         }
         .padding(.horizontal, 20)
-        .padding(.top, 8)
         .padding(.bottom, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .animation(.easeInOut(duration: 0.28), value: controller.isActive)

@@ -106,12 +106,16 @@ struct VoiceOverlayView: View {
 
             Spacer(minLength: 0).frame(height: 32)
 
-            Text(display.label)
-                .font(AIColors.font(20, .semibold))
-                .tracking(0.3)
-                .foregroundStyle(.white)
-                .contentTransition(.opacity)
-                .animation(.easeInOut(duration: 0.22), value: display)
+            // `AnimatedSwitcher(220ms)` keyed on the phase: cross-fade.
+            ZStack {
+                Text(display.label)
+                    .font(AIColors.font(20, .semibold))
+                    .tracking(0.3)
+                    .foregroundStyle(.white)
+                    .id(display)
+                    .transition(.opacity)
+            }
+            .animation(.easeInOut(duration: 0.22), value: display)
 
             Spacer(minLength: 0).frame(height: 8)
 
@@ -230,7 +234,7 @@ private struct CloseButtonView: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "xmark")
-                .font(.system(size: 18))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
                 .background(Circle().fill(.white.opacity(0.12)))

@@ -88,7 +88,7 @@ struct SongMenuSheet: View {
                 }
             }
             .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.sm)
+            .padding(.bottom, Spacing.sm)
         }
         .task { await viewModel.loadPremium() }
     }

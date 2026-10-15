@@ -209,6 +209,13 @@ struct VerseOfDayHeartIcon: View {
     var color: Color = ReadPalette.white
 
     var body: some View {
+        // Flutter: `AnimatedSwitcher(200ms, ScaleTransition)` keyed on the liked flag.
+        ZStack { icon.id(isLiked).transition(.scale) }
+            .frame(width: size, height: size)
+            .animation(.easeInOut(duration: 0.2), value: isLiked)
+    }
+
+    private var icon: some View {
         Group {
             if isLoading {
                 ReadSpinner(size: size - 4, color: ReadPalette.white)

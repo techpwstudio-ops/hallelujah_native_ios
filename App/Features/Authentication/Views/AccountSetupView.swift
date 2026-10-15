@@ -94,6 +94,7 @@ struct AccountSetupView: View {
                     }
                     .padding(Dimens.screenPaddingAll)
                 }
+                .scrollDismissesKeyboard(.interactively)
 
                 Spacer().frame(height: Dimens.spacing12)
 

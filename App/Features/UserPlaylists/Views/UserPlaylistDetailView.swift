@@ -19,6 +19,7 @@ struct UserPlaylistDetailView: View {
     @State private var showAddSongs = false
     @State private var menuTarget: UserPlaylistMenuTarget?
     @State private var shareItem: PlaylistShareItem?
+    @State private var showsCollapsedTitle = false
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
@@ -58,10 +59,26 @@ struct UserPlaylistDetailView: View {
         }
         .background(Color.black)
         .ignoresSafeArea(.container, edges: .top)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .coordinateSpace(name: "playlistScroll")
+        .onPreferenceChange(UserPlaylistHeroMaxYKey.self) { maxY in
+            // `offset > expandedHeight - kToolbarHeight - 40`.
+            let shouldShow = maxY < 150
+            if shouldShow != showsCollapsedTitle { showsCollapsedTitle = shouldShow }
+        }
+        .toolbarBackground(showsCollapsedTitle ? .visible : .hidden, for: .navigationBar)
+        .toolbarBackground(Color.black, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("")
         .toolbar {
             if let playlist {
+                ToolbarItem(placement: .principal) {
+                    Text(playlist.title)
+                        .font(.custom(Typography.fontFamily, size: 16).weight(.semibold))
+                        .foregroundStyle(Color.white)
+                        .lineLimit(1)
+                        .opacity(showsCollapsedTitle ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.22), value: showsCollapsedTitle)
+                }
                 ToolbarItem(placement: .primaryAction) {
                     ParityIconButton(systemName: "ellipsis", rotation: 90, tooltip: "More") {
                         menuTarget = UserPlaylistMenuTarget(id: playlist.id, title: playlist.title)
@@ -98,6 +115,14 @@ struct UserPlaylistDetailView: View {
                     ),
                     aspect: 1,
                     stops: ParityHeroImage.playlistStops
+                )
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: UserPlaylistHeroMaxYKey.self,
+                            value: proxy.frame(in: .named("playlistScroll")).maxY
+                        )
+                    }
                 )
 
                 info(playlist: playlist)
@@ -288,5 +313,12 @@ struct UserPlaylistDetailView: View {
         } else {
             item
         }
+    }
+}
+
+private struct UserPlaylistHeroMaxYKey: PreferenceKey {
+    static let defaultValue: CGFloat = .greatestFiniteMagnitude
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

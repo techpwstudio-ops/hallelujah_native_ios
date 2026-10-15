@@ -53,6 +53,10 @@ private struct ParityNavTitle<TitleContent: View>: ViewModifier {
         content
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            // Flutter AppBar is solid black with no scrolled-under tint.
+            .toolbarBackground(Color.black, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: leading ? .topBarLeading : .principal) {
                     titleContent
@@ -131,10 +135,19 @@ struct ParityListTile<Leading: View, Trailing: View>: View {
         .contentShape(Rectangle())
 
         if let onTap {
-            Button(action: onTap) { row }.buttonStyle(.plain)
+            Button(action: onTap) { row }.buttonStyle(ParityRowPressStyle())
         } else {
             row
         }
+    }
+}
+
+/// Material ink-splash stand-in for tappable list rows: a faint white wash while pressed.
+struct ParityRowPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(Color.white.opacity(configuration.isPressed ? 0.08 : 0))
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

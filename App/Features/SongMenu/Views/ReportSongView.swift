@@ -15,7 +15,7 @@ struct ReportSongView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Enter Reason")
-                .typography(Typography.titleMedium)
+                .typography(TypographyToken(size: 16, weight: .medium, lineHeightMultiple: 1.4))
                 .foregroundStyle(theme.color(.textPrimary))
             Spacer().frame(height: 8)
             ZStack(alignment: .topLeading) {

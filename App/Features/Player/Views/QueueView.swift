@@ -29,7 +29,7 @@ struct QueueView: View {
                 Text("Queue")
                     .typography(PlayerStyle.titleMediumSemibold)
                     .foregroundStyle(PlayerStyle.white)
-                    .padding(.top, 16)
+                    .padding(.top, Dimens.screenPaddingAll + 16)
                     .padding(.horizontal, Dimens.screenPaddingAll)
                     .padding(.bottom, 12)
             }

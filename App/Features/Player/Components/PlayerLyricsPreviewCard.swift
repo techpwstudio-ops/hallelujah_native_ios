@@ -91,6 +91,12 @@ struct PlayerLyricsPreviewCard: View {
             .scrollDisabled(true)
             .allowsHitTesting(false)
             .mask(LyricsEdgeFadeMask())
+            .onAppear {
+                // First-frame sync (`_updateForSeconds` in `initState`).
+                if let index = activeIndex, transcripts.indices.contains(index) {
+                    proxy.scrollTo(transcripts[index].id, anchor: UnitPoint(x: 0.5, y: 0.4))
+                }
+            }
             .onChange(of: activeIndex) { _, newValue in
                 withAnimation(Self.scrollAnimation) {
                     if let newValue, transcripts.indices.contains(newValue) {

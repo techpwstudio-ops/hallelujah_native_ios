@@ -109,6 +109,7 @@ struct FavouriteSongsView: View {
                         CreatorSongRow(song: song) { play(song: song) }
                             .padding(.vertical, Dimens.verticalSpacing / 2)
                             .opacity(isDeemphasized(song) ? 0.4 : 1)
+                            .transition(.opacity.combined(with: .offset(y: 8)))
                             .task { await viewModel.loadMoreSongsIfNeeded(currentItem: song) }
                     }
                     if viewModel.isLoadingSongs {
@@ -116,6 +117,8 @@ struct FavouriteSongsView: View {
                     }
                     Color.clear.frame(height: 168)
                 }
+                // `ImplicitlyAnimatedList`: 300ms fade/slide on insert and remove.
+                .animation(.easeOut(duration: 0.3), value: viewModel.songs.map { $0.id })
                 .padding(Dimens.screenPaddingAll)
             }
         }

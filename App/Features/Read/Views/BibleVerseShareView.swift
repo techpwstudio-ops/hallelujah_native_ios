@@ -211,6 +211,9 @@ struct BibleVerseShareView: View {
             .padding(.horizontal, Dimens.spacing16)
         }
         .padding(.bottom, Dimens.spacing12)
+        // Flutter wraps the photo chips and the notice in 200ms `AnimatedSize`.
+        .animation(.easeInOut(duration: 0.2), value: photoSelected)
+        .animation(.easeInOut(duration: 0.2), value: notice)
     }
 
     private var backgroundPicker: some View {

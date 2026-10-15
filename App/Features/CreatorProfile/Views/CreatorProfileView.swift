@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Ports `CreatorSongsPage` (`lib/views/library/creator_songs_page.dart`): a
 /// square full-bleed hero (extends under the status bar, scrimmed by
@@ -17,6 +18,8 @@ struct CreatorProfileView: View {
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
     @State private var menuTarget: ContentMenuTarget?
+    @State private var showsCollapsedTitle = false
+    @State private var tabBarMinY: CGFloat = .greatestFiniteMagnitude
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
 
@@ -43,9 +46,21 @@ struct CreatorProfileView: View {
         }
         .background(Color.black)
         .ignoresSafeArea(.container, edges: .top)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackground(showsCollapsedTitle ? .visible : .hidden, for: .navigationBar)
+        .toolbarBackground(Color.black, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("")
         .toolbar {
+            if let creator = viewModel.creator {
+                ToolbarItem(placement: .principal) {
+                    Text(creator.name ?? "")
+                        .font(.custom(Typography.fontFamily, size: 16).weight(.semibold))
+                        .foregroundStyle(Color.white)
+                        .lineLimit(1)
+                        .opacity(showsCollapsedTitle ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.2), value: showsCollapsedTitle)
+                }
+            }
             if viewModel.creator != nil {
                 ToolbarItem(placement: .primaryAction) {
                     ParityIconButton(systemName: "ellipsis", rotation: 90, tooltip: "More") {
@@ -61,25 +76,64 @@ struct CreatorProfileView: View {
         }
     }
 
+    /// Bottom edge of the (collapsed) app bar: status-bar inset + toolbar.
+    private var appBarBottom: CGFloat {
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let top = scene?.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets.top ?? 59
+        return top + 44
+    }
+
+    /// The `SliverPersistentHeader(pinned: true)` tab bar has reached the app bar.
+    private var isTabBarPinned: Bool { tabBarMinY < appBarBottom }
+
     private func scroll(creator: Creator) -> some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+            VStack(alignment: .leading, spacing: 0) {
                 ParityHeroImage(
                     url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants),
                     aspect: 1
                 )
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: CreatorHeroMaxYKey.self,
+                            value: proxy.frame(in: .named("creatorScroll")).maxY
+                        )
+                    }
+                )
 
                 info(creator: creator)
 
-                Section {
-                    tabContent
-                        .padding(Dimens.screenPaddingAll)
-                    Color.clear.frame(height: 168)
-                } header: {
-                    if !viewModel.tabs.isEmpty {
-                        tabBar
-                    }
+                if !viewModel.tabs.isEmpty {
+                    tabBar
+                        .opacity(isTabBarPinned ? 0 : 1)
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: CreatorTabBarMinYKey.self,
+                                    value: proxy.frame(in: .named("creatorScroll")).minY
+                                )
+                            }
+                        )
                 }
+
+                tabContent
+                    .padding(Dimens.screenPaddingAll)
+                Color.clear.frame(height: 168)
+            }
+        }
+        .coordinateSpace(name: "creatorScroll")
+        .onPreferenceChange(CreatorHeroMaxYKey.self) { maxY in
+            let shouldShow = maxY < 150
+            if shouldShow != showsCollapsedTitle { showsCollapsedTitle = shouldShow }
+        }
+        .onPreferenceChange(CreatorTabBarMinYKey.self) { minY in
+            if minY != tabBarMinY { tabBarMinY = minY }
+        }
+        .overlay(alignment: .top) {
+            // Pinned copy of the tab bar, parked just under the app bar.
+            if isTabBarPinned, !viewModel.tabs.isEmpty {
+                tabBar.padding(.top, appBarBottom)
             }
         }
     }
@@ -270,5 +324,19 @@ struct CreatorProfileView: View {
             await queueController.play(songs: songs, startIndex: index, source: source)
             coordinator.presentPlayer()
         }
+    }
+}
+
+private struct CreatorHeroMaxYKey: PreferenceKey {
+    static let defaultValue: CGFloat = .greatestFiniteMagnitude
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct CreatorTabBarMinYKey: PreferenceKey {
+    static let defaultValue: CGFloat = .greatestFiniteMagnitude
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

@@ -186,7 +186,10 @@ struct AIChatHomeView: View {
                 }
                 .padding(.horizontal, 24)
                 .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+                .contentShape(Rectangle())
+                .onTapGesture { aiDismissKeyboard() }
             }
+            .scrollDismissesKeyboard(.interactively)
         }
     }
 
@@ -241,6 +244,7 @@ struct AIChatHomeView: View {
         let uploaded = AIAttachmentStaging.payloads(from: attachments)
         inputText = ""
         attachments = []
+        aiDismissKeyboard()
         startConversation(with: text, attachments: uploaded)
     }
 
@@ -289,6 +293,12 @@ struct AIChatHomeView: View {
             }
         }
     }
+}
+
+/// Flutter `onTapOutside` / send both `unfocus()` the composer.
+@MainActor
+private func aiDismissKeyboard() {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 }
 
 /// The scrolling transcript plus input bar shared by `AIChatHomeView` and
@@ -407,6 +417,7 @@ struct AIChatConversationView: View {
                 }
                 .defaultScrollAnchor(.bottom)
                 .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(TapGesture().onEnded { aiDismissKeyboard() })
                 .onChange(of: viewModel.messages.count) { oldCount, newCount in
                     guard newCount > oldCount, !viewModel.isLoadingMore,
                           let newestID = viewModel.messages.first?.id else { return }
@@ -427,6 +438,7 @@ struct AIChatConversationView: View {
         let uploaded = AIAttachmentStaging.payloads(from: attachments)
         inputText = ""
         attachments = []
+        aiDismissKeyboard()
         Task { await viewModel.sendMessage(payload: AISendPayload(message: text, attachments: uploaded)) }
     }
 

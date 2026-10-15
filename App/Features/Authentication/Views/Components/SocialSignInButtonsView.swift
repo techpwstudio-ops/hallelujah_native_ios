@@ -28,8 +28,8 @@ struct SocialSignInButtonsView: View {
     @Environment(\.appTheme) private var theme
 
     /// `_buildButton`: `maxWidth * 0.2` wide box, 8 outer padding, 1pt border,
-    /// radius 8, icon 16x20 with 12 padding (so 44 tall), `.py16()` on the row.
-    private static let iconHeight: CGFloat = 20 + Dimens.spacing12 * 2
+    /// radius 8, icon 16x20 with 12 padding plus the 1pt border (so 46 tall), `.py16()` on the row.
+    private static let iconHeight: CGFloat = 20 + Dimens.spacing12 * 2 + Dimens.borderWidth * 2
     private static let rowHeight: CGFloat = iconHeight + Dimens.spacing8 * 2
 
     var body: some View {

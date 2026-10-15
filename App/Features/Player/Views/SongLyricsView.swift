@@ -24,6 +24,7 @@ import SwiftUI
 /// view reads `AudioEngine.currentSong?.transcripts` live via DI instead of
 /// through the route.
 struct SongLyricsView: View {
+    @Environment(\.dismiss) private var dismiss
     @State private var engine: AudioEngine = DependencyContainer.current.resolve()
     let songTitle: String
 
@@ -98,6 +99,7 @@ struct SongLyricsView: View {
         .padding(.bottom, 32)
         .background(PlayerStyle.black.ignoresSafeArea())
         .toolbar {
+            AppBackToolbarItem { dismiss() }
             ToolbarItem(placement: .principal) {
                 Text(songTitle)
                     .typography(Typography.titleMedium)
@@ -106,6 +108,7 @@ struct SongLyricsView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbarBackground(PlayerStyle.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)

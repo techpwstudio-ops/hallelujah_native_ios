@@ -107,7 +107,12 @@ struct AuthenticationView: View {
                     .padding(.vertical, Spacing.md)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(AuthColors.background.ignoresSafeArea())
+            // Flutter's `Scaffold` has no `AppBar` here; without hiding the
+            // stack's bar the root screen gets a blank 44pt gap at the top.
+            // Pushed OTP destinations declare their own toolbar.
+            .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .bottom) {
                 if !isKeyboardOpen {
                     TermsAndPrivacyTextView()

@@ -20,7 +20,7 @@ struct FavouriteArtistsView: View {
     var body: some View {
         content
             .background(Color.black)
-            .navigationTitle("Favourite Artist")
+            .parityNavTitle("Favourite Artist")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {

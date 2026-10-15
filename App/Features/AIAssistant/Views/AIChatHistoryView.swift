@@ -98,6 +98,7 @@ struct AIChatHistoryView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .contentMargins(.vertical, Dimens.spacing8, for: .scrollContent)
         // `load()` swaps this list for the spinner, which would cancel a plain
         // `.refreshable` task mid-request; an unstructured task survives that.
         .refreshable { await Task { await viewModel.load() }.value }

@@ -48,7 +48,7 @@ private struct SongMenuPresenter: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .appSheet(isPresented: isPresented, detents: [.large]) {
+            .appSheet(isPresented: isPresented, detents: [.fraction(0.8), .fraction(0.95)]) {
                 if let song {
                     SongMenuSheet(song: song, userPlaylistID: userPlaylistID) { handle($0) }
                 }

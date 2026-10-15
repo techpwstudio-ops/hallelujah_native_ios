@@ -8,14 +8,12 @@ struct SongCreditsView: View {
     @Environment(\.appTheme) private var theme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Credits")
-                .typography(Typography.titleLarge)
-                .foregroundStyle(theme.color(.textPrimary))
+        // Flutter draws no heading: just the drag handle, then the groups.
+        VStack(alignment: .leading, spacing: 0) {
             content
         }
         .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.md)
+        .padding(.bottom, 12)
         .task { await viewModel.loadCredits() }
     }
 
@@ -30,7 +28,7 @@ struct SongCreditsView: View {
             message(viewModel.isEpisode ? "No credits available for this episode." : "No credits available for this song.")
         case .loaded(let groups):
             ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.md) {
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(groups, id: \.category) { group in
                         section(group)
                     }
@@ -39,21 +37,28 @@ struct SongCreditsView: View {
         }
     }
 
+    /// `_buildCategorySection`: `titleMedium` w600 white with 12 / 8 padding,
+    /// dense role / name tiles, 12pt after the group.
     private func section(_ group: SongCreditGroup) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
+        VStack(alignment: .leading, spacing: 0) {
             Text(group.category)
-                .typography(Typography.labelLarge)
-                .foregroundStyle(theme.color(.brandPrimary))
+                .typography(PlayerStyle.titleMediumSemibold)
+                .foregroundStyle(PlayerStyle.white)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
             ForEach(Array(group.credits.enumerated()), id: \.offset) { _, credit in
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text(credit.role ?? "")
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(theme.color(.textSecondary))
+                        .typography(TypographyToken(size: 16, weight: .bold, lineHeightMultiple: 1.5))
+                        .foregroundStyle(PlayerStyle.white)
                     Text(credit.name ?? "-")
-                        .typography(Typography.bodyLarge)
-                        .foregroundStyle(theme.color(.textPrimary))
+                        .typography(Typography.bodyMedium)
+                        .foregroundStyle(PlayerStyle.whiteAlpha(0.7))
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 6)
             }
+            Spacer().frame(height: 12)
         }
     }
 

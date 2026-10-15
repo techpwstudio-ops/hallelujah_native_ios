@@ -139,7 +139,8 @@ struct AIToolResultCard: View {
 
     @ViewBuilder
     private func background(for payload: VerseOfDayPayload) -> some View {
-        if let backgroundImage = payload.backgroundImage, let url = URL(string: backgroundImage) {
+        if let backgroundImage = payload.backgroundImage,
+           let url = ArtworkURLResolver().resolve(path: backgroundImage, variant: .lg, allowedVariants: nil) {
             GeometryReader { proxy in
                 ArtworkView(url: url, width: proxy.size.width, height: proxy.size.height, cornerRadius: 0, contentMode: .fill)
             }

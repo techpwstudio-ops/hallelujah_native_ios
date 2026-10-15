@@ -27,8 +27,7 @@ struct ContentLanguageView: View {
             content
         }
         .background(AuthColors.background.ignoresSafeArea())
-        .navigationTitle(label)
-        .navigationBarTitleDisplayMode(.inline)
+        .parityNavTitle(label)
         .task {
             await viewModel.initialize()
             initialSelection = viewModel.selectedLanguages

@@ -122,6 +122,11 @@ struct CreatePlaylistView: View {
                 .padding(.horizontal, 32)
             }
             .scrollDismissesKeyboard(.interactively)
+
+            // `Ios26BottomSpacing(multiply: 2)` (hidden while the keyboard is up).
+            if !isFocused {
+                Color.clear.frame(height: 112)
+            }
         }
     }
 

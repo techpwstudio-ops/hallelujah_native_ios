@@ -25,6 +25,7 @@ struct CreatorGridView: View {
                 coordinator.push(.contentSearch(userPlaylistID: nil, tags: [], checkedContent: [], isSelect: false))
             }
             .padding(.horizontal, Dimens.screenPaddingAll)
+            .padding(.vertical, Dimens.screenPaddingAll)
 
             if viewModel.creators.isEmpty && !viewModel.hasLoadedOnce {
                 ParitySpinner(fills: true)
@@ -43,8 +44,11 @@ struct CreatorGridView: View {
         }
         .refreshable { await viewModel.refresh() }
         .background(Color.black)
-        .navigationTitle("Choose artists you like.")
-        .navigationBarTitleDisplayMode(.inline)
+        .parityNavTitle {
+            Text("Choose artists you like.")
+                .font(.custom(Typography.fontFamily, size: 20).weight(.black))
+                .foregroundStyle(Color.white)
+        }
         .overlay(alignment: .bottom) { doneButton }
         .task { await viewModel.onAppear() }
         .toastOverlay()
