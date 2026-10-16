@@ -68,13 +68,22 @@ struct VerseNoteDTO: Decodable {
     }
 }
 
-/// One entry of a highlight's `highlights` array — `{color, text}`. T54
-/// never sends or reads `text` (whole-verse granularity only), but the
-/// field still round-trips through `Codable` since the request DTO reuses
-/// this same shape.
+/// One entry of a highlight's `highlights` array — `{index, id, color}`
+/// (`HighlightedWordModel.toJson`): one word of the verse and its colour. An
+/// entry without `index` is the whole-verse form. `text` is a legacy field
+/// that is never sent. Nil fields are omitted when encoding.
 struct HighlightColorEntryDTO: Codable {
     let color: String
     let text: String?
+    let index: Int?
+    let id: String?
+
+    init(color: String, text: String? = nil, index: Int? = nil, id: String? = nil) {
+        self.color = color
+        self.text = text
+        self.index = index
+        self.id = id
+    }
 }
 
 struct VerseHighlightDTO: Decodable {
@@ -83,7 +92,8 @@ struct VerseHighlightDTO: Decodable {
     let highlights: [HighlightColorEntryDTO]?
 
     func toDomain() -> VerseHighlight? {
-        guard let colorHex = highlights?.first?.color else { return nil }
-        return VerseHighlight(id: id, verseId: verseId, colorHex: colorHex)
+        let words = (highlights ?? []).map { VerseHighlight.Word(index: $0.index, colorHex: $0.color) }
+        guard !words.isEmpty else { return nil }
+        return VerseHighlight(id: id, verseId: verseId, words: words)
     }
 }

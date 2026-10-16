@@ -9,53 +9,45 @@ import SwiftUI
 /// tag. A verse the reader was sent to (search / verse of the day) gets the
 /// dark-gold 30% background, 8pt radius, for 3 seconds (`isFocused`).
 ///
-/// Flutter's per-word `SelectableText` toolbar (Ask Emet / Highlight|Remove /
-/// Share / Select All / Notes) becomes the verse's long-press context menu —
-/// the same actions in the same order, minus "Select All" (SwiftUI `Text`
-/// exposes no custom selection toolbar). Flutter also justifies the text;
-/// SwiftUI has no justified alignment, so it stays leading-aligned.
+/// The verse text is word-selectable (`SelectableVerseText`, a `UITextView`):
+/// long-press selects words and shows Flutter's toolbar — Ask Emet /
+/// Highlight|Remove / Share / Select All / Notes — acting on the selected
+/// words (highlight colours only those words). Flutter also justifies the
+/// text; here it stays leading-aligned.
 struct VerseRowView: View {
     let verse: BibleVerse
-    let highlightColorHex: String?
+    let highlight: VerseHighlight?
     let noteContent: String?
     let isFocused: Bool
-    let onRequestHighlight: () -> Void
-    let onRemoveHighlight: () -> Void
+    /// The word indices (`VerseWords`) the user selected.
+    let onRequestHighlight: ([Int]) -> Void
+    let onRemoveHighlight: ([Int]) -> Void
     let onOpenNote: () -> Void
     let onShare: () -> Void
-    let onAskEmet: () -> Void
+    /// The selected text, widened to whole words; empty for no selection.
+    let onAskEmet: (String) -> Void
 
     private static let fontSize: CGFloat = 18
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("\(verse.verseNumber). \(verse.text)")
-                .font(.custom(Typography.fontFamily, size: Self.fontSize, relativeTo: .body).weight(.light))
-                .lineSpacing(Self.fontSize * 0.35)
-                .foregroundStyle(textColor)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
-                .contextMenu {
-                    Button(action: onAskEmet) {
-                        Text("Ask Emet")
-                    }
-                    if highlightColorHex != nil {
-                        Button(action: onRemoveHighlight) {
-                            Text("Remove")
-                        }
-                    } else {
-                        Button(action: onRequestHighlight) {
-                            Text("Highlight")
-                        }
-                    }
-                    Button(action: onShare) {
-                        Text("Share")
-                    }
-                    Button(action: onOpenNote) {
-                        Text("Notes")
-                    }
-                }
+            SelectableVerseText(
+                displayText: displayText,
+                baseColor: ReadPalette.white,
+                forcedColor: isFocused ? ReadPalette.white : nil,
+                wordColors: wordColors,
+                fontSize: Self.fontSize,
+                actions: .init(
+                    isHighlighted: { highlight?.isHighlighted(anyOf: $0) == true },
+                    onAskEmet: { onAskEmet(VerseWords.selectedText(in: displayText, indices: $0)) },
+                    onHighlight: onRequestHighlight,
+                    onRemoveHighlight: onRemoveHighlight,
+                    onShare: onShare,
+                    onNotes: onOpenNote
+                )
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 10)
 
             if let noteContent, !noteContent.isEmpty {
                 noteCard(noteContent)
@@ -68,10 +60,20 @@ struct VerseRowView: View {
         .animation(.easeInOut(duration: 0.5), value: isFocused)
     }
 
-    private var textColor: Color {
-        if isFocused { return ReadPalette.white }
-        if let highlightColorHex, let color = Color(readHex: highlightColorHex) { return color }
-        return ReadPalette.white
+    private var displayText: String {
+        VerseWords.displayText(verseNumber: verse.verseNumber, text: verse.text)
+    }
+
+    /// Per-word colours of the saved highlight (`hexToColor(index:)`).
+    private var wordColors: [Int: Color] {
+        guard let highlight else { return [:] }
+        var colors: [Int: Color] = [:]
+        for index in 0..<VerseWords.count(in: displayText) {
+            if let hex = highlight.colorHex(forWord: index), let color = Color(readHex: hex) {
+                colors[index] = color
+            }
+        }
+        return colors
     }
 
     private func noteCard(_ content: String) -> some View {

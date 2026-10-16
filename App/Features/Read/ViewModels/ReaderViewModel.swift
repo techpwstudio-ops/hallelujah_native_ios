@@ -310,25 +310,43 @@ final class ReaderViewModel {
 
     // MARK: - Annotations
 
-    func toggleHighlight(verseID: String, colorHex: String) async {
-        do {
-            let highlight = try await repository.syncHighlight(verseId: verseID, colorHex: colorHex)
-            if let highlight {
-                highlightsByVerseID[verseID] = highlight
-            } else {
-                highlightsByVerseID.removeValue(forKey: verseID)
-            }
-        } catch {
-            logger.warning("toggle highlight for verse \(verseID) failed: \(error)")
-        }
+    /// Colours the selected words of `verse` (`ReadService.highlight`): the
+    /// verse's whole word list is re-sent, only `indices` changing colour.
+    func applyHighlight(verse: BibleVerse, indices: [Int], colorHex: String) async {
+        guard !indices.isEmpty else { return }
+        let existing = highlightsByVerseID[verse.id]
+        let wordCount = VerseWords.count(in: VerseWords.displayText(verseNumber: verse.verseNumber, text: verse.text))
+        let words = existing?.applying(colorHex: colorHex, to: indices, wordCount: wordCount)
+            ?? VerseHighlight.words(colorHex: colorHex, for: indices)
+        await syncHighlight(verse: verse, words: words)
     }
 
-    func removeHighlight(verseID: String) async {
+    /// Un-highlights the selected words (`ReadService.removeHighlight`).
+    func removeHighlight(verse: BibleVerse, indices: [Int]) async {
+        guard let existing = highlightsByVerseID[verse.id] else { return }
+        let wordCount = VerseWords.count(in: VerseWords.displayText(verseNumber: verse.verseNumber, text: verse.text))
+        await syncHighlight(verse: verse, words: existing.removing(indices: indices, wordCount: wordCount))
+    }
+
+    /// Optimistic: the reader shows the new colours at once and reverts if the
+    /// sync fails.
+    private func syncHighlight(verse: BibleVerse, words: [VerseHighlight.Word]) async {
+        let previous = highlightsByVerseID[verse.id]
+        if words.isEmpty {
+            highlightsByVerseID.removeValue(forKey: verse.id)
+        } else {
+            highlightsByVerseID[verse.id] = VerseHighlight(id: previous?.id ?? verse.id, verseId: verse.id, words: words)
+        }
         do {
-            _ = try await repository.syncHighlight(verseId: verseID, colorHex: nil)
-            highlightsByVerseID.removeValue(forKey: verseID)
+            let saved = try await repository.syncHighlight(verseId: verse.id, words: words)
+            if words.isEmpty {
+                highlightsByVerseID.removeValue(forKey: verse.id)
+            } else if let saved {
+                highlightsByVerseID[verse.id] = saved
+            }
         } catch {
-            logger.warning("remove highlight for verse \(verseID) failed: \(error)")
+            logger.warning("sync highlight for verse \(verse.id) failed: \(error)")
+            highlightsByVerseID[verse.id] = previous
         }
     }
 

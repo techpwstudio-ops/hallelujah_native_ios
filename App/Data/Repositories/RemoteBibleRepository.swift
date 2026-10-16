@@ -70,11 +70,10 @@ final class RemoteBibleRepository: BibleRepository {
         return fresh
     }
 
-    func syncHighlight(verseId: String, colorHex: String?) async throws -> VerseHighlight? {
-        // `nil` removes the highlight (`highlights: []`); non-nil sets it
-        // (`highlights: [{color: colorHex}]`). Whole-verse granularity only
-        // — word indices are never sent.
-        let highlights = colorHex.map { [HighlightColorEntryDTO(color: $0, text: nil)] } ?? []
+    func syncHighlight(verseId: String, words: [VerseHighlight.Word]) async throws -> VerseHighlight? {
+        // An empty list removes the highlight (`highlights: []`); otherwise
+        // one `{index, color}` entry per highlighted word.
+        let highlights = words.map { HighlightColorEntryDTO(color: $0.colorHex, index: $0.index) }
         let body = try JSONEncoder().encode(SyncHighlightRequestDTO(verseId: verseId, highlights: highlights))
         let response = try await client.send(.bibleHighlightSync, body: body)
         guard response.statusCode == 200 else {

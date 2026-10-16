@@ -31,8 +31,8 @@ struct ReaderView: View {
     @State private var chapterGridBook: BibleBook?
     @State private var verseOfDayCommentsID: String?
     @State private var noteEditorVerse: BibleVerse?
-    @State private var askEmetVerse: BibleVerse?
-    @State private var highlightPaletteVerse: BibleVerse?
+    @State private var askEmetVerse: AskEmetSelection?
+    @State private var highlightPaletteVerse: HighlightSelection?
     @State private var pendingAfterDismiss: (() -> Void)?
 
     @State private var navigationStore: ReaderNavigationStore = DependencyContainer.current.resolve()
@@ -180,9 +180,24 @@ struct ReaderView: View {
         }
         .fullScreenCover(item: $askEmetVerse) { verse in
             AIVerseInsightDialogView(
-                target: .fromBibleVerse(verse, bookName: viewModel.currentBook?.translate(viewModel.currentLanguage), languageName: viewModel.currentLanguage)
+                target: .fromBibleVerse(verse.verse, bookName: viewModel.currentBook?.translate(viewModel.currentLanguage), languageName: viewModel.currentLanguage),
+                selectedText: verse.selectedText
             )
         }
+    }
+
+    /// The words a long-press selection picked in `verse`, awaiting a colour.
+    private struct HighlightSelection: Identifiable {
+        let verse: BibleVerse
+        let indices: [Int]
+        var id: String { verse.id }
+    }
+
+    /// "Ask Emet" for a verse, with the words that were selected (if any).
+    private struct AskEmetSelection: Identifiable {
+        let verse: BibleVerse
+        let selectedText: String
+        var id: String { verse.id }
     }
 
     private struct VerseOfDaySheetID: Identifiable {
@@ -415,16 +430,16 @@ struct ReaderView: View {
                     ForEach(viewModel.verses) { verse in
                         VerseRowView(
                             verse: verse,
-                            highlightColorHex: viewModel.highlightsByVerseID[verse.id]?.colorHex,
+                            highlight: viewModel.highlightsByVerseID[verse.id],
                             noteContent: viewModel.notesByVerseID[verse.id]?.content,
                             isFocused: viewModel.focusedVerse == verse.verseNumber,
-                            onRequestHighlight: { highlightPaletteVerse = verse },
-                            onRemoveHighlight: {
-                                Task { await viewModel.removeHighlight(verseID: verse.id) }
+                            onRequestHighlight: { highlightPaletteVerse = HighlightSelection(verse: verse, indices: $0) },
+                            onRemoveHighlight: { indices in
+                                Task { await viewModel.removeHighlight(verse: verse, indices: indices) }
                             },
                             onOpenNote: { noteEditorVerse = verse },
                             onShare: { Task { await share(verse: verse) } },
-                            onAskEmet: { askEmetVerse = verse }
+                            onAskEmet: { askEmetVerse = AskEmetSelection(verse: verse, selectedText: $0) }
                         )
                         .id(verse.verseNumber)
                     }
@@ -540,8 +555,8 @@ struct ReaderView: View {
 
                 ForEach(Array(ReadPalette.highlightHexes.enumerated()), id: \.offset) { index, hex in
                     Button {
-                        if let verse = highlightPaletteVerse {
-                            Task { await viewModel.toggleHighlight(verseID: verse.id, colorHex: hex) }
+                        if let selection = highlightPaletteVerse {
+                            Task { await viewModel.applyHighlight(verse: selection.verse, indices: selection.indices, colorHex: hex) }
                         }
                         highlightPaletteVerse = nil
                     } label: {

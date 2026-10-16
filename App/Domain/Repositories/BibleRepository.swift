@@ -28,11 +28,10 @@ protocol BibleRepository: Sendable {
         isChapterNumberChanged: Bool
     ) async throws -> BibleChapter
 
-    /// `colorHex` `nil` removes the highlight (sends `highlights: []`);
-    /// non-nil sets it (sends `highlights: [{color: colorHex}]`).
-    /// Whole-verse granularity only (T54's scope cut) — never touches word
-    /// indices.
-    func syncHighlight(verseId: String, colorHex: String?) async throws -> VerseHighlight?
+    /// Sends the verse's complete word highlights
+    /// (`highlights: [{index, color}]`); an empty list removes the highlight.
+    /// Returns the server's row, `nil` once nothing is highlighted.
+    func syncHighlight(verseId: String, words: [VerseHighlight.Word]) async throws -> VerseHighlight?
 
     /// `content` nil or empty deletes the note server-side.
     func syncNote(verseId: String, content: String?) async throws -> VerseNote?
