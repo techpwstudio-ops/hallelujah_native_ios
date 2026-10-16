@@ -23,9 +23,14 @@ final class SplashViewModel {
     private(set) var destination: LaunchDestination?
     private(set) var availableUpdate: AppStoreVersionInfo?
 
-    /// Matches `_minSplashDuration` (`Duration(seconds: 0)`) — no artificial
-    /// hold; navigation happens as soon as the session check resolves.
-    private static let minimumDuration: Duration = .seconds(0)
+    /// Deliberately NOT Dart's `_minSplashDuration` (`Duration(seconds: 0)`):
+    /// the native splash plays a logo animation (`SplashView`), which needs
+    /// roughly one entrance plus one glow breath on screen to read as an
+    /// animation rather than a flash. This is the only cost to cold-start time
+    /// — the session check runs concurrently with it, not after it. Set back to
+    /// `.seconds(0)` to drop the hold (the animation then only plays when the
+    /// session check is slow).
+    private static let minimumDuration: Duration = .milliseconds(1500)
     /// Matches `_resolveDestination`'s `.timeout(const Duration(seconds: 6))`
     /// around `refreshIfNeeded()` — a slow network can never hold the splash
     /// past this.

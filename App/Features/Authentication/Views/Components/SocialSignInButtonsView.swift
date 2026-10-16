@@ -25,19 +25,20 @@ struct SocialSignInButtonsView: View {
     var onGoogleSignIn: () -> Void = {}
     var onAppleSignIn: () -> Void = {}
 
-    @Environment(\.appTheme) private var theme
-
     /// `_buildButton`: `maxWidth * 0.2` wide box, 8 outer padding, 1pt border,
-    /// radius 8, icon 16x20 with 12 padding plus the 1pt border (so 46 tall), `.py16()` on the row.
-    private static let iconHeight: CGFloat = 20 + Dimens.spacing12 * 2 + Dimens.borderWidth * 2
+    /// radius 8, icon with 12 padding plus the 1pt border, `.py16()` on the row.
+    /// Dart gives the SVG a 16x20 box but the icons are square, so they draw
+    /// 16x16 (`BoxFit.contain`) — the button is 42 tall, not 46.
+    private static let iconSize: CGFloat = 16
+    private static let iconHeight: CGFloat = iconSize + Dimens.spacing12 * 2 + Dimens.borderWidth * 2
     private static let rowHeight: CGFloat = iconHeight + Dimens.spacing8 * 2
 
     var body: some View {
         GeometryReader { proxy in
             HStack(spacing: 0) {
-                button(proxy.size.width, icon: isWithEmail ? .phone : .mail, tint: theme.color(.textPrimary), action: onToggleMethod)
-                button(proxy.size.width, icon: .google, tint: theme.color(.textPrimary), action: onGoogleSignIn)
-                button(proxy.size.width, icon: .apple, tint: .white, action: onAppleSignIn)
+                button(proxy.size.width, icon: isWithEmail ? "AuthPhone" : "AuthMail", action: onToggleMethod)
+                button(proxy.size.width, icon: "AuthGoogle", action: onGoogleSignIn)
+                button(proxy.size.width, icon: "AuthApple", action: onAppleSignIn)
             }
             .frame(maxWidth: .infinity)
         }
@@ -47,18 +48,21 @@ struct SocialSignInButtonsView: View {
         .opacity(isLoading ? 0.5 : 1)
     }
 
-    private func button(_ maxWidth: CGFloat, icon: IconToken, tint: Color, action: @escaping () -> Void) -> some View {
+    /// `icon` is an `AuthIcons` asset — Dart's own `assets/icons/*.svg`, so the
+    /// Google "G" keeps its brand colours while phone/mail/Apple are white
+    /// templates.
+    private func button(_ maxWidth: CGFloat, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            theme.icon(icon)
+            Image(icon)
                 .resizable()
                 .scaledToFit()
-                .foregroundStyle(tint)
-                .frame(width: 16, height: 20)
+                .foregroundStyle(.white)
+                .frame(width: Self.iconSize, height: Self.iconSize)
                 .padding(Dimens.spacing12)
                 .frame(width: maxWidth * 0.2, height: Self.iconHeight)
                 .overlay {
                     RoundedRectangle(cornerRadius: Dimens.cornerRadius, style: .continuous)
-                        .strokeBorder(theme.color(.separator), lineWidth: Dimens.borderWidth)
+                        .strokeBorder(.white, lineWidth: Dimens.borderWidth)
                 }
                 .padding(Dimens.spacing8)
         }

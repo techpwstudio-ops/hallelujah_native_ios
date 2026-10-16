@@ -37,6 +37,12 @@ final class AppNavigationCoordinator {
     /// `AppSheetContainer`'s `onAppear`/`onDisappear` (`AppSheet.swift`).
     private(set) var openSheetCount = 0
 
+    /// Measured height of the floating mini-player stack (ad strip + pill +
+    /// its bottom gap), `0` while it's hidden. Reported by
+    /// `MiniPlayerInsetView`; read by `dockClearanceInset()` so every screen
+    /// can keep its last row clear of the dock.
+    var dockInsetHeight: CGFloat = 0
+
     init(selectedTab: AppTab = .home) {
         self.selectedTab = selectedTab
         tabPaths = Dictionary(uniqueKeysWithValues: AppTab.allCases.map { ($0, []) })

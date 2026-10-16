@@ -19,7 +19,7 @@ struct TermsAndPrivacyTextView: View {
     }
 
     private var attributedText: AttributedString {
-        var result = AttributedString(localized: "By continuing, you agree to our **Terms of Service** and **Privacy Policy**.")
+        var result = AttributedString(appLocalized: "By continuing, you agree to our **Terms of Service** and **Privacy Policy**.")
         let links = [configuration.termsAndConditionsURL, configuration.privacyPolicyURL]
         let boldRanges = result.runs.compactMap { run -> Range<AttributedString.Index>? in
             guard run.inlinePresentationIntent?.contains(.stronglyEmphasized) == true else { return nil }

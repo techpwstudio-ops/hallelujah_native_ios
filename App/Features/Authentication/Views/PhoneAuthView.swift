@@ -72,10 +72,13 @@ struct PhoneAuthView: View {
                         .typography(Typography.titleMedium)
                         .fontWeight(.semibold)
                         .foregroundStyle(.white)
-                    theme.icon(.chevronDown)
-                        .font(.system(size: Dimens.iconSize))
-                        .foregroundStyle(.white)
+                    DropdownTriangle()
+                        .fill(.white)
+                        .frame(width: 10, height: 5)
+                        .padding(.leading, Spacing.xs)
+                        .padding(.trailing, Spacing.sm)
                 }
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -84,13 +87,13 @@ struct PhoneAuthView: View {
                 text: $digits,
                 prompt: Text("Enter phone number").font(Typography.bodyMedium.font).foregroundStyle(AuthColors.hint)
             )
-            .keyboardType(.numberPad)
+            .keyboardType(.asciiCapableNumberPad)
             .textContentType(.telephoneNumber)
             .typography(Typography.bodyLarge)
             .foregroundStyle(.white)
             .focused($isFieldFocused)
             .onChange(of: digits) { _, newValue in
-                let filtered = String(newValue.filter(\.isNumber).prefix(Self.autoSubmitLength))
+                let filtered = String(newValue.asciiDigits.prefix(Self.autoSubmitLength))
                 if filtered != newValue {
                     digits = filtered
                 }
@@ -135,5 +138,18 @@ struct PhoneAuthView: View {
         guard autoSubmittedNumber != candidate else { return }
         autoSubmittedNumber = candidate
         submit(silent: true)
+    }
+}
+
+/// Flutter's `Icons.arrow_drop_down`: a small solid down-pointing triangle.
+/// `chevron.down` at icon size read as a heavy full-size arrow beside the dial code.
+private struct DropdownTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }

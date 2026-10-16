@@ -23,22 +23,16 @@ struct AITtsBar: View {
             .buttonStyle(.plain)
             .disabled(speaker.isBuffering)
 
-            Slider(
-                value: Binding(
-                    get: { value },
-                    set: { dragValue = $0 }
-                ),
-                in: 0...1,
-                onEditingChanged: { editing in
-                    if !editing, let finished = dragValue {
-                        speaker.seek(toFraction: finished)
-                        dragValue = nil
-                    }
+            AITtsScrubber(
+                value: value,
+                isEnabled: speaker.canSeek,
+                onDrag: { dragValue = $0 },
+                onCommit: { finished in
+                    speaker.seek(toFraction: finished)
+                    dragValue = nil
                 }
             )
-            .tint(Color.white)
-            .disabled(!speaker.canSeek)
-            .frame(height: 28)
+            .padding(.horizontal, Dimens.spacing4)
 
             Button {
                 speaker.dismiss()
@@ -56,6 +50,55 @@ struct AITtsBar: View {
         .padding(.top, Dimens.spacing8)
         .padding(.bottom, Dimens.spacing4)
         .padding(.horizontal, Dimens.spacing12)
+    }
+
+    /// `audio_video_progress_bar` look (`thumbRadius: 6`, 4pt round-capped bar).
+    /// The system `Slider` draws an oversized pill thumb on iOS 26, which
+    /// swamped this compact bar.
+    private struct AITtsScrubber: View {
+        let value: Double
+        let isEnabled: Bool
+        let onDrag: (Double) -> Void
+        let onCommit: (Double) -> Void
+
+        private let thumbRadius: CGFloat = 6
+        private let trackHeight: CGFloat = 4
+
+        var body: some View {
+            GeometryReader { proxy in
+                let trackWidth = max(proxy.size.width - thumbRadius * 2, 1)
+                let progressX = trackWidth * CGFloat(min(max(value, 0), 1))
+
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(AIColors.white24)
+                        .frame(width: trackWidth, height: trackHeight)
+                        .offset(x: thumbRadius)
+                    Capsule()
+                        .fill(Color.white)
+                        .frame(width: progressX, height: trackHeight)
+                        .offset(x: thumbRadius)
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: thumbRadius * 2, height: thumbRadius * 2)
+                        .offset(x: progressX)
+                }
+                .frame(height: proxy.size.height, alignment: .leading)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { onDrag(fraction(for: $0.location.x, trackWidth: trackWidth)) }
+                        .onEnded { onCommit(fraction(for: $0.location.x, trackWidth: trackWidth)) }
+                )
+            }
+            .frame(height: 28)
+            .opacity(isEnabled ? 1 : 0.5)
+            .allowsHitTesting(isEnabled)
+        }
+
+        private func fraction(for x: CGFloat, trackWidth: CGFloat) -> Double {
+            Double(min(max(x - thumbRadius, 0), trackWidth) / trackWidth)
+        }
     }
 
     @ViewBuilder

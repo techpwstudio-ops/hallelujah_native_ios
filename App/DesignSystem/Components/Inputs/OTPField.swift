@@ -43,7 +43,9 @@ struct OTPField: View {
             }
 
             TextField("", text: $code)
-                .keyboardType(.numberPad)
+                // ASCII pad: `.numberPad` types Devanagari/Arabic-Indic digits
+                // when the app or device language uses them.
+                .keyboardType(.asciiCapableNumberPad)
                 .textContentType(.oneTimeCode)
                 .foregroundStyle(.clear)
                 .tint(.clear)
@@ -52,7 +54,8 @@ struct OTPField: View {
                 .frame(width: 1, height: 1)
                 .opacity(0.01)
                 .onChange(of: code) { _, newValue in
-                    let filtered = String(newValue.filter(\.isNumber).prefix(length))
+                    // Also normalises pasted/autofilled non-ASCII digits (`१०६२९`) to `10629`.
+                    let filtered = String(newValue.asciiDigits.prefix(length))
                     if filtered != newValue {
                         code = filtered
                     }

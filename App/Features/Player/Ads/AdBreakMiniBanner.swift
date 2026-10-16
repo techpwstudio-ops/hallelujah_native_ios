@@ -64,8 +64,10 @@ struct AdBreakMiniBanner: View {
 
                 // Same menu, same corner as every other ad surface — this strip
                 // is often the only ad UI on screen once the break's own screen
-                // has been backed out of.
-                AdOptionsButton(ad: ad, onDismissAd: { pacing.dismissIfSkippable() }, style: .plain, size: 18)
+                // has been backed out of. Hosted by the app shell: opening any
+                // sheet hides the dock this strip is part of, and a sheet owned
+                // by the button would go with it.
+                AdOptionsButton(ad: ad, onDismissAd: { pacing.dismissIfSkippable() }, style: .plain, size: 18, usesSharedHost: true)
             }
             .padding(EdgeInsets(top: 7, leading: 12, bottom: 7, trailing: 2))
             .background(RoundedRectangle(cornerRadius: 8).fill(Self.red))

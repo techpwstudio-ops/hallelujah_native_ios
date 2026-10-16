@@ -23,7 +23,7 @@ APP = ROOT / "App"
 LOCALIZABLE_CALL = re.compile(
     r'(?:(?:Text|Label|Button|TextField|SecureField|Toggle|Section|Picker|Menu|Link|NavigationLink|'
     r'navigationTitle|accessibilityLabel|accessibilityHint|accessibilityValue|help|alert|confirmationDialog|'
-    r'LocalizedStringKey|LocalizedStringResource|L10n\.tr|\.show)\s*\(\s*(?:localized:\s*)?|String\(localized:\s*)'
+    r'LocalizedStringKey|LocalizedStringResource|L10n\.tr|\.show)\s*\(\s*(?:localized:\s*)?|String\(localized:\s*|AttributedString\(appLocalized:\s*)'
     r'"((?:[^"\\]|\\.)*)"')
 STRING = re.compile(r'(?<![\w#])"((?:[^"\\]|\\.)+)"')
 SKIP_CONTEXT = re.compile(

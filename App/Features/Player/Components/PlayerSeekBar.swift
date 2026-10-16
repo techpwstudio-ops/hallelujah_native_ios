@@ -102,20 +102,32 @@ struct PlayerSeekBar: View {
     }
 }
 
-/// `MyLinerProgressIndicator` (`song_progress_bar.dart`'s `preview: true`):
-/// 2pt line, white over `fillColor @ 0.8`.
-struct PlayerProgressLine: View {
+/// The mini player's playback progress (`song_progress_bar.dart`'s
+/// `preview: true` indicator), drawn along the pill's bottom border instead
+/// of as a bar under it: the lower half of the outline of the same continuous
+/// rounded rectangle the glass uses (from the middle of the left end, round
+/// the bottom-left curve, along the flat, up the bottom-right curve to the
+/// middle of the right end), filled left to right for `progress` of its
+/// length. `progress == 1` is the whole bottom border, for the track behind.
+///
+/// Stroke this with `lineWidth == 2 * inset`: the path is inset by half the
+/// stroke so the stroke's outer edge lands exactly on the glass edge.
+struct PlayerProgressBottomBorder: Shape {
     var progress: Double
+    /// The pill's corner radius (`Radius.full`), as given to the glass shape.
+    var cornerRadius: CGFloat
+    var inset: CGFloat = 1
 
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Rectangle().fill(PlayerStyle.fill.opacity(0.8))
-                Rectangle()
-                    .fill(PlayerStyle.white)
-                    .frame(width: proxy.size.width * CGFloat(min(max(progress, 0), 1)))
-            }
-        }
-        .frame(height: 2)
+    func path(in rect: CGRect) -> Path {
+        let fraction = min(max(progress, 0), 1)
+        guard fraction > 0 else { return Path() }
+        let outline = RoundedRectangle(cornerRadius: cornerRadius - inset, style: .continuous)
+            .path(in: rect.insetBy(dx: inset, dy: inset))
+        // `RoundedRectangle`'s path starts at 3 o'clock and runs clockwise
+        // (and is symmetric), so its first half is exactly the bottom border,
+        // traversed right to left and ending at 9 o'clock. Left-to-right
+        // progress is therefore the stretch that ends there.
+        let half = 0.5
+        return outline.trimmedPath(from: half - half * fraction, to: half)
     }
 }

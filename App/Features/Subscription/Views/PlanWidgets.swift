@@ -31,7 +31,7 @@ struct PlansHero: View {
     }
 
     private static var heroTitle: AttributedString {
-        var title = AttributedString(localized: "Worship Without **Interruptions**")
+        var title = AttributedString(appLocalized: "Worship Without **Interruptions**")
         let emphasised = title.runs.compactMap { run -> Range<AttributedString.Index>? in
             run.inlinePresentationIntent?.contains(.stronglyEmphasized) == true ? run.range : nil
         }

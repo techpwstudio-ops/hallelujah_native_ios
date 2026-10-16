@@ -47,6 +47,9 @@ private struct UserBubble: View {
     let copy: (String?) -> Void
 
     private static let gold = AIColors.gold
+    /// Text/icon colour on the bubble fill. `AIColors.gold` is white now, so
+    /// white text would be invisible.
+    private static let onBubble = Color.black
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 0) {
@@ -78,13 +81,13 @@ private struct UserBubble: View {
                     Text(content)
                         .font(AIColors.font(14))
                         .lineSpacing(14 * (1.4 - 1.15))
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(Self.onBubble)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if message.isError {
                     Image(systemName: "exclamationmark.circle")
                         .font(.system(size: 14))
-                        .foregroundStyle(AIColors.white70)
+                        .foregroundStyle(Self.onBubble.opacity(0.7))
                 }
             }
             .padding(.horizontal, Dimens.paddingMedium)

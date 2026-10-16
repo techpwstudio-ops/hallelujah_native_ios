@@ -169,7 +169,7 @@ struct OTPView: View {
         guard !phone.isEmpty else { return phone }
 
         let hasPlus = phone.hasPrefix("+")
-        let digits = phone.filter(\.isNumber)
+        let digits = phone.asciiDigits
         guard digits.count >= 6 else { return phone }
 
         let countryCodeLength = digits.count > 10 ? digits.count - 10 : 0

@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import ObjectiveC
+import os
 
 /// Languages the app UI is translated into (the content-language picker's set).
 /// `system` follows the device language (iOS per-app language setting).
@@ -14,6 +15,9 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case malayalam = "ml"
 
     var id: String { rawValue }
+
+    /// `UserDefaults` key the choice is saved under.
+    static let defaultsKey = "app_language"
 
     /// BCP-47 code of the `.lproj` to use; `nil` for `system`.
     var code: String? { self == .system ? nil : rawValue }
@@ -54,7 +58,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
 final class AppLanguageStore {
     static let shared = AppLanguageStore()
 
-    private static let defaultsKey = "app_language"
+    private static let defaultsKey = AppLanguage.defaultsKey
 
     private(set) var selected: AppLanguage
 
@@ -69,6 +73,7 @@ final class AppLanguageStore {
         let raw = UserDefaults.standard.string(forKey: Self.defaultsKey)
         selected = raw.flatMap(AppLanguage.init(rawValue:)) ?? .system
         Bundle.setOverrideLanguage(selected.code)
+        AppLocalization.languageCode = selected.code
     }
 
     func select(_ language: AppLanguage) {
@@ -81,8 +86,54 @@ final class AppLanguageStore {
             UserDefaults.standard.removeObject(forKey: "AppleLanguages")
         }
         Bundle.setOverrideLanguage(language.code)
+        // Before the signal: anything it re-renders must already resolve in the new language.
+        AppLocalization.languageCode = language.code
         generation += 1
+        AppLanguageSignal.shared.generation += 1
     }
+}
+
+// MARK: - Language for `String(localized:)`
+
+/// The active in-app language, readable from any thread.
+///
+/// `String(localized:)` (unlike `NSLocalizedString`) does not go through the
+/// `Bundle.main` override below: it keeps resolving in the language the process
+/// *launched* in. Switch Hindi → English at runtime and every
+/// `String(localized:)` kept returning Hindi until the next launch. The
+/// `String(localized:)` replacement in `String+AppLocalized.swift` resolves in
+/// `AppLocalization.locale` instead.
+enum AppLocalization {
+    /// Seeded from the saved choice so strings resolved before
+    /// `AppLanguageStore.shared` is first touched are already in the right language.
+    private static let storage = OSAllocatedUnfairLock<String?>(
+        initialState: UserDefaults.standard.string(forKey: AppLanguage.defaultsKey)
+            .flatMap(AppLanguage.init(rawValue:))?.code
+    )
+
+    /// `nil` = follow the device language.
+    static var languageCode: String? {
+        get { storage.withLock { $0 } }
+        set { storage.withLock { $0 = newValue } }
+    }
+
+    static var locale: Locale {
+        languageCode.map(Locale.init(identifier:)) ?? .current
+    }
+}
+
+/// Bumps when the in-app language changes. `String(localized:)` reads it, so
+/// any SwiftUI `body` that built a `String` from it re-renders on a language
+/// switch — those strings are computed in `body`, not looked up from the
+/// environment like `Text("literal")`, and would otherwise stay stale.
+/// (`AppLanguageStore` itself is main-actor isolated, and `String(localized:)`
+/// is called from everywhere.)
+@Observable
+final class AppLanguageSignal: @unchecked Sendable {
+    static let shared = AppLanguageSignal()
+
+    /// Written on the main actor only (`AppLanguageStore.select`).
+    var generation = 0
 }
 
 // MARK: - Runtime bundle override

@@ -25,7 +25,10 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
 	<!-- T32 — background audio playback (lock-screen/Control-Center
 	     controls, and playback surviving app backgrounding at all). Matches
 	     `ios/Runner/Info.plist`'s `UIBackgroundModes`; its sibling

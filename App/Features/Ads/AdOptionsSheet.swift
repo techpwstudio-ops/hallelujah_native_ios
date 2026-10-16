@@ -28,7 +28,11 @@ struct AdOptionsButton: View {
     var overlaySize: CGFloat = 32
     /// Present from the app shell (`adOptionsHost()`) instead of from this
     /// view. For feed ads, whose views are rebuilt/recycled while the sheet is
-    /// being read — a sheet owned by the view dies with it.
+    /// being read — a sheet owned by the view dies with it — and for ads in the
+    /// dock (mini-player strip, ad-break banner): any open sheet hides the dock
+    /// (`AppNavigationCoordinator.openSheetCount`), taking this button with it.
+    /// Ads inside the full-screen player keep their own sheet; the shell's host
+    /// sits underneath that cover.
     var usesSharedHost = false
 
     @State private var isPresented = false
