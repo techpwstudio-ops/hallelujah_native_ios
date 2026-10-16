@@ -25,6 +25,11 @@ extension Endpoint {
         .get("/library/user-playlist/\(id)/share")
     }
 
+    /// `end_points.dart`'s `aiMessageShareApi`: `GET /ai/messages/:id/share`.
+    static func aiMessageShare(id: String) -> Endpoint {
+        .get("/ai/messages/\(id)/share")
+    }
+
     /// `end_points.dart`'s `shareCompanyPlaylistApi`: `GET /company-playlist/:id/share`.
     static func companyPlaylistShare(id: String) -> Endpoint {
         .get("/company-playlist/\(id)/share")

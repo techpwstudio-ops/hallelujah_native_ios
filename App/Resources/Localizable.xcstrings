@@ -33465,6 +33465,47 @@
           }
         }
       }
+    },
+    "Unable to share this message. Please try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to share this message. Please try again."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह संदेश शेयर नहीं हो सका। कृपया फिर से कोशिश करें।"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ సందేశాన్ని షేర్ చేయడం సాధ్యం కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்தச் செய்தியைப் பகிர முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ ಸಂದೇಶವನ್ನು ಹಂಚಿಕೊಳ್ಳಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ സന്ദേശം പങ്കിടാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

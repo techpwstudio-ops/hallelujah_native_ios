@@ -316,6 +316,11 @@ final class DeepLinkService {
         try await fetchShareLink(.verseOfDayShare(id: id))
     }
 
+    /// `createAiMessageLink(messageId)` — the link an AI answer is shared with.
+    func aiMessageShareLink(id: String) async throws -> URL {
+        try await fetchShareLink(.aiMessageShare(id: id))
+    }
+
     private func fetchShareLink(_ endpoint: Endpoint) async throws -> URL {
         let response = try await httpClient.send(endpoint)
         guard response.statusCode == 200 else {

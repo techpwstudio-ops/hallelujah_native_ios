@@ -195,7 +195,25 @@ private struct AIActionRow: View {
     let copy: (String?) -> Void
 
     @State private var speaker = AIMessageSpeaker.shared
+    @State private var activityItems: ActivityItems?
+    @State private var isPreparingShare = false
     @Environment(\.toastCenter) private var toastCenter
+
+    /// `showAiMessageShareSheet`: mints the message's share link, then opens
+    /// the system share sheet with the answer text followed by that link.
+    private func share(_ content: String) {
+        guard !isPreparingShare else { return }
+        isPreparingShare = true
+        Task {
+            defer { isPreparingShare = false }
+            do {
+                let link = try await DeepLinkService.shared.aiMessageShareLink(id: message.id)
+                activityItems = ActivityItems(values: ["\(content)\n\n\(link.absoluteString)"])
+            } catch {
+                toastCenter.show(String(localized: "Unable to share this message. Please try again."))
+            }
+        }
+    }
 
     var body: some View {
         let hasContent = !(message.content ?? "").isEmpty
@@ -235,15 +253,21 @@ private struct AIActionRow: View {
             }
 
             if let content = message.content, !content.isEmpty {
-                ShareLink(item: content) {
+                Button { share(content) } label: {
                     // `assets/icons/share.svg` stand-in, tinted `hintColor`.
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 16))
                         .foregroundStyle(AIColors.hint)
                         .frame(width: 22, height: 22)
+                        .opacity(isPreparingShare ? 0.4 : 1)
                 }
                 .buttonStyle(.plain)
+                .disabled(isPreparingShare)
             }
+        }
+        .sheet(item: $activityItems) { items in
+            ActivityView(items: items.values)
+                .presentationDetents([.medium, .large])
         }
     }
 }
