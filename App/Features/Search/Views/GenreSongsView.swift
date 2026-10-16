@@ -61,8 +61,7 @@ struct GenreSongsView: View {
         }
         .background(Color.black)
         .ignoresSafeArea(.container, edges: .top)
-        .toolbarBackground(showsCollapsedTitle ? .visible : .hidden, for: .navigationBar)
-        .toolbarBackground(Color.black, for: .navigationBar)
+        .appNavigationBarBackground(isVisible: showsCollapsedTitle)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {

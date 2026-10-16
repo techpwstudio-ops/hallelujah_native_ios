@@ -65,8 +65,7 @@ struct UserPlaylistDetailView: View {
             let shouldShow = maxY < 150
             if shouldShow != showsCollapsedTitle { showsCollapsedTitle = shouldShow }
         }
-        .toolbarBackground(showsCollapsedTitle ? .visible : .hidden, for: .navigationBar)
-        .toolbarBackground(Color.black, for: .navigationBar)
+        .appNavigationBarBackground(isVisible: showsCollapsedTitle)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("")
         .toolbar {

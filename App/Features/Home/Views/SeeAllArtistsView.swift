@@ -38,8 +38,7 @@ struct SeeAllArtistsView: View {
         }
         .background(HomeColors.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarBackground(Color.black, for: .navigationBar)
+        .appNavigationBarBackground()
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {

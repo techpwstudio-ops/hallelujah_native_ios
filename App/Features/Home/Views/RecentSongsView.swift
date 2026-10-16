@@ -18,8 +18,7 @@ struct RecentSongsView: View {
         }
         .background(HomeColors.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarBackground(Color.black, for: .navigationBar)
+        .appNavigationBarBackground()
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             // `centerTitle: false` — left-aligned beside the back button.

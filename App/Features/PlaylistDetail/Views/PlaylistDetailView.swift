@@ -133,8 +133,7 @@ struct PlaylistDetailView: View {
                 }
             }
         }
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarBackground(Color.black, for: .navigationBar)
+        .appNavigationBarBackground()
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {

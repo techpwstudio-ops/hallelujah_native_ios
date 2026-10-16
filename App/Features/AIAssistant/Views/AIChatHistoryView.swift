@@ -20,8 +20,7 @@ struct AIChatHistoryView: View {
             .background(AIColors.background.ignoresSafeArea())
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(AIColors.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .appNavigationBarBackground(AIColors.background)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {

@@ -51,8 +51,7 @@ struct CreatorProfileView: View {
         }
         .background(Color.black)
         .ignoresSafeArea(.container, edges: .top)
-        .toolbarBackground(showsCollapsedTitle ? .visible : .hidden, for: .navigationBar)
-        .toolbarBackground(Color.black, for: .navigationBar)
+        .appNavigationBarBackground(isVisible: showsCollapsedTitle)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("")
         .toolbar {

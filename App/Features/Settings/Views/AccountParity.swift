@@ -53,9 +53,8 @@ private struct ParityNavTitle<TitleContent: View>: ViewModifier {
         content
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
-            // Flutter AppBar is solid black with no scrolled-under tint.
-            .toolbarBackground(Color.black, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            // Flutter AppBar is solid black; iOS 26 draws it as glass over black.
+            .appNavigationBarBackground()
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ParityTitleToolbar(leading: leading, titleContent: titleContent)

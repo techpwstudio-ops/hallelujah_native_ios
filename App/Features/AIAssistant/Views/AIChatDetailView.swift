@@ -55,8 +55,7 @@ struct AIChatDetailView: View {
         // "Emet", history. Back keeps the system chevron so swipe-back works.
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(AIColors.background, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .appNavigationBarBackground(AIColors.background)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
