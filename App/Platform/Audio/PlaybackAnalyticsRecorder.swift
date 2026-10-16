@@ -73,6 +73,11 @@ final class PlaybackAnalyticsRecorder {
     private var isOffline = false
     private var progressTask: Task<Void, Never>?
 
+    /// Feeds the one-shot store review prompt (`ReviewPromptService`): called
+    /// with `(listenedMs, totalDurationMs)` when a play session ends having
+    /// played any audio (`SongAnalyticsManager`'s `onListenEnded` hook, `ai` branch).
+    var onListenEnded: (@MainActor (Int, Int) -> Void)?
+
     init(
         engine: AudioEngine,
         queueController: QueueController,
@@ -242,6 +247,10 @@ final class PlaybackAnalyticsRecorder {
             overrideSongID: activeSongID,
             overrideSessionID: activeSessionID
         )
+
+        if lastKnownPositionMS > 0 {
+            onListenEnded?(lastKnownPositionMS, songDurationMS)
+        }
 
         sessionID = nil
         songID = nil

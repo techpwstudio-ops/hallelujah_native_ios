@@ -217,6 +217,8 @@
 	<string>$(FEATURE_ADS_PREVIEW_MODE)</string>
 	<key>FeatureDownloadsEnabled</key>
 	<string>$(FEATURE_DOWNLOADS_ENABLED)</string>
+	<key>FeatureTipButtonEnabled</key>
+	<string>$(FEATURE_TIP_BUTTON_ENABLED)</string>
 
 	<!-- T23 — Firebase project + Google Sign-In config; see AppConfiguration
 	     and FirebaseBootstrap. Google/Facebook reversed-client-id schemes

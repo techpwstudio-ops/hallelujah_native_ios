@@ -1,20 +1,17 @@
 import Foundation
 
-/// `TipService`'s backend calls (`lib/services/tip_service.dart`'s
-/// `createTipOrder`/`_verify`) against `/tips/request`/`/tips/success`
-/// (`Endpoint+Tips.swift`). Both endpoints are confirmed not yet implemented
-/// server-side (see `TipTier`'s doc comment) — this protocol is wired to the
-/// real contract Dart's own source already describes, ready for the backend
-/// to catch up.
+/// The tip flow's backend calls (`offering_provider.dart`,
+/// `tip_service.dart`, `ai` branch).
 protocol TipRepository: Sendable {
-    /// `createTipOrder` — returns the created order's `orderId`. Dart reads
-    /// nothing else out of the response map.
-    func createTipOrder(amount: Int, note: String, creatorId: String?, songId: String?) async throws -> TipOrder
+    /// `OfferingRepository.getOfferings` — never throws: a failure is an empty
+    /// list, which the player reads as "no tipping right now" and hides the
+    /// button.
+    func offerings() async -> [Offering]
 
-    /// `_verify` — `provider` is always `"APPLE"` on this build, same
-    /// reasoning as `SubscriptionRepository.verifyPurchase`'s own hardcoded
-    /// provider. Throws on any non-200 response; Dart's own success check is
-    /// `res.statusCode == 200` with no body inspection on success, so there
-    /// is nothing meaningful to return beyond "didn't throw."
+    /// `createTipOrder`. The backend prices the order from the offering id
+    /// alone — the app never sends an amount.
+    func createTipOrder(offering: Offering, note: String, creatorId: String?, songId: String?) async throws -> TipOrder
+
+    /// `submitReceipt`. Throws on any non-200 response.
     func verifyTip(orderId: String, receiptData: String, productId: String) async throws
 }

@@ -20,6 +20,7 @@ struct AppShellView: View {
     // other player surface reads.
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
+    @State private var reviewPrompt: ReviewPromptService = DependencyContainer.current.resolve()
     // T35 — shared between the mini player (`AppBottomDockView`) and the
     // full player (`FullScreenDestinationView`'s `.player` case) so the
     // latter's zoom transition can originate from the former's exact frame.
@@ -88,10 +89,15 @@ struct AppShellView: View {
         // the splash (`FlashScreen`, already T15's concern). Started here for
         // the same "earliest point a signed-in shell exists" reason
         // DeepLinkService attaches here.
-        .onAppear { networkStatus.start() }
+        .onAppear {
+            networkStatus.start()
+            reviewPrompt.onForeground()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
-            case .active: networkStatus.resume()
+            case .active:
+                networkStatus.resume()
+                reviewPrompt.onForeground()
             case .background:
                 networkStatus.suspend()
                 audioEngine.persistPlaybackPosition()

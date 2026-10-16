@@ -27,5 +27,6 @@ extension AppConfiguration {
         "FeatureAdsEnabled": "YES",
         "FeatureAdsPreviewMode": "YES",
         "FeatureDownloadsEnabled": "YES",
+        "FeatureTipButtonEnabled": "YES",
     ])
 }

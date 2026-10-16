@@ -1,15 +1,15 @@
 import Foundation
 
-/// `createTipOrder`'s response (`tip_service.dart`) — `{data: {orderId}}`.
-/// Dart reads only `orderId` out of the decoded map before discarding the
-/// rest (`order['orderId'] as String?`), so this mirrors exactly that one
-/// field.
+/// `createTipOrder`'s response — `{data: {orderId, productId, amount,
+/// currency}}`. `productId` is the one the backend priced; the offering's own
+/// is only a fallback for a response that omits it.
 struct TipOrderResponse: Decodable, Sendable {
     let data: TipOrder
 }
 
 struct TipOrder: Decodable, Sendable, Equatable {
     let orderId: String
+    let productId: String?
 }
 
 /// Defensive `{message}` extraction for a non-2xx tip-endpoint response

@@ -13,25 +13,32 @@ import SwiftUI
 /// sheet container must not add a second one.
 struct TipDonationSheet: View {
     let artistName: String?
-    let onSend: (Int, String) -> Void
+    /// The tip amounts this store sells (`offeringsProvider`) — every choice
+    /// is one of them, because a store can only charge a pre-configured product.
+    let offerings: [Offering]
+    let onSend: (Offering, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var amount = TipProducts.defaultAmount
-    @State private var showsSlider = false
+    @State private var selected: Offering
+    @State private var showsAll = false
     @State private var note = ""
 
-    private let presets = TipProducts.presetAmounts
-    private let minAmount = TipProducts.minAmount
-    private let maxAmount = TipProducts.maxAmount
+    /// Rows of amount chips shown before the rest hides behind "More".
+    private static let collapsedRows = 2
+
+    init(artistName: String?, offerings: [Offering], onSend: @escaping (Offering, String) -> Void) {
+        self.artistName = artistName
+        self.offerings = offerings
+        self.onSend = onSend
+        // The host never presents the sheet for an empty list.
+        _selected = State(initialValue: Offering.initialSelection(in: offerings)
+            ?? Offering(id: "", amount: 0, currency: "INR", productID: ""))
+    }
 
     private var title: String {
         let trimmed = artistName?.trimmingCharacters(in: .whitespaces) ?? ""
         return trimmed.isEmpty ? String(localized: "Support the Artist") : String(localized: "Support \(trimmed)")
-    }
-
-    private func money(_ value: Int) -> String {
-        value.formatted(.currency(code: "INR").precision(.fractionLength(0)))
     }
 
     var body: some View {
@@ -47,16 +54,21 @@ struct TipDonationSheet: View {
 
                 Spacer().frame(height: 8)
 
-                Text("Show your appreciation for this music. Your support goes directly to the creator.")
+                Text("Show your appreciation for this music. The creator receives a share of every tip.")
                     .font(AccountParity.bodyMedium)
                     .foregroundStyle(AccountParity.white70)
                     .multilineTextAlignment(.center)
 
                 Spacer().frame(height: 20)
 
-                Text(verbatim: money(amount))
+                Text(verbatim: selected.priceLabel)
                     .font(AccountParity.font(24, .bold))
                     .foregroundStyle(AccountParity.white)
+                if let label = selected.label {
+                    Text(verbatim: label)
+                        .font(AccountParity.bodyMedium)
+                        .foregroundStyle(AccountParity.white70)
+                }
 
                 Spacer().frame(height: 16)
 
@@ -68,16 +80,11 @@ struct TipDonationSheet: View {
 
                 Spacer().frame(height: 16)
 
-                if showsSlider {
-                    sliderSection
-                    Spacer().frame(height: 10)
-                }
-
                 Spacer().frame(height: 20)
 
-                ParityFilledButton(title: "Send \(money(amount))", fillWidth: true) {
-                    guard amount >= minAmount else { return }
-                    onSend(amount, note.trimmingCharacters(in: .whitespacesAndNewlines))
+                ParityFilledButton(title: "Send \(selected.priceLabel)", fillWidth: true) {
+                    guard !selected.id.isEmpty else { return }
+                    onSend(selected, note.trimmingCharacters(in: .whitespacesAndNewlines))
                     dismiss()
                 }
 
@@ -115,19 +122,19 @@ struct TipDonationSheet: View {
         )
     }
 
-    /// `Wrap(spacing: 10)` of `ChoiceChip`s.
+    /// `ClampedWrap`: two rows of chips; row 2 ends with "More" when there are more.
     private var presetChips: some View {
-        FlowLayout(spacing: 10, lineSpacing: 0) {
-            ForEach(presets, id: \.self) { preset in
-                chip(money(preset), selected: amount == preset && !showsSlider) {
-                    amount = preset
-                    showsSlider = false
+        ClampedWrapLayout(maxRows: Self.collapsedRows, expanded: showsAll, hasMore: true, spacing: 8, runSpacing: 8) {
+            ForEach(offerings) { offering in
+                chip(offering.priceLabel, selected: selected.id == offering.id) {
+                    selected = offering
                 }
             }
-            chip(String(localized: "More"), selected: showsSlider) {
-                showsSlider = true
+            chip(String(localized: "More"), selected: false) {
+                showsAll = true
             }
         }
+        .clipped()
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -158,72 +165,5 @@ struct TipDonationSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    private var sliderSection: some View {
-        VStack(spacing: 0) {
-            Slider(
-                value: Binding(
-                    get: { Double(amount) },
-                    set: { amount = nearestTier($0) }
-                ),
-                in: Double(minAmount)...Double(maxAmount)
-            )
-            .tint(AccountParity.white)
-            HStack {
-                Text(verbatim: money(minAmount))
-                Spacer()
-                Text(verbatim: money(maxAmount))
-            }
-            .font(AccountParity.bodyMedium)
-            .foregroundStyle(AccountParity.white)
-        }
-    }
-
-    private func nearestTier(_ value: Double) -> Int {
-        presets.min { abs(value - Double($0)) < abs(value - Double($1)) } ?? TipProducts.defaultAmount
-    }
-}
-
-/// Minimal wrapping row layout (Flutter `Wrap`).
-private struct FlowLayout: Layout {
-    var spacing: CGFloat
-    var lineSpacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let maxWidth = proposal.width ?? .infinity
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var width: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > 0 && x + size.width > maxWidth {
-                y += rowHeight + lineSpacing
-                x = 0
-                rowHeight = 0
-            }
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-            width = max(width, x - spacing)
-        }
-        return CGSize(width: width, height: y + rowHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var rowHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > bounds.minX && x + size.width > bounds.maxX {
-                y += rowHeight + lineSpacing
-                x = bounds.minX
-                rowHeight = 0
-            }
-            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
     }
 }

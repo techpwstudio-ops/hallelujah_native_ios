@@ -268,7 +268,8 @@ enum AppComposition {
         // requires exactly one `Transaction.updates` listener for the app's
         // whole lifetime, and every resolver must observe the SAME `status`.
         let tipPurchaseManager = TipPurchaseManager(
-            tipRepository: RemoteTipRepository(client: HTTPClient(configuration: configuration, authProvider: session))
+            tipRepository: RemoteTipRepository(client: HTTPClient(configuration: configuration, authProvider: session)),
+            pendingStore: KeyValuePendingTipOrderStore(store: UserDefaultsKeyValueStore())
         )
         container.register(TipPurchaseManager.self) { tipPurchaseManager }
         // T66 — same "no shared state to capture" reasoning, except
@@ -501,6 +502,15 @@ enum AppComposition {
             reachability: NWPathReachabilityMonitor(configuration: configuration)
         )
         container.register(PlaybackAnalyticsRecorder.self) { playbackAnalyticsRecorder }
+
+        // The one-shot store review prompt: fed by finished listens, held back
+        // while an ad break is up.
+        let reviewPromptService = ReviewPromptService(store: userDefaultsStore)
+        reviewPromptService.isBlocked = { adPacingController.isAdBreak }
+        playbackAnalyticsRecorder.onListenEnded = { listenedMs, totalMs in
+            reviewPromptService.onListenEnded(listenedMs: listenedMs, totalDurationMs: totalMs)
+        }
+        container.register(ReviewPromptService.self) { reviewPromptService }
 
         // Per-environment overrides (e.g. a no-op analytics tracker in
         // Development) branch on `configuration.environment` here as those

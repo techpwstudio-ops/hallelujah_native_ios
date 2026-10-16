@@ -87,7 +87,8 @@ struct AppConfiguration: Sendable {
             carPlayEnabled: info.requiredFlag("FeatureCarPlayEnabled"),
             adsEnabled: info.requiredFlag("FeatureAdsEnabled"),
             adsPreviewMode: info.requiredFlag("FeatureAdsPreviewMode"),
-            downloadsEnabled: info.requiredFlag("FeatureDownloadsEnabled")
+            downloadsEnabled: info.requiredFlag("FeatureDownloadsEnabled"),
+            tipButtonEnabled: info.requiredFlag("FeatureTipButtonEnabled")
         )
 
         firebase = FirebaseIdentity(

@@ -1,17 +1,18 @@
 import Foundation
 
 extension Endpoint {
-    // MARK: Tips (T64) — `lib/services/tip_service.dart`'s
-    // `EndPoints.createTipRequestApi`/`EndPoints.tipSuccessApi`
-    // (`end_points.dart`). Both are explicitly commented TODO(backend) in
-    // the Dart source, and confirmed absent from the backend repo (no tip
-    // route/controller file exists there) — wired to the real paths anyway
-    // so the flow works once the backend lands them, same posture every
-    // other confirmed-but-not-yet-live gap in this port already uses.
+    // MARK: Tips — `EndPoints.offeringsApi` / `createTipRequestApi` /
+    // `tipSuccessApi` (`end_points.dart`, `ai` branch).
 
-    /// `createTipRequestApi` — `POST /tips/request`.
+    /// `GET /offerings` — the tip amounts for this device's store (the server
+    /// reads the `os` header).
+    static let offerings = Endpoint.get("/offerings")
+
+    /// `POST /tips/request` — body `{offeringId, note, creatorId, songId,
+    /// provider}`; returns `{orderId, productId, amount, currency}`.
     static let createTipRequest = Endpoint.post("/tips/request")
 
-    /// `tipSuccessApi` — `POST /tips/success`.
+    /// `POST /tips/success` — verifies the store receipt (body `{provider,
+    /// orderId, payload}`).
     static let tipSuccess = Endpoint.post("/tips/success")
 }

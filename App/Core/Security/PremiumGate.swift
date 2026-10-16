@@ -25,9 +25,14 @@ enum PremiumFeature: Sendable, CaseIterable {
 /// there is no cached verdict to go stale.
 struct PremiumGate: Sendable {
     private let membershipStore: MembershipStore
+    private let subscriptionsEnabled: @Sendable () -> Bool
 
-    init(membershipStore: MembershipStore) {
+    init(
+        membershipStore: MembershipStore,
+        subscriptionsEnabled: @escaping @Sendable () -> Bool = { RemoteSettings.current.showSubscription }
+    ) {
         self.membershipStore = membershipStore
+        self.subscriptionsEnabled = subscriptionsEnabled
     }
 
     /// An active (not yet expired) subscription — owner or family member.
@@ -35,8 +40,14 @@ struct PremiumGate: Sendable {
         get async { await membershipStore.membership?.subscription.isActive == true }
     }
 
+    /// Whether premium restrictions exist at all. With the remote
+    /// `showSubscription` flag off, the app sells no subscription, so no
+    /// feature may be locked behind one (and no "Premium" badge shown).
+    var restrictsFeatures: Bool { subscriptionsEnabled() }
+
     func allows(_ feature: PremiumFeature) async -> Bool {
-        await hasPremium
+        guard restrictsFeatures else { return true }
+        return await hasPremium
     }
 
     /// Paying subscribers never see ads (`ads_repository.dart`'s

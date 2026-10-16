@@ -3,36 +3,18 @@ import StoreKit
 import Observation
 
 /// Ports the Apple/StoreKit rail of `TipService`/`IAPService.buyConsumable`
-/// (`lib/services/tip_service.dart`, `lib/services/IAPService.dart`) onto
-/// real StoreKit 2 consumable purchases.
+/// (`ai` branch) onto StoreKit 2 consumables.
 ///
-/// Deliberately NOT folded into `StoreKitPurchaseManager`: that type is
-/// hard-wired to `SubscriptionRepository`/`SubscriptionPlan`/`Membership`
-/// and a subscription's restore-across-launches semantics, none of which
-/// apply to a consumable tip — Dart's own `TipService` has no restore
-/// method either. A separate, smaller manager avoids genericizing that type
-/// away from the shape every one of its other callers depends on.
+/// The tip is one backend `Offering`'s consumable product. The order is written
+/// to disk (`PendingTipOrder`) BEFORE the store is asked for the money and
+/// removed only once the backend accepted the receipt — so a payment StoreKit
+/// hands back after the app was killed, or while offline, still finds its
+/// order. The backend prices the order from the offering id alone.
 ///
-/// `pendingOrderID`/`pendingProductID` are in-memory only, NOT persisted via
-/// `KeyValueStoring` the way `StoreKitPurchaseManager`'s pending state is —
-/// a faithful difference, not a cut corner: Dart's own
-/// `TipService._pending`/`_orderId` are plain in-memory singleton fields
-/// too, never written to any local store. The same reasoning covers why
-/// there is only ever one pending tip at a time: Dart's `sendTip` guard
-/// (`if (_pending) return`) already allows only one in flight app-wide.
-///
-/// Two purchase-completion paths, same reasoning as
-/// `StoreKitPurchaseManager`'s own doc comment: `sendTip(...)` is awaited
-/// directly for the common (sandbox) case; the always-on `Transaction
-/// .updates` listener (started in `init`) catches the async-resolution edge
-/// case (Ask to Buy). Unlike Dart's `IAPService`, which routes every
-/// purchase update (subscription AND tip) through ONE shared stream
-/// disambiguated by `TipProducts.isTipProduct`, this runs its own
-/// independent `Transaction.updates` iteration scoped only to tip product
-/// IDs — StoreKit 2 supports multiple concurrent listeners on the same
-/// `AsyncSequence`, so this and `StoreKitPurchaseManager`'s own listener
-/// never cross-talk; it just means two listeners exist where Dart has one,
-/// not that transactions are missed or double-handled.
+/// Kept separate from `StoreKitPurchaseManager` (subscription-specific). Its
+/// own `Transaction.updates` listener only acts on tip products
+/// (`TipProducts.isTipProduct`) and finishes a failed tip transaction so
+/// StoreKit stops redelivering it.
 @MainActor
 @Observable
 final class TipPurchaseManager {
@@ -43,9 +25,9 @@ final class TipPurchaseManager {
     }
 
     enum TipPurchaseError: Error, Equatable, Sendable {
-        /// `TipService._startPurchase`'s `productId == null` guard — this
-        /// amount doesn't match any configured tier.
-        case invalidAmount
+        /// The backend order came back without an id: charging for an order
+        /// nothing can be verified against would leave an orphan payment.
+        case orderUnavailable
         /// `IAPService.buyConsumable`'s `!available` branch.
         case iapUnavailable
         /// `IAPService.buyConsumable`'s `response.productDetails.isEmpty`
@@ -58,8 +40,8 @@ final class TipPurchaseManager {
 
         var displayMessage: String {
             switch self {
-            case .invalidAmount:
-                String(localized: "Please choose one of the listed tip amounts.")
+            case .orderUnavailable:
+                String(localized: "Couldn't start your tip")
             case .iapUnavailable:
                 String(localized: "In app purchase service is not available on your device please use another option for payment")
             case .productUnavailable:
@@ -76,12 +58,14 @@ final class TipPurchaseManager {
     private let tipRepository: any TipRepository
     private let logger = AppLogger(category: .tips)
 
-    private var pendingOrderID: String?
-    private var pendingProductID: String?
+    private let pendingStore: any PendingTipOrderStore
+    /// The tip started in this process (`TipService._order`).
+    private var liveOrder: PendingTipOrder?
     nonisolated(unsafe) private var updatesTask: Task<Void, Never>?
 
-    init(tipRepository: any TipRepository) {
+    init(tipRepository: any TipRepository, pendingStore: any PendingTipOrderStore) {
         self.tipRepository = tipRepository
+        self.pendingStore = pendingStore
 
         updatesTask = Task { [weak self] in
             for await result in Transaction.updates {
@@ -95,23 +79,21 @@ final class TipPurchaseManager {
         updatesTask?.cancel()
     }
 
-    /// `TipService.sendTip` end to end: `createTipOrder` → resolve this
-    /// amount's product id → StoreKit purchase → `_verify`. Returns `true`
-    /// only once the backend has verified the resulting transaction
-    /// (mirrors `IAPService._handlePurchase`'s `onSuccess` branch); `false`
-    /// covers user cancellation and a still-pending (Ask to Buy) purchase,
-    /// same as Dart's own silent no-op on both.
+    /// `TipService.sendTip` end to end: create the backend order → save it →
+    /// StoreKit purchase → verify. Returns `true` only once the backend has
+    /// verified the transaction; `false` covers cancellation and a pending
+    /// (Ask to Buy) purchase, which StoreKit delivers later.
     @discardableResult
-    func sendTip(amount: Int, note: String, creatorId: String?, songId: String?) async throws -> Bool {
+    func sendTip(offering: Offering, note: String, creatorId: String?, songId: String?) async throws -> Bool {
         guard status != .purchasing else { return false }
         status = .purchasing
         defer { if status == .purchasing { status = .idle } }
 
-        let order = try await tipRepository.createTipOrder(amount: amount, note: note, creatorId: creatorId, songId: songId)
+        let order = try await tipRepository.createTipOrder(offering: offering, note: note, creatorId: creatorId, songId: songId)
+        guard !order.orderId.isEmpty else { throw TipPurchaseError.orderUnavailable }
+        // The backend's product is the one it priced; the offering's is a fallback.
+        let productID = order.productId.flatMap { $0.isEmpty ? nil : $0 } ?? offering.productID
 
-        guard let productID = TipProducts.productID(forAmount: amount) else {
-            throw TipPurchaseError.invalidAmount
-        }
         guard AppStore.canMakePayments else {
             throw TipPurchaseError.iapUnavailable
         }
@@ -119,33 +101,67 @@ final class TipPurchaseManager {
         guard let product = products.first else {
             throw TipPurchaseError.productUnavailable
         }
-        persist(orderID: order.orderId, productID: productID)
 
-        let result = try await product.purchase()
+        // Saved first, then the store is asked: a crash in between leaves an
+        // unpaid order (harmless), the other way round a payment with no order.
+        let pending = PendingTipOrder(orderId: order.orderId, productId: productID)
+        liveOrder = pending
+        pendingStore.save(pending)
+
+        let result: Product.PurchaseResult
+        do {
+            result = try await product.purchase()
+        } catch {
+            // The store refused the payment (`onPurchaseAborted`): no money
+            // moved, so the order is dropped.
+            abandon()
+            throw error
+        }
+
         switch result {
         case let .success(verification):
+            // A failure from here on keeps the order on disk: the payment may
+            // have gone through, and StoreKit will redeliver the transaction.
             let transaction = try checkVerified(verification)
-            try await finalize(transaction: transaction, jws: verification.jwsRepresentation, orderId: order.orderId)
+            try await finalize(transaction: transaction, jws: verification.jwsRepresentation, order: pending)
             status = .completed
             return true
-        case .userCancelled, .pending:
+        case .userCancelled:
+            abandon()
+            return false
+        case .pending:
+            // Ask to Buy: the approved transaction arrives via `Transaction.updates`.
             return false
         @unknown default:
+            abandon()
             return false
         }
     }
 
-    /// The always-on listener (started in `init`). Only acts when the
-    /// transaction's product matches a locally-pending tip order — same
-    /// "nothing locally pending has nothing to verify against" reasoning
-    /// `StoreKitPurchaseManager.handleTransactionUpdate` already documents.
+    /// The order a purchase of `productID` belongs to: the tip started in this
+    /// process, or — for a purchase StoreKit hands back to a fresh process —
+    /// the one kept on disk. `nil` when neither was made for that product.
+    func pendingOrder(for productID: String) -> PendingTipOrder? {
+        if let liveOrder, liveOrder.productId == productID { return liveOrder }
+        if let saved = pendingStore.read(), saved.productId == productID { return saved }
+        return nil
+    }
+
+    /// The always-on listener. Acts only on tip products; a failed tip
+    /// transaction is finished so StoreKit stops handing it back.
     private func handleTransactionUpdate(_ result: VerificationResult<Transaction>) async {
         guard let transaction = try? checkVerified(result) else { return }
-        guard transaction.productID == pendingProductID, let orderID = pendingOrderID else { return }
+        guard TipProducts.isTipProduct(transaction.productID) else { return }
+        guard let order = pendingOrder(for: transaction.productID) else {
+            logger.warning("tip transaction \(transaction.productID) has no pending order")
+            return
+        }
+        // A foreground purchase is finalized by `sendTip` itself.
+        guard status != .purchasing || liveOrder == nil else { return }
 
         status = .purchasing
         do {
-            try await finalize(transaction: transaction, jws: result.jwsRepresentation, orderId: orderID)
+            try await finalize(transaction: transaction, jws: result.jwsRepresentation, order: order)
             status = .completed
         } catch {
             status = .idle
@@ -154,23 +170,27 @@ final class TipPurchaseManager {
         }
     }
 
-    private func finalize(transaction: Transaction, jws: String, orderId: String) async throws {
+    private func finalize(transaction: Transaction, jws: String, order: PendingTipOrder) async throws {
         do {
             try await tipRepository.verifyTip(
-                orderId: orderId,
+                orderId: order.orderId,
                 receiptData: jws,
                 productId: transaction.productID
             )
             await transaction.finish()
-            clearPendingOrder()
+            // Only the tip this process started is finished here.
+            if liveOrder == order { liveOrder = nil }
+            pendingStore.clear()
         } catch {
-            // Do NOT finish() — same reasoning as
-            // `StoreKitPurchaseManager.finalizePurchase`: leaving the
-            // transaction unfinished means StoreKit redelivers it via
-            // `Transaction.updates` on the next launch/foreground.
+            // Do NOT finish() — StoreKit redelivers it on the next launch.
             status = .idle
             throw error
         }
+    }
+
+    private func abandon() {
+        liveOrder = nil
+        pendingStore.clear()
     }
 
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
@@ -180,15 +200,5 @@ final class TipPurchaseManager {
         case let .verified(safe):
             return safe
         }
-    }
-
-    private func persist(orderID: String, productID: String) {
-        pendingOrderID = orderID
-        pendingProductID = productID
-    }
-
-    private func clearPendingOrder() {
-        pendingOrderID = nil
-        pendingProductID = nil
     }
 }

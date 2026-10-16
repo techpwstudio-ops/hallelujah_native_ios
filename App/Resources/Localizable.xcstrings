@@ -24273,47 +24273,6 @@
         }
       }
     },
-    "Show your appreciation for this music. Your support goes directly to the creator.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show your appreciation for this music. Your support goes directly to the creator."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "इस संगीत के लिए अपनी सराहना दिखाएँ। आपका सहयोग सीधे रचनाकार तक पहुँचता है।"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಈ ಸಂಗೀತದ ಬಗ್ಗೆ ನಿಮ್ಮ ಮೆಚ್ಚುಗೆ ತೋರಿಸಿ. ನಿಮ್ಮ ಬೆಂಬಲ ನೇರವಾಗಿ ಸೃಷ್ಟಿಕರ್ತರಿಗೆ ತಲುಪುತ್ತದೆ."
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ഈ സംഗീതത്തോടുള്ള നിങ്ങളുടെ അഭിനന്ദനം അറിയിക്കൂ. നിങ്ങളുടെ പിന്തുണ നേരിട്ട് സ്രഷ്ടാവിന് ലഭിക്കും."
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "இந்த இசைக்கு உங்கள் பாராட்டைத் தெரிவியுங்கள். உங்கள் ஆதரவு நேரடியாகப் படைப்பாளரைச் சென்றடையும்."
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ఈ సంగీతం పట్ల మీ అభినందనను తెలియజేయండి. మీ మద్దతు నేరుగా సృష్టికర్తకు చేరుతుంది."
-          }
-        }
-      }
-    },
     "Shuffle": {
       "extractionState": "manual",
       "localizations": {
@@ -33257,6 +33216,252 @@
           "stringUnit": {
             "state": "translated",
             "value": "“%@”\n— %@\n\n%@"
+          }
+        }
+      }
+    },
+    "Show your appreciation for this music. The creator receives a share of every tip.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show your appreciation for this music. The creator receives a share of every tip."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस संगीत के लिए अपनी सराहना दिखाएँ। हर टिप का एक हिस्सा कलाकार को मिलता है।"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ సంగీతం పట్ల మీ అభినందనను తెలియజేయండి. ప్రతి టిప్‌లో కొంత భాగం కళాకారుడికి చేరుతుంది."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்த இசைக்கு உங்கள் பாராட்டைத் தெரிவியுங்கள். ஒவ்வொரு டிப்பிலும் ஒரு பங்கு கலைஞருக்குச் செல்கிறது."
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ ಸಂಗೀತಕ್ಕೆ ನಿಮ್ಮ ಮೆಚ್ಚುಗೆಯನ್ನು ತೋರಿಸಿ. ಪ್ರತಿ ಟಿಪ್‌ನ ಒಂದು ಭಾಗ ಕಲಾವಿದರಿಗೆ ಸಿಗುತ್ತದೆ."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ സംഗീതത്തോടുള്ള നിങ്ങളുടെ അഭിനന്ദനം അറിയിക്കൂ. ഓരോ ടിപ്പിന്റെയും ഒരു ഭാഗം കലാകാരന് ലഭിക്കും."
+          }
+        }
+      }
+    },
+    "Couldn't start your tip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't start your tip"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आपकी टिप शुरू नहीं हो सकी"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "మీ టిప్‌ను ప్రారంభించలేకపోయాము"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "உங்கள் டிப்பைத் தொடங்க முடியவில்லை"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ನಿಮ್ಮ ಟಿಪ್ ಪ್ರಾರಂಭಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "നിങ്ങളുടെ ടിപ്പ് ആരംഭിക്കാനായില്ല"
+          }
+        }
+      }
+    },
+    "Something went wrong while starting your tip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Something went wrong while starting your tip"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आपकी टिप शुरू करते समय कुछ गलत हो गया"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "మీ టిప్‌ను ప్రారంభిస్తున్నప్పుడు ఏదో తప్పు జరిగింది"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "உங்கள் டிப்பைத் தொடங்கும்போது ஏதோ தவறு நடந்தது"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ನಿಮ್ಮ ಟಿಪ್ ಪ್ರಾರಂಭಿಸುವಾಗ ಏನೋ ತಪ್ಪಾಗಿದೆ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "നിങ്ങളുടെ ടിപ്പ് ആരംഭിക്കുമ്പോൾ എന്തോ കുഴപ്പം സംഭവിച്ചു"
+          }
+        }
+      }
+    },
+    "Thank you for supporting the artist! 🙏": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thank you for supporting the artist! 🙏"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कलाकार का साथ देने के लिए धन्यवाद! 🙏"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "కళాకారుడికి మద్దతు ఇచ్చినందుకు ధన్యవాదాలు! 🙏"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "கலைஞருக்கு ஆதரவளித்ததற்கு நன்றி! 🙏"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಕಲಾವಿದರನ್ನು ಬೆಂಬಲಿಸಿದ್ದಕ್ಕಾಗಿ ಧನ್ಯವಾದಗಳು! 🙏"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "കലാകാരനെ പിന്തുണച്ചതിന് നന്ദി! 🙏"
+          }
+        }
+      }
+    },
+    "Tip could not be confirmed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tip could not be confirmed"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "टिप की पुष्टि नहीं हो सकी"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "టిప్ నిర్ధారించబడలేదు"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "டிப் உறுதிசெய்யப்படவில்லை"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಟಿಪ್ ದೃಢೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ടിപ്പ് സ്ഥിരീകരിക്കാനായില്ല"
+          }
+        }
+      }
+    },
+    "Could not confirm your tip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not confirm your tip"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "आपकी टिप की पुष्टि नहीं हो सकी"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "మీ టిప్‌ను నిర్ధారించలేకపోయాము"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "உங்கள் டிப்பை உறுதிப்படுத்த முடியவில்லை"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ನಿಮ್ಮ ಟಿಪ್ ದೃಢೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "നിങ്ങളുടെ ടിപ്പ് സ്ഥിരീകരിക്കാനായില്ല"
           }
         }
       }

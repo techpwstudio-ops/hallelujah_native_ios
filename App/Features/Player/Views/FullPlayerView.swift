@@ -34,6 +34,13 @@ struct FullPlayerView: View {
     @State private var isAddToPlaylistPresented = false
     @State private var isSleepTimerSheetPresented = false
     @State private var menuSong: Song?
+    @State private var tipPurchases: TipPurchaseManager = DependencyContainer.current.resolve()
+    @State private var tipRepository: any TipRepository = DependencyContainer.current.resolve()
+    /// `offeringsProvider`: fetched when the player opens, so each opening
+    /// picks up whatever the admin panel changed. Empty (not loaded, no
+    /// offering for this store, or a failed request) hides the tip button.
+    @State private var offerings: [Offering] = []
+    @State private var isTipSheetPresented = false
 
     private var song: Song? { engine.currentSong }
 
@@ -42,7 +49,7 @@ struct FullPlayerView: View {
     private var isPlayerUncovered: Bool {
         coordinator.playerPath.isEmpty
             && !isSharePresented && !isQueuePresented && !isAddToPlaylistPresented
-            && !isSleepTimerSheetPresented && menuSong == nil
+            && !isSleepTimerSheetPresented && !isTipSheetPresented && menuSong == nil
     }
 
     @ViewBuilder
@@ -102,6 +109,20 @@ struct FullPlayerView: View {
                     }
                 }
             }
+        }
+        .appSheet(isPresented: $isTipSheetPresented) {
+            if let song {
+                TipDonationSheet(
+                    artistName: song.creator?.displayName ?? song.creator?.name ?? song.primaryArtists,
+                    offerings: offerings
+                ) { offering, note in
+                    sendTip(offering: offering, note: note, song: song)
+                }
+            }
+        }
+        .task {
+            guard AppConfiguration.current.featureFlags.tipButtonEnabled else { return }
+            offerings = await tipRepository.offerings()
         }
         .songMenu(song: $menuSong, leavesPlayer: true)
         .sleepTimerSheet(isPresented: $isSleepTimerSheetPresented)
@@ -205,6 +226,17 @@ struct FullPlayerView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             favouriteButton
+            if song != nil, AppConfiguration.current.featureFlags.tipButtonEnabled, !offerings.isEmpty {
+                Button { isTipSheetPresented = true } label: {
+                    Image(systemName: "heart.circle")
+                        .font(.system(size: 24))
+                        .foregroundStyle(PlayerStyle.white)
+                        .padding(8)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Support the Artist")
+            }
             if song != nil {
                 Button { isAddToPlaylistPresented = true } label: {
                     Image(systemName: "plus.circle")
@@ -215,6 +247,28 @@ struct FullPlayerView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Add to playlist")
+            }
+        }
+    }
+
+    /// `TipService.instance.sendTip` — the store's payment sheet takes over;
+    /// outcomes surface as toasts, as in Flutter.
+    private func sendTip(offering: Offering, note: String, song: Song) {
+        Task {
+            do {
+                let confirmed = try await tipPurchases.sendTip(
+                    offering: offering,
+                    note: note,
+                    creatorId: song.creator?.creatorId ?? song.songPrimaryArtists.compactMap(\.creatorId).first,
+                    songId: song.id
+                )
+                if confirmed { toastCenter.show(String(localized: "Thank you for supporting the artist! 🙏")) }
+            } catch let error as TipError {
+                toastCenter.show(error.message)
+            } catch let error as TipPurchaseManager.TipPurchaseError {
+                toastCenter.show(error.displayMessage)
+            } catch {
+                toastCenter.show(String(localized: "Something went wrong while starting your tip"))
             }
         }
     }

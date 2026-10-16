@@ -115,7 +115,7 @@ struct SettingsView: View {
                 tile(icon: "character.bubble", title: "App Language", subtitle: Text(verbatim: AppLanguageStore.shared.selected.nativeName)) {
                     coordinator.push(.appLanguage)
                 }
-                if isPremium {
+                if isPremium || !showSubscription {
                     tile(
                         icon: "waveform",
                         title: "Audio Quality",

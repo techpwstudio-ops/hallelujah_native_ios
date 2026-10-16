@@ -10,9 +10,19 @@ final class RemoteTipRepository: TipRepository {
         self.client = client
     }
 
-    func createTipOrder(amount: Int, note: String, creatorId: String?, songId: String?) async throws -> TipOrder {
+    func offerings() async -> [Offering] {
+        do {
+            let response = try await client.send(.offerings, silent: true)
+            guard response.statusCode == 200 else { return [] }
+            return Offering.parseList(response.data)
+        } catch {
+            return []
+        }
+    }
+
+    func createTipOrder(offering: Offering, note: String, creatorId: String?, songId: String?) async throws -> TipOrder {
         let body = try JSONEncoder().encode(CreateTipOrderRequest(
-            amount: amount,
+            offeringId: offering.id,
             note: note,
             creatorId: creatorId,
             songId: songId,
@@ -40,9 +50,9 @@ final class RemoteTipRepository: TipRepository {
 }
 
 /// `createTipOrder`'s request body (`tip_service.dart`):
-/// `{amount, note, creatorId, songId, provider}`, verbatim.
+/// `{offeringId, note, creatorId, songId, provider}`, verbatim.
 private struct CreateTipOrderRequest: Encodable {
-    let amount: Int
+    let offeringId: String
     let note: String
     let creatorId: String?
     let songId: String?

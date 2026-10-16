@@ -2,10 +2,25 @@ import Testing
 @testable import GHallelujah
 
 struct PremiumGateTests {
-    private func makeGate(membership: Membership?) async -> PremiumGate {
+    private func makeGate(membership: Membership?, subscriptionsEnabled: Bool = true) async -> PremiumGate {
         let store = MembershipStore(keyValueStore: InMemoryKeyValueStore())
         await store.setMembership(membership)
-        return PremiumGate(membershipStore: store)
+        return PremiumGate(membershipStore: store, subscriptionsEnabled: { subscriptionsEnabled })
+    }
+
+    /// `showSubscription` off: no subscription is sold, so nothing is locked.
+    @Test func nothingIsRestrictedWhenSubscriptionsAreSwitchedOff() async {
+        let gate = await makeGate(membership: nil, subscriptionsEnabled: false)
+        #expect(!gate.restrictsFeatures)
+        for feature in PremiumFeature.allCases {
+            #expect(await gate.allows(feature))
+        }
+    }
+
+    @Test func featuresAreRestrictedWhenSubscriptionsAreOn() async {
+        let gate = await makeGate(membership: nil)
+        #expect(gate.restrictsFeatures)
+        #expect(await !gate.allows(.downloads))
     }
 
     @Test func noMembershipMeansNoPremiumAndAds() async {
