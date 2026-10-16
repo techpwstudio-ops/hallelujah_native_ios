@@ -68,13 +68,6 @@ final class AdPacingController {
 
     private static let placement = "audio_between_tracks"
     private static let previewAssetTypes = ["audio_ad", "reel_video"]
-    /// Dart's own local allowlist (`_kShareableActionTypes`, `ad_action.dart`)
-    /// — deliberately narrower than the full `ShareableType` enum: `app` and
-    /// `bibleVerse` are excluded there on purpose, so this mirrors the exact
-    /// set rather than reusing `ShareableType.allCases`.
-    private static let shareableActionTypes: Set<String> = [
-        "song", "creator", "playlist", "userPlaylist", "companyPlaylist", "verseOfDay",
-    ]
     private var previewAssetTypeIndex = 0
 
     init(adsRepository: AdsRepository, engine: AudioEngine) {
@@ -291,22 +284,6 @@ final class AdPacingController {
     /// banner, the strip and the card open an ad that is no longer (or never
     /// was) `currentAd`.
     func openAction(for ad: AdCreative, coordinator: AppNavigationCoordinator) {
-
-        if let action = ad.action {
-            if action.type == "subscription" {
-                adsRepository.trackClick(ad.impressionToken)
-                coordinator.push(.subscriptionPlans)
-                return
-            }
-            if let item = action.item, Self.shareableActionTypes.contains(action.type) {
-                adsRepository.trackClick(ad.impressionToken)
-                DeepLinkService.shared.openShareable(shareableType: action.type, item: item, coordinator: coordinator)
-                return
-            }
-        }
-
-        if let clickUrl = ad.clickUrl, let url = URL(string: clickUrl) {
-            UIApplication.shared.open(url)
-        }
+        openAdAction(ad, coordinator: coordinator, adsRepository: adsRepository)
     }
 }

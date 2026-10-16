@@ -196,10 +196,3 @@ final class RailAdStore {
         generation += 1
     }
 }
-
-extension AdCreative {
-    /// `AdCreative.campaignKey` — the advertiser's campaign, or, for a company
-    /// ad (which belongs to none), its own id with a prefix so the two id
-    /// spaces cannot collide.
-    var campaignKey: String { isCompany ? "company:\(adId)" : campaignId }
-}

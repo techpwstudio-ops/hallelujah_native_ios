@@ -16,7 +16,10 @@ import Foundation
 /// field this task's player-only scope has no consumer for.
 struct AdCreative: Sendable {
     let adId: String
-    let campaignId: String
+    /// The advertiser's campaign, or nil for a company ad — the company's own
+    /// promo, which belongs to no campaign. Identify "who is this from"
+    /// (muting, one-per-page) with `campaignKey`, never this.
+    let campaignId: String?
     let placement: String
     let assetType: String
 
@@ -51,13 +54,18 @@ struct AdCreative: Sendable {
     /// `kind == 'company'`: the company's own promo — free, never billed, and
     /// its token can't name a paid creative (no reactions/feedback to send).
     var isCompany: Bool = false
+
+    /// `AdCreative.campaignKey` — the identity a listener's "stop showing
+    /// this" and a page's "one of these per screen" both key on: the campaign
+    /// for a paid ad, the promo itself for a company ad, with a prefix so the
+    /// two id spaces can never collide.
+    var campaignKey: String { campaignId ?? "company:\(adId)" }
     /// 16:9 picture the same campaign carries when it also has an image
     /// creative booked (`AdCreative.wideImageUrl`). Same "already a URL" rule.
     var wideImageUrl: String?
 
     static func fromJSON(_ json: [String: Any]) -> AdCreative? {
         guard let adId = json["adId"] as? String,
-              let campaignId = json["campaignId"] as? String,
               let placement = json["placement"] as? String,
               let assetType = json["assetType"] as? String,
               let impressionToken = json["impressionToken"] as? String
@@ -65,7 +73,7 @@ struct AdCreative: Sendable {
 
         var creative = AdCreative(
             adId: adId,
-            campaignId: campaignId,
+            campaignId: json["campaignId"] as? String,
             placement: placement,
             assetType: assetType,
             assetUrl: json["assetUrl"] as? String,
@@ -97,12 +105,16 @@ struct AdCreative: Sendable {
 /// `openAdAction(_:coordinator:)` for the fallback rule on anything else.
 struct AdAction: @unchecked Sendable {
     let type: String
-    /// Same free-form shape as `DeepLinkService.openShareable`'s own `item`
-    /// parameter — only ever present alongside a `ShareableType` `type`.
-    let item: [String: Any]?
+    /// Free-form (`dynamic` in Dart): a `ShareableType` action carries the
+    /// shape `DeepLinkService.openShareable` parses, a `deeplink` action our
+    /// own share URL (a string), a `screen` action the tab key (a string).
+    let item: Any?
+
+    var itemObject: [String: Any]? { item as? [String: Any] }
+    var itemString: String? { item as? String }
 
     static func fromJSON(_ json: [String: Any]) -> AdAction {
-        AdAction(type: json["type"] as? String ?? "external", item: json["item"] as? [String: Any])
+        AdAction(type: json["type"] as? String ?? "external", item: json["item"])
     }
 }
 

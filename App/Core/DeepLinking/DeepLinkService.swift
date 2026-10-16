@@ -87,6 +87,13 @@ final class DeepLinkService {
         dispatch(url, coordinator: coordinator)
     }
 
+    /// An ad's `deeplink` action: one of our own share links, handled exactly
+    /// as a tapped share link — minus the referral attribution `receive`
+    /// records, which an in-app ad tap isn't.
+    func openAdLink(_ url: URL, coordinator: AppNavigationCoordinator) {
+        dispatch(url, coordinator: coordinator)
+    }
+
     private func dispatch(_ url: URL, coordinator: AppNavigationCoordinator) {
         Task { await handle(url, coordinator: coordinator) }
     }

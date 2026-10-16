@@ -71,7 +71,10 @@ final class AdsRepository {
             return nil
         }
 
-        var path = "/ads/serve?placement=\(placement)"
+        // Opt in to the company's own promos: the server fills from paid ads
+        // and falls back to a promo on a no-fill; without this it never
+        // considers one, whatever the dashboard says.
+        var path = "/ads/serve?placement=\(placement)&includeCompanyAds=true"
         if let platform { path += "&platform=\(platform)" }
         if let country { path += "&country=\(country)" }
         if let assetType { path += "&assetType=\(assetType)" }
@@ -93,11 +96,11 @@ final class AdsRepository {
 
             rememberPacing(placement, ad.adLoad.pacingEveryN)
 
-            if mutedCampaignIDs.contains(ad.campaignId) {
-                logger.debug("ads:skip placement=\(placement) reason=mutedCampaign campaignId=\(ad.campaignId)")
+            if mutedCampaignIDs.contains(ad.campaignKey) {
+                logger.debug("ads:skip placement=\(placement) reason=mutedCampaign campaignKey=\(ad.campaignKey)")
                 return nil
             }
-            logger.debug("ads:served placement=\(placement) adId=\(ad.adId) campaignId=\(ad.campaignId)")
+            logger.debug("ads:served placement=\(placement) kind=\(ad.isCompany ? "company" : "paid") adId=\(ad.adId) campaignKey=\(ad.campaignKey)")
             return ad
         } catch {
             logger.debug("ads:error placement=\(placement) error=\(error)")
@@ -159,7 +162,7 @@ final class AdsRepository {
     /// at once (`mutedCampaignIDs`); the server owns the durable suppression.
     /// Company ads have no paid token, so only the local mute applies.
     func submitFeedback(ad: AdCreative, kind: AdFeedbackKind, reason: String? = nil, note: String? = nil) {
-        if kind.mutes { mutedCampaignIDs.insert(ad.campaignId) }
+        if kind.mutes { mutedCampaignIDs.insert(ad.campaignKey) }
         guard !ad.isCompany else { return }
         var payload: [String: String] = ["token": ad.impressionToken, "kind": kind.wireValue]
         if let reason { payload["reason"] = reason }
