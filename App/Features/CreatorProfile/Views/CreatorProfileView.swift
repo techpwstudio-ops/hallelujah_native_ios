@@ -11,8 +11,10 @@ import UIKit
 /// `SongListItem` rows for song tabs, `PlaylistListItem` rows for albums /
 /// seasons. Spinner while loading; "Something went wrong" on failure.
 ///
-/// Not ported: the collapsing parallax app bar, its fade-in title and the
-/// `Hero` thumbnail transition.
+/// The hero collapses like `FlexibleSpaceBar` (`CollapseMode.parallax`): the
+/// image scrolls at half speed inside its clipped frame and the creator's name
+/// fades into the black app bar once it has gone. Not ported: the `Hero`
+/// thumbnail transition.
 struct CreatorProfileView: View {
     @State private var viewModel: CreatorProfileViewModel
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
@@ -20,6 +22,9 @@ struct CreatorProfileView: View {
     @State private var menuTarget: ContentMenuTarget?
     @State private var showsCollapsedTitle = false
     @State private var tabBarMinY: CGFloat = .greatestFiniteMagnitude
+    /// Top edge of the hero in the scroll's space (0 at rest, negative once
+    /// scrolled); drives the parallax.
+    @State private var heroMinY: CGFloat = 0
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
 
@@ -89,18 +94,26 @@ struct CreatorProfileView: View {
     private func scroll(creator: Creator) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                ParityHeroImage(
-                    url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants),
-                    aspect: 1
-                )
-                .background(
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: CreatorHeroMaxYKey.self,
-                            value: proxy.frame(in: .named("creatorScroll")).maxY
+                // Square frame; the image inside moves down by half the scroll
+                // distance so it appears to scroll at half speed.
+                Color.clear
+                    .aspectRatio(1, contentMode: .fit)
+                    .overlay {
+                        ParityHeroImage(
+                            url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants),
+                            aspect: 1
                         )
+                        .offset(y: heroMinY < 0 ? -heroMinY * 0.5 : 0)
                     }
-                )
+                    .clipped()
+                    .background(
+                        GeometryReader { proxy in
+                            let frame = proxy.frame(in: .named("creatorScroll"))
+                            Color.clear
+                                .preference(key: CreatorHeroMaxYKey.self, value: frame.maxY)
+                                .preference(key: CreatorHeroMinYKey.self, value: frame.minY)
+                        }
+                    )
 
                 info(creator: creator)
 
@@ -126,6 +139,9 @@ struct CreatorProfileView: View {
         .onPreferenceChange(CreatorHeroMaxYKey.self) { maxY in
             let shouldShow = maxY < 150
             if shouldShow != showsCollapsedTitle { showsCollapsedTitle = shouldShow }
+        }
+        .onPreferenceChange(CreatorHeroMinYKey.self) { minY in
+            if abs(minY - heroMinY) > 0.5 { heroMinY = minY }
         }
         .onPreferenceChange(CreatorTabBarMinYKey.self) { minY in
             if minY != tabBarMinY { tabBarMinY = minY }
@@ -337,6 +353,13 @@ private struct CreatorHeroMaxYKey: PreferenceKey {
 
 private struct CreatorTabBarMinYKey: PreferenceKey {
     static let defaultValue: CGFloat = .greatestFiniteMagnitude
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct CreatorHeroMinYKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
     }
