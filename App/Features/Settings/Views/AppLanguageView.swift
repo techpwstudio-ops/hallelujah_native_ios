@@ -30,6 +30,9 @@ struct AppLanguageView: View {
 
     private func row(_ language: AppLanguage) -> some View {
         let isSelected = store.selected == language
+        // The selected row is filled with `brandPrimary` (white), so its content
+        // must switch to `textOnBrand` — white-on-white made the label vanish.
+        let onBrand = ColorToken.textOnBrand.color
         return Button {
             UISelectionFeedbackGenerator().selectionChanged()
             store.select(language)
@@ -37,22 +40,22 @@ struct AppLanguageView: View {
             HStack(spacing: Dimens.spacing12) {
                 Image(systemName: language == .system ? "iphone" : "character.bubble")
                     .font(.system(size: 20))
-                    .foregroundStyle(Color.white.opacity(0.8))
+                    .foregroundStyle(isSelected ? onBrand.opacity(0.8) : Color.white.opacity(0.8))
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: language.nativeName)
                         .typography(Typography.titleMedium)
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(isSelected ? onBrand : Color.white)
                     if let english = language.englishName, english != language.nativeName {
                         Text(verbatim: english)
                             .typography(Typography.bodySmall)
-                            .foregroundStyle(AuthColors.secondaryText)
+                            .foregroundStyle(isSelected ? onBrand.opacity(0.7) : AuthColors.secondaryText)
                     }
                 }
                 Spacer(minLength: 8)
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22))
-                    .foregroundStyle(isSelected ? Color.black : Color.white.opacity(0.35))
+                    .foregroundStyle(isSelected ? onBrand : Color.white.opacity(0.35))
             }
             .padding(Dimens.paddingLarge)
             .frame(maxWidth: .infinity)

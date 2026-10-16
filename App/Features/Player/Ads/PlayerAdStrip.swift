@@ -114,7 +114,9 @@ private struct PlayerAdStripCard: View {
                 .padding(.leading, Dimens.spacing8)
             }
 
-            AdOptionsButton(ad: ad, onDismissAd: onDismissAd, style: .plain)
+            // Hosted by the app shell: opening any sheet hides the dock this
+            // strip is part of, and a sheet owned by this button would go with it.
+            AdOptionsButton(ad: ad, onDismissAd: onDismissAd, style: .plain, usesSharedHost: true)
         }
         .padding(EdgeInsets(
             top: Dimens.spacing8,

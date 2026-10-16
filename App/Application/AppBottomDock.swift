@@ -32,8 +32,11 @@ struct MiniPlayerInsetView: View {
             }
         }
         .padding(.horizontal, Spacing.lg)
-        .padding(.bottom, coordinator.isMiniPlayerVisible ? Spacing.md : 0)
+        // One gap everywhere in the dock: ad strip <-> pill (the VStack
+        // spacing above) and pill <-> tab bar are both `Spacing.sm`.
+        .padding(.bottom, coordinator.isMiniPlayerVisible ? Spacing.sm : 0)
         .animation(MotionCurve.dockShow, value: coordinator.isMiniPlayerVisible)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { coordinator.dockInsetHeight = $0 }
         // `DashboardNavBloc._canShowPlayer`: playback present <-> player shown.
         .onChange(of: audioEngine.currentSong) { _, newValue in
             coordinator.isPlaybackActive = (newValue != nil)
@@ -88,6 +91,7 @@ struct MiniPlayerDockView: View {
     private static let commitFlickDistance: CGFloat = 88
     private static let contentHorizontalPadding: CGFloat = 14 // music_player_bottom_ios26.dart:216-217
     private static let artworkSize: CGFloat = 44
+    private static let progressLineWidth: CGFloat = 2 // song_progress_bar.dart `minHeight: 2`
     private static let musicArtworkCornerRadius: CGFloat = 12 // music_player_bottom_ios26.dart `_Artwork`: 12 music / 6 episode
     private static let episodeArtworkCornerRadius: CGFloat = 6
     private static let titleTypography = TypographyToken(size: 14, weight: .semibold, lineHeightMultiple: 1.4, tracking: -0.2)
@@ -117,14 +121,12 @@ struct MiniPlayerDockView: View {
 
     var body: some View {
         GlassSurface(.regular, cornerRadius: Radius.full) {
-            VStack(spacing: 0) {
-                contentRow
-                    .padding(.horizontal, Self.contentHorizontalPadding)
-                    .frame(maxHeight: .infinity)
-                progressHairline
-            }
-            .frame(height: Spacing.miniPlayerHeight)
+            contentRow
+                .padding(.horizontal, Self.contentHorizontalPadding)
+                .frame(height: Spacing.miniPlayerHeight)
         }
+        // Outside the glass so it is drawn over the glass edge, not inside it.
+        .overlay { progressBorder }
         .opacity(isVisible ? 1 : 0)
         // `SlideTransition` (0,1) -> 0 plus `ScaleTransition` 0.92 -> 1.0
         // anchored at the bottom centre, 380 ms out / 260 ms back.
@@ -227,12 +229,18 @@ struct MiniPlayerDockView: View {
         .animation(.easeInOut(duration: 0.2), value: isPlaying)
     }
 
-    /// `song_progress_bar.dart`'s mini-player (`preview: true`) path:
-    /// `LinearProgressIndicator(minHeight: 2)`, white over `fillColor @ 0.8`;
-    /// not scrubbable. Last child of the pill's `VStack`, clipped by the
-    /// glass shape.
-    private var progressHairline: some View {
-        PlayerProgressLine(progress: progressFraction)
+    /// `song_progress_bar.dart`'s mini-player (`preview: true`) indicator, not
+    /// scrubbable. Runs along the pill's bottom border — same corner radius
+    /// as the glass, left end to right end — in white over a faint track of
+    /// that same border (the same `white @ 0.12` as the artwork's stroke).
+    private var progressBorder: some View {
+        ZStack {
+            PlayerProgressBottomBorder(progress: 1, cornerRadius: Radius.full, inset: Self.progressLineWidth / 2)
+                .stroke(Color.white.opacity(0.12), lineWidth: Self.progressLineWidth)
+            PlayerProgressBottomBorder(progress: progressFraction, cornerRadius: Radius.full, inset: Self.progressLineWidth / 2)
+                .stroke(PlayerStyle.white, style: StrokeStyle(lineWidth: Self.progressLineWidth, lineCap: .round))
+        }
+        .allowsHitTesting(false)
     }
 
     /// Horizontal-only (`swipe_to_skip.dart` has no vertical drag/dismiss).
@@ -375,14 +383,38 @@ private struct DockPreviewContent: View {
         .preferredColorScheme(.dark)
 }
 
-/// Trailing space for a tab's scroll content so its last row can be scrolled
-/// clear of the floating ad strip + mini player (the bottom safe-area inset
-/// alone leaves it tucked underneath).
+/// Trailing breathing room at the end of a tab's scroll content. The dock's
+/// own height is NOT included here — that comes from `dockClearanceInset()`,
+/// applied once to every tab root and pushed screen in `AppShellView`.
 struct DockClearance: View {
-    @Environment(AppNavigationCoordinator.self) private var coordinator
     var base: CGFloat = 24
 
     var body: some View {
-        Color.clear.frame(height: base + (coordinator.isMiniPlayerVisible ? 120 : 0))
+        Color.clear.frame(height: base)
+    }
+}
+
+/// Keeps a screen's content clear of the floating ad strip + mini player.
+/// The mini player is a bottom safe-area inset on each tab's `NavigationStack`,
+/// but that inset doesn't reach the screens inside the stack (the last row of
+/// a pushed Settings page ended up under the pill), so each screen re-applies
+/// it as its own inset, sized from the dock's measured height. Scroll views
+/// get it as content inset; fixed layouts shrink above the dock. A `Spacing.sm`
+/// gap separates content from the dock; nothing is added while the dock is
+/// hidden (no playback, a sheet open, or a route that hides the mini player).
+private struct DockClearanceInset: ViewModifier {
+    @Environment(AppNavigationCoordinator.self) private var coordinator
+
+    func body(content: Content) -> some View {
+        let height = coordinator.dockInsetHeight
+        content.safeAreaInset(edge: .bottom, spacing: 0) {
+            Color.clear.frame(height: height > 0 ? height + Spacing.sm : 0)
+        }
+    }
+}
+
+extension View {
+    func dockClearanceInset() -> some View {
+        modifier(DockClearanceInset())
     }
 }

@@ -8,18 +8,24 @@ import SwiftUI
 struct TextDividerView: View {
     let text: LocalizedStringKey
 
+    @Environment(\.displayScale) private var displayScale
+
+    /// Dart's 0.25 logical-pixel line still paints a full device pixel; a 0.25pt
+    /// `Rectangle` here covers a quarter of one and all but vanishes.
+    private var lineHeight: CGFloat { 1 / displayScale }
+
     var body: some View {
         HStack(spacing: 0) {
             Rectangle()
                 .fill(Color.gray)
-                .frame(height: 0.25)
+                .frame(height: lineHeight)
             Text(text)
                 .typography(Typography.bodySmall)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 12)
             Rectangle()
                 .fill(Color.gray)
-                .frame(height: 0.25)
+                .frame(height: lineHeight)
         }
         .padding(4)
     }

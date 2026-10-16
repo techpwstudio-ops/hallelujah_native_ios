@@ -62,9 +62,13 @@ struct AppShellView: View {
         .tint(.white)
         .toastOverlay()
         .appInfrastructureHost()
+        // Before the `.environment` calls below, not after: a sheet sees the
+        // environment of the view that presents it, so a host placed outside
+        // them gives `AdOptionsSheet` no `AppNavigationCoordinator` (a fatal
+        // error the moment the sheet renders).
+        .adOptionsHost()
         .environment(coordinator)
         .environment(networkStatus)
-        .adOptionsHost()
         // T18 — this is the earliest point a coordinator exists to route a
         // deep link to; DeepLinkService buffers anything that arrived before
         // this fires (cold launch racing the splash/auth flow) and dispatches
@@ -139,6 +143,9 @@ private struct TabRootView: View {
                     .parityNavTitle(tab == .search ? "Search" : "Library", leading: true)
             }
         }
+        // The stack's own mini-player inset doesn't reach this screen's
+        // scroll content, so clear the dock here (see `DockClearanceInset`).
+        .dockClearanceInset()
     }
 
     private static func drawsOwnHeader(_ tab: AppTab) -> Bool {
@@ -177,14 +184,19 @@ private struct AppRouteDestinationView: View {
     @ViewBuilder
     var body: some View {
         // Inline everywhere: a pushed screen must never inherit a large title.
-        if screenSetsOwnTitle {
-            content
-                .navigationBarTitleDisplayMode(.inline)
-        } else {
-            content
-                .navigationTitle(navigationTitle)
-                .navigationBarTitleDisplayMode(.inline)
+        Group {
+            if screenSetsOwnTitle {
+                content
+                    .navigationBarTitleDisplayMode(.inline)
+            } else {
+                content
+                    .navigationTitle(navigationTitle)
+                    .navigationBarTitleDisplayMode(.inline)
+            }
         }
+        // Every pushed screen keeps its last row clear of the ad strip + mini
+        // player (the stack-level inset doesn't reach pushed screens).
+        .dockClearanceInset()
     }
 
     /// D12: the screens ported to the Flutter look draw their own app bar /
