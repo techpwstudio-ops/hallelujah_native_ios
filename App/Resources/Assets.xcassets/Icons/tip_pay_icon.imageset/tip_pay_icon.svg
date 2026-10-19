@@ -1,0 +1,12 @@
+<svg width="100%" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg">
+    <title>Indian Rupee icon</title>
+    <desc>A dark circle with a white Indian Rupee symbol in the center</desc>
+    <circle cx="340" cy="340" r="300" fill="#1a1a1a"/>
+    <g fill="none" stroke="white" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="240" y1="230" x2="440" y2="230"/>
+        <line x1="240" y1="295" x2="440" y2="295"/>
+        <line x1="240" y1="230" x2="240" y2="490"/>
+        <line x1="240" y1="295" x2="380" y2="490"/>
+        <path d="M270 230 Q400 230 400 262 Q400 295 270 295" stroke-width="28"/>
+    </g>
+</svg>

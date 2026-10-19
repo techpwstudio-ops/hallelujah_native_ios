@@ -64,8 +64,7 @@ struct OTPView: View {
                             viewModel.editPhoneNumber()
                             onEditPhoneNumber()
                         } label: {
-                            theme.icon(.edit)
-                                .font(.system(size: 20))
+                            theme.icon(.edit, size: 20)
                                 .foregroundStyle(.white)
                         }
                         .buttonStyle(.plain)

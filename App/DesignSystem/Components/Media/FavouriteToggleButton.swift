@@ -37,8 +37,7 @@ struct FavouriteToggleButton: View {
                 isToggling = false
             }
         } label: {
-            theme.icon(isFavorited ? .favoriteFilled : .favorite)
-                .font(.system(size: size))
+            theme.icon(isFavorited ? .favoriteFilled : .favorite, size: size)
                 .foregroundStyle(color ?? theme.color(.textPrimary))
         }
         .buttonStyle(.plain)

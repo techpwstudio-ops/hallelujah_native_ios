@@ -352,8 +352,7 @@ struct HomeListSongCardView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Color.clear.frame(width: Dimens.spacing8)
                 Button(action: toggleFavourite) {
-                    Image(systemName: isFavorited ? "heart.fill" : "heart")
-                        .font(.system(size: HomeMetrics.listFavouriteSize))
+                    IconView(token: isFavorited ? .favoriteFilled : .favorite, size: HomeMetrics.listFavouriteSize)
                         .foregroundStyle(Color.white)
                         .padding(Dimens.paddingSmall)
                 }

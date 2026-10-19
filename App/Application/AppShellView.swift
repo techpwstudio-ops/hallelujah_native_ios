@@ -53,7 +53,7 @@ struct AppShellView: View {
                     Label {
                         Text(tab.titleKey)
                     } icon: {
-                        theme.icon(tab.icon)
+                        theme.icon(tab.icon, size: 28)
                     }
                 }
                 .tag(tab)

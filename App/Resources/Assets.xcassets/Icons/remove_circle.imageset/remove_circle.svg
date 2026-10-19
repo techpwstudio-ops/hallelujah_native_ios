@@ -1,0 +1,14 @@
+<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M13.9997 25.6654C20.4163 25.6654 25.6663 20.4154 25.6663 13.9987C25.6663 7.58203 20.4163 2.33203 13.9997 2.33203C7.58301 2.33203 2.33301 7.58203 2.33301 13.9987C2.33301 20.4154 7.58301 25.6654 13.9997 25.6654Z"
+        stroke="white"
+        stroke-width="1.75"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+    <!-- Minus line -->
+    <path d="M9.33301 14H18.6663"
+        stroke="white"
+        stroke-width="1.75"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>

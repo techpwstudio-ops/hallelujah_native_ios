@@ -148,11 +148,13 @@ struct ParityRowPressStyle: ButtonStyle {
     }
 }
 
-/// `SettingsArrowNextIcon` stand-in (asset `settings_arrow_next.svg` not yet in the catalog).
+/// `SettingsArrowNextIcon` (`settings_arrow_next.svg`).
 struct ParityArrowNext: View {
     var body: some View {
-        Image(systemName: "chevron.right")
-            .font(.system(size: 14, weight: .semibold))
+        Image("settings_arrow_next")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 24, height: 24)
             .foregroundStyle(AccountParity.white)
     }
 }

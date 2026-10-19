@@ -157,5 +157,51 @@ enum IconToken: CaseIterable, Sendable {
         }
     }
 
+    /// The Flutter brand SVG (`assets/icons/*.svg`, imported into
+    /// `Assets.xcassets/Icons`) this token mirrors, or nil where Flutter itself
+    /// draws a Material icon and the SF Symbol is the right counterpart.
+    var assetName: String? {
+        switch self {
+        case .tabHome: "homeoutline"
+        case .tabSearch: "searchoutline"
+        case .tabAI: "ai_icon"
+        case .tabLibrary: "libraryoutline"
+        case .tabRead: "bookoutline"
+        case .back: "arrow_left"
+        case .share: "share"
+        case .favorite: "like"
+        case .favoriteFilled: "liked"
+        case .shuffle: "shuffle"
+        case .repeatOne, .repeatAll: "loop"
+        case .queue: "menu"
+        case .recentSearch: "clock"
+        case .trash: "trash"
+        case .comment: "comments"
+        case .history: "recent"
+        case .edit: "edit"
+        default: nil
+        }
+    }
+
     var image: Image { Image(systemName: systemName) }
+}
+
+/// An `IconToken` drawn at an explicit point size: the brand SVG when the token
+/// has one (assets ignore `.font`, so they are framed instead), otherwise the SF
+/// Symbol at the same size. Tinted by `foregroundStyle` like any template image (the coloured `liked` heart keeps its own red).
+struct IconView: View {
+    let token: IconToken
+    var size: CGFloat = 24
+
+    var body: some View {
+        if let assetName = token.assetName {
+            Image(assetName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
+        } else {
+            Image(systemName: token.systemName)
+                .font(.system(size: size))
+        }
+    }
 }

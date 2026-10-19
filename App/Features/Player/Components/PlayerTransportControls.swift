@@ -57,8 +57,7 @@ struct PlayerTransportControls: View {
             Task { await queueController.toggleShuffle() }
         } label: {
             toggleBackground {
-                Image(systemName: "shuffle")
-                    .font(.system(size: PlayerStyle.toggleGlyphSize * 0.8))
+                IconView(token: .shuffle, size: PlayerStyle.toggleGlyphSize * 0.8)
                     .foregroundStyle(queueController.isShuffled ? PlayerStyle.white : PlayerStyle.grey)
             }
         }
@@ -73,8 +72,7 @@ struct PlayerTransportControls: View {
         } label: {
             toggleBackground {
                 ZStack {
-                    Image(systemName: "repeat")
-                        .font(.system(size: PlayerStyle.toggleGlyphSize * 0.8))
+                    IconView(token: .repeatAll, size: PlayerStyle.toggleGlyphSize * 0.8)
                         .foregroundStyle(mode == .off ? PlayerStyle.grey : PlayerStyle.white)
                     if mode == .one {
                         Text("1")

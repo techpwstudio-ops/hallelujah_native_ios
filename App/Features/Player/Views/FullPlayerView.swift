@@ -293,8 +293,7 @@ struct FullPlayerView: View {
     private var queueAndShareRow: some View {
         HStack {
             Button { isQueuePresented = true } label: {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 24))
+                theme.icon(.queue, size: 24)
                     .foregroundStyle(PlayerStyle.white)
             }
             .buttonStyle(.plain)
@@ -304,8 +303,7 @@ struct FullPlayerView: View {
 
             if song != nil {
                 Button { isSharePresented = true } label: {
-                    theme.icon(.share)
-                        .font(.system(size: 24))
+                    theme.icon(.share, size: 24)
                         .foregroundStyle(PlayerStyle.white)
                 }
                 .buttonStyle(.plain)

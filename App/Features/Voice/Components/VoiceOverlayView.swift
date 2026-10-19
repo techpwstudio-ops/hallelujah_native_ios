@@ -309,7 +309,8 @@ private struct VoiceOrbGlyphView: View {
                 // documented stand-ins for the same not-yet-converted brand
                 // glyph, so this keeps the one source of truth Dart's own
                 // comment on `EmetOrb` describes.
-                IconToken.tabAI.image
+                Image(IconToken.tabAI.assetName ?? "ai_icon")
+                    .renderingMode(.template)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .foregroundStyle(.white)

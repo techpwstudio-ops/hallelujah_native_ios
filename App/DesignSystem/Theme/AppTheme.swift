@@ -22,6 +22,7 @@ struct AppTheme: Sendable {
     func color(_ token: ColorToken) -> Color { token.color }
     func font(_ token: TypographyToken) -> Font { token.font }
     func icon(_ token: IconToken) -> Image { token.image }
+    func icon(_ token: IconToken, size: CGFloat) -> IconView { IconView(token: token, size: size) }
 }
 
 private struct AppThemeKey: EnvironmentKey {

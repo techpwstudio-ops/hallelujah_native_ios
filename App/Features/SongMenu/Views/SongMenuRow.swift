@@ -14,8 +14,7 @@ struct SongMenuRow<Trailing: View>: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: Spacing.md) {
-                Image(systemName: systemImage)
-                    .font(.system(size: Self.iconSize))
+                GlyphImage(name: GlyphImage.flutterName(forSymbol: systemImage), size: Self.iconSize)
                     .frame(width: 40, alignment: .leading)
                     .foregroundStyle(theme.color(.textPrimary))
                 Text(title)

@@ -306,8 +306,7 @@ struct GlassTabBarView: View {
             onSelect(tab)
         } label: {
             VStack(spacing: Spacing.xs) {
-                theme.icon(tab.icon)
-                    .font(.system(size: 22))
+                theme.icon(tab.icon, size: 28)
                 Text(tab.titleKey)
                     .typography(Typography.labelSmall)
             }

@@ -93,15 +93,15 @@ struct SettingsView: View {
                 }
                 Spacer().frame(height: Dimens.verticalSpacing)
                 ParityHeading(text: "Account")
-                tile(icon: "person.circle", title: "Profile", subtitle: Text("View your profile page.")) {
+                tile(icon: "asset:profile", title: "Profile", subtitle: Text("View your profile page.")) {
                     coordinator.push(.profile)
                 }
                 if showSubscription {
-                    tile(icon: "creditcard", title: "Manage Subscription", subtitle: Text("Manage subscription plans")) {
+                    tile(icon: "asset:manage_subscription", title: "Manage Subscription", subtitle: Text("Manage subscription plans")) {
                         coordinator.push(.subscriptionPlans)
                     }
                     if isPremium && isOwner && showsManageFamilyMembersRow {
-                        tile(icon: "person.2", title: "Manage Family Members", subtitle: Text("Manage upto 4 family members")) {
+                        tile(icon: "asset:manage_members", title: "Manage Family Members", subtitle: Text("Manage upto 4 family members")) {
                             coordinator.push(.manageFamilyMembers)
                         }
                     }
@@ -109,7 +109,7 @@ struct SettingsView: View {
 
                 Spacer().frame(height: Dimens.dividerSpacing)
                 ParityHeading(text: "Preferences")
-                tile(icon: "globe", title: "Content Languages", subtitle: contentLanguagesSubtitle) {
+                tile(icon: "asset:settings_content_lang", title: "Content Languages", subtitle: contentLanguagesSubtitle) {
                     coordinator.push(.contentLanguage(label: "Choose Content Language", canPop: true))
                 }
                 tile(icon: "character.bubble", title: "App Language", subtitle: Text(verbatim: AppLanguageStore.shared.selected.nativeName)) {
@@ -117,7 +117,7 @@ struct SettingsView: View {
                 }
                 if isPremium || !showSubscription {
                     tile(
-                        icon: "waveform",
+                        icon: "asset:audio_quality",
                         title: "Audio Quality",
                         subtitle: Text(verbatim: String(localized: "Selected audio quality is \(selectedAudioQuality.settingsLabel.localizedLowercase)"))
                     ) {
@@ -127,7 +127,7 @@ struct SettingsView: View {
                 ParityListTile(
                     title: "Download Over Wi-Fi Only",
                     subtitle: Text("If switched on, we will download content only with a Wi-Fi network"),
-                    leading: { leadingIcon("arrow.down.circle") },
+                    leading: { leadingIcon("asset:settings_download_icon") },
                     trailing: { AppToggle(isOn: downloadOverWifiOnlyBinding) }
                 )
                 if isVerseOfDayHidden {
@@ -152,19 +152,19 @@ struct SettingsView: View {
                     },
                     trailing: { EmptyView() }
                 )
-                tile(icon: "hand.raised", title: "Privacy Policy", subtitle: Text("Your data, your rights.")) {
+                tile(icon: "asset:settings_privacy_policy", title: "Privacy Policy", subtitle: Text("Your data, your rights.")) {
                     UIApplication.shared.open(AppConfiguration.current.privacyPolicyURL)
                 }
-                tile(icon: "doc.text", title: "Terms And Conditions", subtitle: Text("All the details you need to know.")) {
+                tile(icon: "asset:settings_terms_condition", title: "Terms And Conditions", subtitle: Text("All the details you need to know.")) {
                     UIApplication.shared.open(AppConfiguration.current.termsAndConditionsURL)
                 }
 
                 Spacer().frame(height: Dimens.dividerSpacing)
                 ParityHeading(text: "Security")
-                tile(icon: "questionmark.circle", title: "Help & Support", subtitle: Text("For more info on support")) {
+                tile(icon: "asset:settings_help_support", title: "Help & Support", subtitle: Text("For more info on support")) {
                     coordinator.push(.helpSupportDashboard)
                 }
-                tile(icon: "rectangle.portrait.and.arrow.right", title: "Logout", subtitle: logoutSubtitle) {
+                tile(icon: "asset:settings_logout", title: "Logout", subtitle: logoutSubtitle) {
                     isLogoutConfirmationPresented = true
                 }
                 if AppConfiguration.current.environment != .production {
@@ -219,8 +219,7 @@ struct SettingsView: View {
     // MARK: - Pieces
 
     private func leadingIcon(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.system(size: 22))
+        GlyphImage(name: systemName, size: 24)
             .foregroundStyle(AccountParity.white)
             .frame(width: 24, height: 24)
     }

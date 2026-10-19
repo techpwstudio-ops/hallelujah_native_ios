@@ -115,7 +115,7 @@ struct StorageSettingsView: View {
         } label: {
             HStack(spacing: Spacing.sm) {
                 Spacer(minLength: 0)
-                theme.icon(.trash)
+                theme.icon(.trash, size: 18)
                 Text("Delete All Downloads")
                     .typography(Typography.titleSmall)
                 Spacer(minLength: 0)

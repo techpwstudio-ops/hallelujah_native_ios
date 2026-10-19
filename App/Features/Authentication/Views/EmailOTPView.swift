@@ -71,8 +71,7 @@ struct EmailOTPView: View {
                             viewModel.editEmail()
                             onEditEmail()
                         } label: {
-                            theme.icon(.edit)
-                                .font(.system(size: 20))
+                            theme.icon(.edit, size: 20)
                                 .foregroundStyle(.white)
                         }
                         .buttonStyle(.plain)

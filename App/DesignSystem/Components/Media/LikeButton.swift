@@ -47,8 +47,7 @@ struct LikeButton: View {
                         .transition(.scale.combined(with: .opacity))
                 } else {
                     Button(action: action) {
-                        theme.icon(isLiked ? .favoriteFilled : .favorite)
-                            .font(.system(size: Self.iconSize))
+                        theme.icon(isLiked ? .favoriteFilled : .favorite, size: Self.iconSize)
                             .foregroundStyle(theme.color(.textPrimary))
                     }
                     .buttonStyle(.plain)
