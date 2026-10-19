@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct PremiumGateTests {
     private func makeGate(membership: Membership?, subscriptionsEnabled: Bool = true) async -> PremiumGate {

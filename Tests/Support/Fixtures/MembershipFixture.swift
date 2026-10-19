@@ -1,5 +1,5 @@
 import Foundation
-@testable import GHallelujah
+@testable import Hallelujah
 
 extension Membership {
     /// Built by decoding JSON because `Subscription` has a custom

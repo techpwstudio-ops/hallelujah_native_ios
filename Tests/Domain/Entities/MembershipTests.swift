@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct MembershipTests {
     @Test func subscriptionEndingInTheFutureIsActive() throws {

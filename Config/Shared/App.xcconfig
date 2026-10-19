@@ -1,4 +1,4 @@
-// App.xcconfig — settings that apply only to the GHallelujah app target.
+// App.xcconfig — settings that apply only to the Hallelujah app target.
 // Inherits everything else from the project-level configuration xcconfig.
 
 PRODUCT_NAME = $(APP_PRODUCT_NAME)
@@ -8,7 +8,7 @@ PRODUCT_BUNDLE_IDENTIFIER = $(APP_BUNDLE_ID_BASE)$(APP_BUNDLE_ID_SUFFIX)
 // configuration through it, and generated plists cannot carry custom keys.
 GENERATE_INFOPLIST_FILE = NO
 INFOPLIST_FILE = App/Resources/Info.plist
-CODE_SIGN_ENTITLEMENTS = App/Resources/GHallelujah.entitlements
+CODE_SIGN_ENTITLEMENTS = App/Resources/Hallelujah.entitlements
 
 // Preprocess: the ATS exception in Info.plist is wrapped in a real
 // `#if ALLOWS_ARBITRARY_LOADS` C-preprocessor conditional, since Xcode's

@@ -61,6 +61,13 @@ final class AudioEngine {
     /// never touches this engine's `player`.
     var onSongChanged: ((Song) -> Void)?
 
+    /// Set by `AdPacingController` for the length of an ad break. While held,
+    /// nothing may start the speakers: a song picked mid-break (a list tap, the
+    /// mini player, Next, the lock screen) still loads and becomes current, but
+    /// stays paused — queued behind the ad — and the break's own end (finished
+    /// or skipped) lowers the hold and calls `resume()`, which starts it.
+    var isPlaybackHeld = false
+
     /// T38 — `last_song_id`/`last_song_position_ms` (`audio_service.dart:1637-1680`,
     /// `savePlaybackState`): the resume-position mechanism, independent of
     /// the playback-analytics pipeline entirely (a different, simpler
@@ -262,6 +269,13 @@ final class AudioEngine {
     }
 
     private func activateSessionAndPlay() {
+        guard !isPlaybackHeld else {
+            // `loadCurrentAndAheadItems` left the status on `.loading`, and a
+            // player that never started has no `timeControlStatus` change to
+            // clear it — the queued song reads as paused until the ad ends.
+            if status == .loading { status = .paused }
+            return
+        }
         do {
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {

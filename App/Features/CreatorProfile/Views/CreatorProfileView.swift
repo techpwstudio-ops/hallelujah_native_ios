@@ -66,11 +66,7 @@ struct CreatorProfileView: View {
                 }
             }
             if viewModel.creator != nil {
-                ToolbarItem(placement: .primaryAction) {
-                    ParityIconButton(systemName: "ellipsis", rotation: 90, tooltip: "More") {
-                        if let creator = viewModel.creator { menuTarget = .creator(creator) }
-                    }
-                }
+                moreToolbarItem
             }
         }
         .task { await viewModel.onAppear() }
@@ -78,6 +74,30 @@ struct CreatorProfileView: View {
             // The menu can follow/unfollow; refresh so the header chip agrees.
             Task { await viewModel.loadCreator() }
         }
+    }
+
+    /// On iOS 26 the shared toolbar glass stretched the 48pt tap target into a
+    /// pill beside the round back button, so the button draws its own 44pt
+    /// glass circle to match it.
+    @ToolbarContentBuilder
+    private var moreToolbarItem: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .primaryAction) {
+                ParityIconButton(systemName: "ellipsis", rotation: 90, size: 20, tooltip: "More", hitSize: 44) {
+                    openCreatorMenu()
+                }
+                .glassCircle(interactive: true)
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .primaryAction) {
+                ParityIconButton(systemName: "ellipsis", rotation: 90, tooltip: "More") { openCreatorMenu() }
+            }
+        }
+    }
+
+    private func openCreatorMenu() {
+        if let creator = viewModel.creator { menuTarget = .creator(creator) }
     }
 
     /// Bottom edge of the (collapsed) app bar: status-bar inset + toolbar.
@@ -94,15 +114,26 @@ struct CreatorProfileView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Square frame; the image inside moves down by half the scroll
-                // distance so it appears to scroll at half speed.
+                // distance so it appears to scroll at half speed. No top scrim:
+                // it darkened the top third of the photo, and the glass back /
+                // more buttons stay legible without it.
                 Color.clear
                     .aspectRatio(1, contentMode: .fit)
                     .overlay {
                         ParityHeroImage(
                             url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants),
-                            aspect: 1
+                            aspect: 1,
+                            stops: []
                         )
                         .offset(y: heroMinY < 0 ? -heroMinY * 0.5 : 0)
+                    }
+                    // Fade the hero into the page so it doesn't end on a hard
+                    // edge right above the name. Pinned to the frame, not the
+                    // parallaxing image, so it stays put while scrolling.
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [Color.black.opacity(0), Color.black], startPoint: .top, endPoint: .bottom)
+                            .frame(height: 96)
+                            .allowsHitTesting(false)
                     }
                     .clipped()
                     .background(
@@ -129,12 +160,16 @@ struct CreatorProfileView: View {
                         )
                 }
 
+                // Rows carry their own 12pt inset; this lines their artwork up
+                // with the name and the tab label (16pt).
                 tabContent
-                    .padding(Dimens.screenPaddingAll)
+                    .padding(.vertical, Dimens.screenPaddingAll)
+                    .padding(.horizontal, Dimens.screenPaddingAll * 2 - Dimens.paddingMedium)
                 Color.clear.frame(height: 16)
             }
         }
         .coordinateSpace(name: "creatorScroll")
+        .heroScrollEdgeEffect(isCollapsed: showsCollapsedTitle)
         .onPreferenceChange(CreatorHeroMaxYKey.self) { maxY in
             let shouldShow = maxY < 150
             if shouldShow != showsCollapsedTitle { showsCollapsedTitle = shouldShow }
@@ -161,6 +196,7 @@ struct CreatorProfileView: View {
                 Text(creator.name ?? "")
                     .typography(ParityHeroText.headlineSmall)
                     .foregroundStyle(Color.white)
+                    .lineLimit(2)
                 Spacer().frame(height: 8)
                 HStack(spacing: 8) {
                     Text("\(creator.followersCount ?? 0) Followers")
@@ -180,6 +216,8 @@ struct CreatorProfileView: View {
             }
         }
         .padding(.horizontal, Dimens.screenPaddingAll * 2)
+        .padding(.top, 12)
+        .padding(.bottom, 16)
     }
 
     /// `CreatorFollowButton`: a 36pt `ElevatedButton`, label w600 white.
@@ -201,7 +239,9 @@ struct CreatorProfileView: View {
 
     // MARK: - Tabs
 
-    /// `TabBar(isScrollable, tabAlignment: start, indicatorColor: white)`.
+    /// `TabBar(isScrollable, tabAlignment: start, indicatorColor: white)`:
+    /// Material 3's label-width indicator (3pt, rounded top) over a
+    /// full-width hairline divider.
     private var tabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 0) {
@@ -213,13 +253,13 @@ struct CreatorProfileView: View {
                         Text(tab.title)
                             .typography(Typography.labelLarge)
                             .foregroundStyle(isSelected ? Color.white : Color(red: 0xCA / 255, green: 0xC4 / 255, blue: 0xD0 / 255))
-                            .padding(.horizontal, 16)
                             .frame(height: 48)
                             .overlay(alignment: .bottom) {
-                                Rectangle()
+                                UnevenRoundedRectangle(topLeadingRadius: 3, topTrailingRadius: 3)
                                     .fill(isSelected ? Color.white : Color.clear)
-                                    .frame(height: 2)
+                                    .frame(height: 3)
                             }
+                            .padding(.horizontal, 16)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -227,6 +267,9 @@ struct CreatorProfileView: View {
             }
         }
         .frame(height: 48)
+        .background(alignment: .bottom) {
+            Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+        }
         .background(Color.black)
     }
 
@@ -339,6 +382,20 @@ struct CreatorProfileView: View {
         Task {
             await queueController.play(songs: songs, startIndex: index, source: source)
             coordinator.presentPlayer()
+        }
+    }
+}
+
+private extension View {
+    /// iOS 26 blurs and dims scroll content under the navigation bar, which
+    /// smeared the top of the hero at rest. Keep that edge effect only once
+    /// the hero has collapsed and rows scroll under the bar.
+    @ViewBuilder
+    func heroScrollEdgeEffect(isCollapsed: Bool) -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectHidden(!isCollapsed, for: .top)
+        } else {
+            self
         }
     }
 }

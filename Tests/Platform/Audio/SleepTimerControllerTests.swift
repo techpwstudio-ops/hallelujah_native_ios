@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// The controller's presentation maths is pure and `nonisolated`, so it is
 /// tested without an `AudioEngine`; the start/fire path needs a live engine

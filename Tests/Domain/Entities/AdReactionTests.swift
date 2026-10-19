@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// `ads/ad_reaction.dart`: wire values and the toggle rule.
 struct AdReactionTests {

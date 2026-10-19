@@ -2,21 +2,21 @@ import Foundation
 
 /// Native port of `DeepLinkService` (`lib/services/deep_link_service.dart`) —
 /// the singleton that resolves both universal links (`applinks:` domains in
-/// `GHallelujah.entitlements`) and the `gshallelujah://` custom scheme
+/// `Hallelujah.entitlements`) and the `gshallelujah://` custom scheme
 /// (`Info.plist`) into an in-app destination.
 ///
-/// `static let shared`, not `@Injected` on `GHallelujahApp` itself: this
+/// `static let shared`, not `@Injected` on `HallelujahApp` itself: this
 /// needs to exist before `AppNavigationCoordinator` does (a URL can arrive
 /// during the splash/auth flow, before `AppShellView` has ever appeared),
-/// and a plain struct property on `GHallelujahApp` would resolve its
+/// and a plain struct property on `HallelujahApp` would resolve its
 /// dependencies at an initialization-order point relative to
 /// `AppComposition.installRuntime()` that can't be verified without a
 /// compiler. A lazy `static let`'s first access is guaranteed to happen
-/// after `GHallelujahApp.init()` has already run, so this is unambiguously
+/// after `HallelujahApp.init()` has already run, so this is unambiguously
 /// safe instead. Mirrors Dart's own `DeepLinkService.instance` shape either
 /// way.
 ///
-/// SwiftUI's `.onOpenURL(perform:)` (wired in `GHallelujahApp`) delivers
+/// SwiftUI's `.onOpenURL(perform:)` (wired in `HallelujahApp`) delivers
 /// both custom-scheme and universal-link URLs, for both cold launch and a
 /// running app, through this one callback — collapsing Dart's three-part
 /// `captureInitialLink()` (cache) / `init()` (300ms-delayed consume) /
@@ -76,7 +76,7 @@ final class DeepLinkService {
         coordinator = nil
     }
 
-    /// `GHallelujahApp`'s `.onOpenURL` calls this for every delivery — cold
+    /// `HallelujahApp`'s `.onOpenURL` calls this for every delivery — cold
     /// launch and warm start alike.
     func receive(_ url: URL) {
         ReferralAttributionStore.shared.record(url)

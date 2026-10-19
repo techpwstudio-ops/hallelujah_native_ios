@@ -6,10 +6,10 @@ build/
 xcuserdata/
 .DS_Store
 
-# GHallelujah.xcodeproj is generated from project.yml by XcodeGen (D8 in
+# Hallelujah.xcodeproj is generated from project.yml by XcodeGen (D8 in
 # progress.md) — run `make generate` after cloning, and again after editing
 # project.yml.
-GHallelujah.xcodeproj/
+Hallelujah.xcodeproj/
 
 # Swift Package Manager
 .build/

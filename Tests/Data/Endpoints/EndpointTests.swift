@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// The API contract lives in `Endpoint` (never inline in a repository), so
 /// these pin the exact path + verb each repository depends on.

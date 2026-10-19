@@ -1,8 +1,8 @@
 .PHONY: bootstrap generate lint format-fix test build clean
 
 XCODEGEN := $(shell command -v xcodegen 2> /dev/null || echo $(HOME)/.local/bin/xcodegen)
-PROJECT := GHallelujah.xcodeproj
-SCHEME := GHallelujah Development
+PROJECT := Hallelujah.xcodeproj
+SCHEME := Hallelujah Development
 DESTINATION := platform=iOS Simulator,name=iPhone 17 Pro
 # Extra xcodebuild arguments (CI passes CODE_SIGNING_ALLOWED=NO).
 XCODEBUILD_FLAGS ?=
@@ -11,7 +11,7 @@ XCODEBUILD_FLAGS ?=
 bootstrap: generate
 	@echo "Bootstrapped. Open $(PROJECT), or run 'make test'."
 
-# GHallelujah.xcodeproj is generated from project.yml (D8 in progress.md) and
+# Hallelujah.xcodeproj is generated from project.yml (D8 in progress.md) and
 # is gitignored — this must run after every clone and after editing project.yml.
 generate:
 	$(XCODEGEN) generate --spec project.yml
@@ -31,10 +31,10 @@ format-fix:
 	swiftformat .
 
 test: generate
-	xcodebuild test -project $(PROJECT) -scheme "$(SCHEME)" -destination '$(DESTINATION)' -only-testing:GHallelujahTests
+	xcodebuild test -project $(PROJECT) -scheme "$(SCHEME)" -destination '$(DESTINATION)' -only-testing:HallelujahTests
 
 build: generate
 	xcodebuild build -project $(PROJECT) -scheme "$(SCHEME)" -destination '$(DESTINATION)' $(XCODEBUILD_FLAGS)
 
 clean:
-	rm -rf ~/Library/Developer/Xcode/DerivedData/GHallelujah-*
+	rm -rf ~/Library/Developer/Xcode/DerivedData/Hallelujah-*

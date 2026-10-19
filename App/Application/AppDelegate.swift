@@ -5,7 +5,7 @@ import UIKit
 /// `application(_:handleEventsForBackgroundURLSession:completionHandler:)`
 /// fires when iOS relaunches the app in the background to hand back events
 /// (progress/completion) a `DownloadEngine` background `URLSession` produced
-/// while suspended. `GHallelujahApp` installs this via
+/// while suspended. `HallelujahApp` installs this via
 /// `@UIApplicationDelegateAdaptor` solely to receive that one callback and
 /// forward it to the single registered `DownloadEngine` — everything else
 /// about app lifecycle stays on the SwiftUI `App`/`Scene` path, unchanged.

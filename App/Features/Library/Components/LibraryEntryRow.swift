@@ -40,9 +40,22 @@ struct LibraryEntryRow: View {
     private var resolvedArtwork: URL? {
         switch entry {
         case let .playlist(playlist):
-            return ArtworkURLResolver().resolve(path: playlist.image, variant: .sm, allowedVariants: playlist.imageVariants)
-        case let .userPlaylist(_, _, image, imageVariants, _, _, _):
-            return ArtworkURLResolver().resolve(path: image, variant: .sm, allowedVariants: imageVariants)
+            return ArtworkURLResolver().resolve(
+                path: playlist.image,
+                variant: .sm,
+                allowedVariants: playlist.imageVariants,
+                fallbackName: playlist.title
+            )
+        case let .userPlaylist(_, title, image, imageVariants, _, _, _):
+            // A just-created playlist has no cover until the server composites
+            // one; `LoadImage(fallbackName: playlist.title)` shows the letter
+            // tile meanwhile.
+            return ArtworkURLResolver().resolve(
+                path: image,
+                variant: .sm,
+                allowedVariants: imageVariants,
+                fallbackName: title
+            )
         }
     }
 

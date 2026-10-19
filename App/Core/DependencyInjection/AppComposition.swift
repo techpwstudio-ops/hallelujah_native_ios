@@ -1,10 +1,10 @@
 import GRDB
 
 /// The composition root: the one place real dependencies get registered.
-/// `GHallelujahApp` calls `installRuntime()` once at launch; previews and
+/// `HallelujahApp` calls `installRuntime()` once at launch; previews and
 /// tests build their own small containers instead of touching this one.
 enum AppComposition {
-    /// `@MainActor` because `GHallelujahApp.init()` — its one caller — is
+    /// `@MainActor` because `HallelujahApp.init()` — its one caller — is
     /// itself main-actor-isolated (`SwiftUI.App`'s `init()` requirement),
     /// and T26's `SignOutSignal()` below needs that: it's a `@MainActor`
     /// `@Observable` type, constructed synchronously here rather than
@@ -41,6 +41,13 @@ enum AppComposition {
         // authenticated client here would let a 401 from the refresh call
         // itself recurse back into Session.refreshIfNeeded().
         let tokenStore = KeychainTokenStore()
+        // Tokens issued by another backend (Staging / Production / local share
+        // a bundle ID, so the Keychain) are useless here — drop them BEFORE
+        // `Session` loads them, so nothing stale is ever sent and the splash
+        // resolves straight to sign-in. The full sign-out teardown (cached
+        // user, downloads, …) runs below once `onLogout` is wired.
+        let environmentChanged = SessionEnvironmentGuard(apiBaseURL: configuration.apiBaseURL).environmentChanged()
+        if environmentChanged { try? tokenStore.clear() }
         let refreshClient = HTTPClient(configuration: configuration)
         let session = Session(tokenStore: tokenStore, refreshClient: refreshClient)
         container.register(Session.self) { session }
@@ -140,9 +147,15 @@ enum AppComposition {
                 // scoped to their old session's rooms.
                 Task { @MainActor in realtimeConnectionManager.disconnect() }
             }
+            // The base URL changed since the last launch: sign out through the
+            // normal path so the previous backend's user, membership, saved
+            // library, downloads and cached feeds don't carry over.
+            if environmentChanged {
+                await session.logout()
+            }
         }
         // T15 already activated the App Check provider factory
-        // (`GHallelujahAppCheckProviderFactory`, `FirebaseBootstrap.configure()`
+        // (`HallelujahAppCheckProviderFactory`, `FirebaseBootstrap.configure()`
         // above) — `FirebaseAppCheckProvider` just wraps the SDK call T20 needs.
         container.register((any AppCheckProviding).self) { FirebaseAppCheckProvider() }
         container.register((any AuthRepository).self) {

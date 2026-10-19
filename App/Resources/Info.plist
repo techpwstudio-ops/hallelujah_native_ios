@@ -59,7 +59,7 @@
 	     (`CPTemplateApplicationSceneSessionRoleApplication`); the phone
 	     `UIWindowSceneSessionRoleApplication` role is deliberately left out
 	     of this manifest — this app uses the plain SwiftUI `App`/`Scene`
-	     lifecycle (`GHallelujahApp`, `WindowGroup`, no `UIApplicationDelegate`
+	     lifecycle (`HallelujahApp`, `WindowGroup`, no `UIApplicationDelegate`
 	     `configurationForConnecting` override and no phone-facing
 	     `UISceneDelegateClassName` anywhere), and when a role has no entry
 	     here UIKit supplies its own default configuration for it, which is
@@ -77,7 +77,7 @@
 	     applicable here). `CarPlaySceneDelegate` (`App/Platform/CarPlay/`)
 	     sets a placeholder root template only — T49 owns the real tab bar.
 	     Sibling `com.apple.developer.carplay-audio` entitlement is in
-	     `GHallelujah.entitlements`. -->
+	     `Hallelujah.entitlements`. -->
 	<!-- Siri voice play: the SiriIntentsExtension returns .continueInApp and iOS
 	     delivers the intent as an NSUserActivity of this type. -->
 	<key>NSUserActivityTypes</key>
@@ -245,7 +245,7 @@
 	<string>$(GOOGLE_SERVER_CLIENT_ID)</string>
 
 	<!-- T18 — custom URL scheme fallback for deep links, alongside the
-	     universal-link domains declared in GHallelujah.entitlements. Matches
+	     universal-link domains declared in Hallelujah.entitlements. Matches
 	     `ios/Runner/Info.plist`'s `gshallelujah` entry. -->
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -260,7 +260,7 @@
 			</array>
 		</dict>
 		<!-- T23 — Google Sign-In's browser-redirect callback scheme, handled
-		     by `GIDSignIn.sharedInstance.handle(url)` in `GHallelujahApp`'s
+		     by `GIDSignIn.sharedInstance.handle(url)` in `HallelujahApp`'s
 		     `.onOpenURL` before falling through to `DeepLinkService`. Value
 		     varies per environment/Firebase project, unlike `gshallelujah`
 		     above. -->

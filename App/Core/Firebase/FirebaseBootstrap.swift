@@ -20,12 +20,12 @@ enum FirebaseBootstrap {
     /// Not `@MainActor`-isolated at the type level — Firebase's ObjC-bridged
     /// APIs here carry no Swift actor annotations of their own, so nothing
     /// requires it structurally. Its only call site (`AppComposition.
-    /// installRuntime()`, from `GHallelujahApp.init()`) already runs on the
+    /// installRuntime()`, from `HallelujahApp.init()`) already runs on the
     /// main actor, which is what Firebase actually wants at runtime.
     static func configure() {
         // Must run before `FirebaseApp.configure()` — the App Check provider
         // factory only takes effect if it's set first.
-        AppCheck.setAppCheckProviderFactory(GHallelujahAppCheckProviderFactory())
+        AppCheck.setAppCheckProviderFactory(HallelujahAppCheckProviderFactory())
 
         // T23 — no `GoogleService-Info.plist` has ever been bundled with this
         // target (confirmed by its absence when T23 needed Google Sign-In's

@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// These assertions must hold for every scheme (Development/Staging/Production),
 /// since the same test target runs under all three. They check the parsed

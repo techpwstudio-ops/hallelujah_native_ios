@@ -15,7 +15,12 @@ struct SearchPlaylistRow: View {
     static let coverSize: CGFloat = 52
 
     private var resolvedArtwork: URL? {
-        ArtworkURLResolver().resolve(path: playlist.image, variant: .sm, allowedVariants: playlist.imageVariants)
+        ArtworkURLResolver().resolve(
+            path: playlist.image,
+            variant: .sm,
+            allowedVariants: playlist.imageVariants,
+            fallbackName: playlist.title
+        )
     }
 
     private var subtitle: String {

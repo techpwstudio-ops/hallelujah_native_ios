@@ -1,5 +1,5 @@
 import Foundation
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// A `KeyValueStoring` that never touches `UserDefaults`, so tests neither
 /// leak state into each other nor into the real app's defaults.

@@ -1,6 +1,6 @@
 import XCTest
 
-final class GHallelujahUITests: XCTestCase {
+final class HallelujahUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
     }

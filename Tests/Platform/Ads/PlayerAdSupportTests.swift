@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// Fixture creative built the way the server's JSON builds it.
 func makePlayerAdCreative(

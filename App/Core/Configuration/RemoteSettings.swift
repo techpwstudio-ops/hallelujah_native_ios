@@ -10,7 +10,7 @@ import Observation
 /// calls `RemoteSettings.apply(settings:)` with the `settings` map of every
 /// `/dashboard/init` response. On the dev branch `SettingsService.init()` IS
 /// called from `main()` — `RemoteSettings.restore()` is its counterpart,
-/// called from `GHallelujahApp.init()` — so the last-known values are live
+/// called from `HallelujahApp.init()` — so the last-known values are live
 /// from the first frame and the hardcoded fallbacks only apply on a first
 /// launch with no cached payload.
 ///

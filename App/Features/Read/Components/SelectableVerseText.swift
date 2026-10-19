@@ -95,7 +95,7 @@ struct SelectableVerseText: UIViewRepresentable {
         return result
     }
 
-    private struct ContentKey: Equatable {
+    fileprivate struct ContentKey: Equatable {
         let text: String
         let base: String
         let forced: String?

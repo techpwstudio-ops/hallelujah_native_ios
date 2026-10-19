@@ -16,6 +16,7 @@ struct UserPlaylistDetailView: View {
     @State private var viewModel: UserPlaylistDetailViewModel
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
+    @State private var eventBus: RealtimeEventBus = DependencyContainer.current.resolve()
     @State private var showAddSongs = false
     @State private var menuTarget: UserPlaylistMenuTarget?
     @State private var shareItem: PlaylistShareItem?
@@ -86,6 +87,12 @@ struct UserPlaylistDetailView: View {
             }
         }
         .task { await viewModel.loadIfNeeded() }
+        .onDisappear { viewModel.stopCoverPoll() }
+        // `users.playlist.updated`: the server-composited cover has landed.
+        .onChange(of: eventBus.playlistUpdateCount) { _, _ in
+            guard let id = viewModel.playlistID, eventBus.lastUpdatedPlaylistID == id else { return }
+            Task { await viewModel.applyCoverUpdate() }
+        }
         .userPlaylistMenu(
             target: $menuTarget,
             onDeleted: { coordinator.pop() },
@@ -110,7 +117,8 @@ struct UserPlaylistDetailView: View {
                     url: ArtworkURLResolver().resolve(
                         path: playlist.image,
                         variant: .lg,
-                        allowedVariants: playlist.imageVariants
+                        allowedVariants: playlist.imageVariants,
+                        fallbackName: playlist.title
                     ),
                     aspect: 1,
                     stops: ParityHeroImage.playlistStops

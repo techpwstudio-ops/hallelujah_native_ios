@@ -44,11 +44,11 @@ jobs:
         run: |
           xcodegen generate --spec project.yml
           xcodebuild archive \
-            -project GHallelujah.xcodeproj \
-            -scheme "GHallelujah Production" \
+            -project Hallelujah.xcodeproj \
+            -scheme "Hallelujah Production" \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/GHallelujah.xcarchive"
+            -archivePath "$RUNNER_TEMP/Hallelujah.xcarchive"
 
       - name: Export IPA
         run: |
@@ -61,7 +61,7 @@ jobs:
           </dict></plist>
           PLIST
           xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/GHallelujah.xcarchive" \
+            -archivePath "$RUNNER_TEMP/Hallelujah.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -exportPath "$RUNNER_TEMP/export"
 
@@ -74,5 +74,5 @@ jobs:
           mkdir -p ~/.appstoreconnect/private_keys
           echo "$APPSTORE_API_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
           xcrun altool --upload-app --type ios \
-            --file "$RUNNER_TEMP/export/GHallelujah.ipa" \
+            --file "$RUNNER_TEMP/export/Hallelujah.ipa" \
             --apiKey "$APPSTORE_API_KEY_ID" --apiIssuer "$APPSTORE_API_ISSUER_ID"

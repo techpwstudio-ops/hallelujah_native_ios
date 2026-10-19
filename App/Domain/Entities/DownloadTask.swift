@@ -67,4 +67,10 @@ struct DownloadTask: Sendable, Equatable, Identifiable, Codable {
     var songDurationSeconds: Int?
     /// `song.type` (`"music"`/`"episode"`).
     var songType: String?
+    /// `song.primaryArtists` / `song.featuredArtists` — the mini player,
+    /// full player and lock-screen subtitle for a downloaded song. Optional
+    /// and defaulted so a catalog persisted before these existed still decodes
+    /// (those rows just keep a blank subtitle).
+    var songPrimaryArtists: String?
+    var songFeaturedArtists: String?
 }

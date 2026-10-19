@@ -11,10 +11,12 @@ import SwiftUI
 struct LibraryHomeView: View {
     @State private var viewModel = LibraryViewModel()
     @State private var downloadEngine: DownloadEngine = DependencyContainer.current.resolve()
+    @State private var eventBus: RealtimeEventBus = DependencyContainer.current.resolve()
     @State private var contentMenuTarget: ContentMenuTarget?
     @State private var userPlaylistMenuTarget: UserPlaylistMenuTarget?
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
+    @Environment(\.scenePhase) private var scenePhase
 
     private var downloadCount: Int {
         downloadEngine.tasks.values.filter { $0.state == .completed }.count
@@ -46,6 +48,19 @@ struct LibraryHomeView: View {
         .background(Color.black)
         .refreshable { await viewModel.refresh() }
         .task(id: viewModel.filter) { await viewModel.load() }
+        // `users.playlist.updated`: a playlist's server-composited cover has landed.
+        .onChange(of: eventBus.playlistUpdateCount) { _, _ in
+            Task { await viewModel.silentRefresh() }
+        }
+        // The push is best-effort, so also re-check whenever the tab is shown
+        // again (back from a playlist, another tab) or the app returns to the
+        // foreground. No-op before the first load finishes.
+        .onAppear { Task { await viewModel.silentRefresh() } }
+        .onDisappear { viewModel.stopCoverPoll() }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await viewModel.silentRefresh() }
+        }
         .contentMenu(target: $contentMenuTarget)
         .userPlaylistMenu(target: $userPlaylistMenuTarget) {
             Task { await viewModel.refresh() }

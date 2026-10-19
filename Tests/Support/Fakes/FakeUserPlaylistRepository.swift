@@ -1,5 +1,5 @@
 import Foundation
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// A scriptable `UserPlaylistRepository`; only the follow/visibility calls are
 /// scriptable, everything else throws.

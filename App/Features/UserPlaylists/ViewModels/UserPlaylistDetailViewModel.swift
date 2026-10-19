@@ -32,6 +32,7 @@ final class UserPlaylistDetailViewModel {
     private let currentUserStore: CurrentUserStore
     private let logger = AppLogger(category: .content)
     private var loadTask: Task<Void, Never>?
+    private var coverPollTask: Task<Void, Never>?
 
     init(playlistID: String?, container: DependencyContainer = .current) {
         self.playlistID = playlistID
@@ -47,6 +48,66 @@ final class UserPlaylistDetailViewModel {
 
     func refresh() async {
         await load(page: 1)
+    }
+
+    /// `users.playlist.updated` — the server finished compositing the cover
+    /// after songs were added. Swaps only `image`/`imageVariants` into the
+    /// already-loaded header, unlike `refresh()` which drops to `.loading` and
+    /// would blank the whole screen (and reset pagination) for a cover change.
+    /// Dart gets this for free: the event patches the Realm row and the page
+    /// rebuilds off `updateTick` (`user_playlist_songs.dart`).
+    func applyCoverUpdate() async {
+        guard let playlistID else { return }
+        let fresh: UserPlaylist
+        do {
+            fresh = try await repository.fetchPlaylist(id: playlistID)
+        } catch {
+            logger.warning("playlist \(playlistID) cover refresh failed: \(error)")
+            return
+        }
+        // Re-read `state` after the await: a refresh may have replaced it.
+        // Only assigned when the cover actually changed, so a re-check that
+        // finds the same tile doesn't invalidate the whole screen.
+        switch state {
+        case .loaded(let playlist, let songs):
+            let updated = playlist.replacingCover(with: fresh)
+            if updated != playlist { state = .loaded(playlist: updated, songs: songs) }
+        case .empty(let playlist):
+            let updated = playlist.replacingCover(with: fresh)
+            if updated != playlist { state = .empty(playlist: updated) }
+        case .loading, .failed:
+            break
+        }
+        startCoverPollIfNeeded()
+    }
+
+    /// Cancels the cover re-checks; the view calls this when it leaves screen.
+    func stopCoverPoll() {
+        coverPollTask?.cancel()
+        coverPollTask = nil
+    }
+
+    /// A playlist that has songs but still shows the letter tile is waiting on
+    /// its server-built cover. Re-checks on `UserPlaylist.coverPollDelays`
+    /// instead of relying on the best-effort `users.playlist.updated` push alone.
+    private var hasCoverPending: Bool {
+        guard case .loaded(let playlist, _) = state else { return false }
+        return DefaultThumbnail.isLetterTile(path: playlist.image)
+    }
+
+    private func startCoverPollIfNeeded() {
+        guard coverPollTask == nil, hasCoverPending else { return }
+        coverPollTask = Task { [weak self] in
+            for delay in UserPlaylist.coverPollDelays {
+                try? await Task.sleep(for: delay)
+                guard !Task.isCancelled, let self else { return }
+                await self.applyCoverUpdate()
+                if !self.hasCoverPending { break }
+            }
+            // A cancelled run was already cleared (and maybe replaced) by
+            // `stopCoverPoll()`; only a run that finished on its own clears itself.
+            if !Task.isCancelled { self?.coverPollTask = nil }
+        }
     }
 
     func loadMore() {
@@ -125,5 +186,6 @@ final class UserPlaylistDetailViewModel {
             }
         }
         await loadTask?.value
+        startCoverPollIfNeeded()
     }
 }

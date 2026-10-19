@@ -1,5 +1,5 @@
 import Foundation
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct FakeBatteryMonitor: BatteryLevelMonitoring {
     var isLowBattery: Bool

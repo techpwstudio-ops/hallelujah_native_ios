@@ -9,6 +9,7 @@ struct ParityHeroImage: View {
     let url: URL?
     /// width / height.
     var aspect: CGFloat = 4.0 / 3.0
+    /// Scrim over the image; empty draws none.
     var stops: [Gradient.Stop] = ParityHeroImage.defaultStops
 
     /// `GradiantDecoratedBox`: black @ 0.7 -> clear (0.32) -> clear (0.68) -> black @ 0.7.
@@ -37,7 +38,9 @@ struct ParityHeroImage: View {
                     cornerRadius: 0,
                     contentMode: .fill
                 )
-                LinearGradient(stops: stops, startPoint: .top, endPoint: .bottom)
+                if !stops.isEmpty {
+                    LinearGradient(stops: stops, startPoint: .top, endPoint: .bottom)
+                }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }

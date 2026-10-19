@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct DefaultThumbnailTests {
     private func symbol(_ name: String?) -> String? {

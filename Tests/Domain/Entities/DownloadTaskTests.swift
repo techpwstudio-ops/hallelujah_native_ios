@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct DownloadTaskTests {
     private func task(state: DownloadState = .completed) -> DownloadTask {

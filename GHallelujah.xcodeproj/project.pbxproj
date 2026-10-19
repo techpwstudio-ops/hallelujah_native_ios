@@ -1,0 +1,757 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1BA6787C00BF0ED936EF5EBC /* SiriIntentsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E8229D5A08BB25F75B3C2B1B /* SiriIntentsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		29610F01EE55BD999EA949D0 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = 565F46A9032F60674D94A8BF /* SocketIO */; };
+		48AD46DD681C7ECB4BD1746D /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = C32941353C89755CFE2C3481 /* FirebaseMessaging */; };
+		50EBA80C3B4409342341F265 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B3F67C15422D46F6D72DE24A /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		54B8E10E65502E630FDF5B7A /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 7890EBD848D1C7C7FEC54E2B /* GRDB */; };
+		556DCBA6D7BBB494CCB3A701 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 53CEC26D6C68EF722AA69DD1 /* FirebaseAnalytics */; };
+		6969679DD6DCD8A5D95AF232 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = DC7A367E9B4D74548213DE4C /* FirebaseCrashlytics */; };
+		716042FC6676670EAF4B2607 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 16C1705350C4E79C01B4FAC4 /* GoogleSignIn */; };
+		7FCA5D0A18C22A2EDC2FDE65 /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AE8473A43190C543DEB32E2 /* IntentHandler.swift */; };
+		9BA9196A24E319EBA8D632D8 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4A4552F313E6E86346F86D17 /* FirebaseAuth */; };
+		C0D4E12547C96D73EC9E14C9 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 04AF6C9D9AC8AEF217B549B4 /* FirebaseAppCheck */; };
+		CBA7852778552824ABC40F29 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B01AC2BD64A48CB794FA7D7 /* NotificationService.swift */; };
+		F8925E0D752870205CBE313A /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 87E3E032CD8038381A0BD4D0 /* FirebaseCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0E90154904649C6778FCD46F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C1BB736B61BF9ED5ADAACE7D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 606327BD1DEE605265E6F6A5;
+			remoteInfo = GHallelujah;
+		};
+		4537A6C5585F3386DC649A8A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C1BB736B61BF9ED5ADAACE7D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 14CB9D5C1AE24C23A9E4587C;
+			remoteInfo = NotificationServiceExtension;
+		};
+		4D95D89DDD2D5C1854877F98 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C1BB736B61BF9ED5ADAACE7D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 606327BD1DEE605265E6F6A5;
+			remoteInfo = GHallelujah;
+		};
+		D7E0857333B8BB63C900BA9C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C1BB736B61BF9ED5ADAACE7D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9524357EF5FB008F4FD9F46B;
+			remoteInfo = SiriIntentsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2A2B6B1B3657ECB03B7FBB96 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				50EBA80C3B4409342341F265 /* NotificationServiceExtension.appex in Embed Foundation Extensions */,
+				1BA6787C00BF0ED936EF5EBC /* SiriIntentsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		184CF3F5EBF43164B117B3E4 /* Tests.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Tests.xcconfig; sourceTree = "<group>"; };
+		2B01AC2BD64A48CB794FA7D7 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		34C19F598EDDC64778095B00 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		443514D37419FD5A7AAC6F78 /* SiriIntentsExtension.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SiriIntentsExtension.xcconfig; sourceTree = "<group>"; };
+		4AE8473A43190C543DEB32E2 /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
+		857977CE7BA052DF1AF1D760 /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
+		8A0E205A7EFD5BD9AFB54C82 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		8D7A2837BD15A6654F5DA0A1 /* NotificationServiceExtension.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = NotificationServiceExtension.xcconfig; sourceTree = "<group>"; };
+		B3F67C15422D46F6D72DE24A /* NotificationServiceExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationServiceExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B89FD80E380139C43DD4D7CE /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = App.xcconfig; sourceTree = "<group>"; };
+		D18829B05AD563A056CCA389 /* GHallelujahTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GHallelujahTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4BE455C0AB68EBB6D6722D9 /* GHallelujahUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GHallelujahUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E8229D5A08BB25F75B3C2B1B /* SiriIntentsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiriIntentsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		EA719F38624B1A2B7E4B56B7 /* UITests.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = UITests.xcconfig; sourceTree = "<group>"; };
+		EE51BF0C1434D4C8FC0EFC91 /* GHallelujah.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GHallelujah.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DB6764E8931F03661DD4420E /* Exceptions for "App" folder in "GHallelujah" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Resources/Info.plist,
+			);
+			target = 606327BD1DEE605265E6F6A5 /* GHallelujah */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		26EE080DC614B408730BD914 /* UITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		7233E70B391E9E7332448F0B /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		A955E202282F6C7631FDA8AA /* App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DB6764E8931F03661DD4420E /* Exceptions for "App" folder in "GHallelujah" target */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		846A87EE98D5BADA7A8FEBA3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				54B8E10E65502E630FDF5B7A /* GRDB in Frameworks */,
+				F8925E0D752870205CBE313A /* FirebaseCore in Frameworks */,
+				C0D4E12547C96D73EC9E14C9 /* FirebaseAppCheck in Frameworks */,
+				6969679DD6DCD8A5D95AF232 /* FirebaseCrashlytics in Frameworks */,
+				9BA9196A24E319EBA8D632D8 /* FirebaseAuth in Frameworks */,
+				48AD46DD681C7ECB4BD1746D /* FirebaseMessaging in Frameworks */,
+				556DCBA6D7BBB494CCB3A701 /* FirebaseAnalytics in Frameworks */,
+				716042FC6676670EAF4B2607 /* GoogleSignIn in Frameworks */,
+				29610F01EE55BD999EA949D0 /* SocketIO in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1DD99F054BC899780703C62C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EE51BF0C1434D4C8FC0EFC91 /* GHallelujah.app */,
+				D18829B05AD563A056CCA389 /* GHallelujahTests.xctest */,
+				D4BE455C0AB68EBB6D6722D9 /* GHallelujahUITests.xctest */,
+				B3F67C15422D46F6D72DE24A /* NotificationServiceExtension.appex */,
+				E8229D5A08BB25F75B3C2B1B /* SiriIntentsExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2ACD912C88CE6D38509FA9A2 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				4AE8473A43190C543DEB32E2 /* IntentHandler.swift */,
+			);
+			name = Sources;
+			path = Extensions/SiriIntents/Sources;
+			sourceTree = "<group>";
+		};
+		A0291EF3476A06BC90D3098A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				B89FD80E380139C43DD4D7CE /* App.xcconfig */,
+				8D7A2837BD15A6654F5DA0A1 /* NotificationServiceExtension.xcconfig */,
+				443514D37419FD5A7AAC6F78 /* SiriIntentsExtension.xcconfig */,
+				184CF3F5EBF43164B117B3E4 /* Tests.xcconfig */,
+				EA719F38624B1A2B7E4B56B7 /* UITests.xcconfig */,
+			);
+			name = Shared;
+			path = Config/Shared;
+			sourceTree = "<group>";
+		};
+		AFC10D905CF1DAFE6BB62580 /* Configurations */ = {
+			isa = PBXGroup;
+			children = (
+				34C19F598EDDC64778095B00 /* Debug.xcconfig */,
+				8A0E205A7EFD5BD9AFB54C82 /* Release.xcconfig */,
+				857977CE7BA052DF1AF1D760 /* Staging.xcconfig */,
+			);
+			name = Configurations;
+			path = Config/Configurations;
+			sourceTree = "<group>";
+		};
+		B91F2AC82B4245CE816E7A26 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				2B01AC2BD64A48CB794FA7D7 /* NotificationService.swift */,
+			);
+			name = Sources;
+			path = Extensions/NotificationService/Sources;
+			sourceTree = "<group>";
+		};
+		E2B951A6BBF661F166E9326F = {
+			isa = PBXGroup;
+			children = (
+				A955E202282F6C7631FDA8AA /* App */,
+				AFC10D905CF1DAFE6BB62580 /* Configurations */,
+				A0291EF3476A06BC90D3098A /* Shared */,
+				B91F2AC82B4245CE816E7A26 /* Sources */,
+				2ACD912C88CE6D38509FA9A2 /* Sources */,
+				7233E70B391E9E7332448F0B /* Tests */,
+				26EE080DC614B408730BD914 /* UITests */,
+				1DD99F054BC899780703C62C /* Products */,
+			);
+			indentWidth = 4;
+			sourceTree = "<group>";
+			tabWidth = 4;
+			usesTabs = 0;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		14CB9D5C1AE24C23A9E4587C /* NotificationServiceExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1B572E951E8E45A9389C57A3 /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */;
+			buildPhases = (
+				A027616EE07A6758D5F1025E /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NotificationServiceExtension;
+			packageProductDependencies = (
+			);
+			productName = NotificationServiceExtension;
+			productReference = B3F67C15422D46F6D72DE24A /* NotificationServiceExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		3A86FFF13E7B8EA38105F3A4 /* GHallelujahUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5772FD1A267BA5CF10B88E33 /* Build configuration list for PBXNativeTarget "GHallelujahUITests" */;
+			buildPhases = (
+				FB629110657B5BC0112CD635 /* Sources */,
+				F3BACA855990329A76AFB588 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8AF3C6B724EEF1844C840131 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				26EE080DC614B408730BD914 /* UITests */,
+			);
+			name = GHallelujahUITests;
+			packageProductDependencies = (
+			);
+			productName = GHallelujahUITests;
+			productReference = D4BE455C0AB68EBB6D6722D9 /* GHallelujahUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		606327BD1DEE605265E6F6A5 /* GHallelujah */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F5B2B70839D280E78B88367C /* Build configuration list for PBXNativeTarget "GHallelujah" */;
+			buildPhases = (
+				724AA485E3B509AA059C86B6 /* Sources */,
+				2013FFB8272026B64BDA1A6A /* Resources */,
+				846A87EE98D5BADA7A8FEBA3 /* Frameworks */,
+				2A2B6B1B3657ECB03B7FBB96 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EFDB7C73D888424A00346727 /* PBXTargetDependency */,
+				008D7A200304432C4A5EA20F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A955E202282F6C7631FDA8AA /* App */,
+			);
+			name = GHallelujah;
+			packageProductDependencies = (
+				7890EBD848D1C7C7FEC54E2B /* GRDB */,
+				87E3E032CD8038381A0BD4D0 /* FirebaseCore */,
+				04AF6C9D9AC8AEF217B549B4 /* FirebaseAppCheck */,
+				DC7A367E9B4D74548213DE4C /* FirebaseCrashlytics */,
+				4A4552F313E6E86346F86D17 /* FirebaseAuth */,
+				C32941353C89755CFE2C3481 /* FirebaseMessaging */,
+				53CEC26D6C68EF722AA69DD1 /* FirebaseAnalytics */,
+				16C1705350C4E79C01B4FAC4 /* GoogleSignIn */,
+				565F46A9032F60674D94A8BF /* SocketIO */,
+			);
+			productName = GHallelujah;
+			productReference = EE51BF0C1434D4C8FC0EFC91 /* GHallelujah.app */;
+			productType = "com.apple.product-type.application";
+		};
+		82B5D56F5013DF307DABEB2C /* GHallelujahTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8215132E6BB6FD4A41D4B059 /* Build configuration list for PBXNativeTarget "GHallelujahTests" */;
+			buildPhases = (
+				2BE0EC6B7E71E89AB25621FC /* Sources */,
+				162AF8CDD5EF4CAF6700E680 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7F60062CBE866C988B550806 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7233E70B391E9E7332448F0B /* Tests */,
+			);
+			name = GHallelujahTests;
+			packageProductDependencies = (
+			);
+			productName = GHallelujahTests;
+			productReference = D18829B05AD563A056CCA389 /* GHallelujahTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		9524357EF5FB008F4FD9F46B /* SiriIntentsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8DAD61774194340F94CA4D89 /* Build configuration list for PBXNativeTarget "SiriIntentsExtension" */;
+			buildPhases = (
+				0A5EC2E12370FB7F9E09EF36 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SiriIntentsExtension;
+			packageProductDependencies = (
+			);
+			productName = SiriIntentsExtension;
+			productReference = E8229D5A08BB25F75B3C2B1B /* SiriIntentsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C1BB736B61BF9ED5ADAACE7D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					14CB9D5C1AE24C23A9E4587C = {
+						DevelopmentTeam = "$(HALLELUJAH_DEVELOPMENT_TEAM)";
+						ProvisioningStyle = Automatic;
+					};
+					3A86FFF13E7B8EA38105F3A4 = {
+						DevelopmentTeam = "$(HALLELUJAH_DEVELOPMENT_TEAM)";
+						ProvisioningStyle = Automatic;
+					};
+					606327BD1DEE605265E6F6A5 = {
+						ProvisioningStyle = Automatic;
+					};
+					82B5D56F5013DF307DABEB2C = {
+						DevelopmentTeam = "$(HALLELUJAH_DEVELOPMENT_TEAM)";
+						ProvisioningStyle = Automatic;
+					};
+					9524357EF5FB008F4FD9F46B = {
+						DevelopmentTeam = "$(HALLELUJAH_DEVELOPMENT_TEAM)";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 359520959B9CC127CE5D79C2 /* Build configuration list for PBXProject "GHallelujah" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = E2B951A6BBF661F166E9326F;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7B05E293B8467DF55575E577 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				07715F2B13C4E16A20BA511F /* XCRemoteSwiftPackageReference "GRDB" */,
+				1BC90C7E7FB9A762C3D9D6A5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				FF68BBA6C7690756D44218A3 /* XCRemoteSwiftPackageReference "socket" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 1DD99F054BC899780703C62C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				606327BD1DEE605265E6F6A5 /* GHallelujah */,
+				14CB9D5C1AE24C23A9E4587C /* NotificationServiceExtension */,
+				9524357EF5FB008F4FD9F46B /* SiriIntentsExtension */,
+				82B5D56F5013DF307DABEB2C /* GHallelujahTests */,
+				3A86FFF13E7B8EA38105F3A4 /* GHallelujahUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		162AF8CDD5EF4CAF6700E680 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2013FFB8272026B64BDA1A6A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F3BACA855990329A76AFB588 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0A5EC2E12370FB7F9E09EF36 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7FCA5D0A18C22A2EDC2FDE65 /* IntentHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2BE0EC6B7E71E89AB25621FC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		724AA485E3B509AA059C86B6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A027616EE07A6758D5F1025E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CBA7852778552824ABC40F29 /* NotificationService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB629110657B5BC0112CD635 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		008D7A200304432C4A5EA20F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9524357EF5FB008F4FD9F46B /* SiriIntentsExtension */;
+			targetProxy = D7E0857333B8BB63C900BA9C /* PBXContainerItemProxy */;
+		};
+		7F60062CBE866C988B550806 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 606327BD1DEE605265E6F6A5 /* GHallelujah */;
+			targetProxy = 0E90154904649C6778FCD46F /* PBXContainerItemProxy */;
+		};
+		8AF3C6B724EEF1844C840131 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 606327BD1DEE605265E6F6A5 /* GHallelujah */;
+			targetProxy = 4D95D89DDD2D5C1854877F98 /* PBXContainerItemProxy */;
+		};
+		EFDB7C73D888424A00346727 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 14CB9D5C1AE24C23A9E4587C /* NotificationServiceExtension */;
+			targetProxy = 4537A6C5585F3386DC649A8A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		09E88A1E5B7B08B2F78F11C6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 443514D37419FD5A7AAC6F78 /* SiriIntentsExtension.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		1869D512F86D75ACF9E1F916 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8A0E205A7EFD5BD9AFB54C82 /* Release.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		22F2405B2A707BF7349559EF /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8D7A2837BD15A6654F5DA0A1 /* NotificationServiceExtension.xcconfig */;
+			buildSettings = {
+			};
+			name = Staging;
+		};
+		286BA7813B243957A59B9915 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8D7A2837BD15A6654F5DA0A1 /* NotificationServiceExtension.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		348D15ADCC869008FC7D1F4F /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 857977CE7BA052DF1AF1D760 /* Staging.xcconfig */;
+			buildSettings = {
+			};
+			name = Staging;
+		};
+		4F84ED11A7E04E900628C528 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EA719F38624B1A2B7E4B56B7 /* UITests.xcconfig */;
+			buildSettings = {
+			};
+			name = Staging;
+		};
+		55FF6ABAF3C4F7CBC047544E /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EA719F38624B1A2B7E4B56B7 /* UITests.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		5699D583CA9EEFA76899FD85 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8D7A2837BD15A6654F5DA0A1 /* NotificationServiceExtension.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		59827AFD91CDA393739C580C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 184CF3F5EBF43164B117B3E4 /* Tests.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		5E1B1B8B71D099D748BCB14F /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = B89FD80E380139C43DD4D7CE /* App.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = App/Resources/GHallelujah.entitlements;
+				DEVELOPMENT_TEAM = V2LNA795Y9;
+				INFOPLIST_FILE = App/Resources/Info.plist;
+			};
+			name = Staging;
+		};
+		60FB0C2E7F671666DA65FBC9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = B89FD80E380139C43DD4D7CE /* App.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = App/Resources/GHallelujah.entitlements;
+				DEVELOPMENT_TEAM = V2LNA795Y9;
+				INFOPLIST_FILE = App/Resources/Info.plist;
+			};
+			name = Debug;
+		};
+		6E5D82BB086CCA004773A7FA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EA719F38624B1A2B7E4B56B7 /* UITests.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		872E49F83656CC6574E5211C /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 184CF3F5EBF43164B117B3E4 /* Tests.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		90144D5ED213AA65839B6420 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 443514D37419FD5A7AAC6F78 /* SiriIntentsExtension.xcconfig */;
+			buildSettings = {
+			};
+			name = Staging;
+		};
+		C6509D36B4C3B4C2E77C2A3E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 34C19F598EDDC64778095B00 /* Debug.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		DEF1EFB9D780EAA033CA78E1 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 184CF3F5EBF43164B117B3E4 /* Tests.xcconfig */;
+			buildSettings = {
+			};
+			name = Staging;
+		};
+		E27D6635C9A602F461DC1072 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 443514D37419FD5A7AAC6F78 /* SiriIntentsExtension.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		EA70D19D3591700FAC550CAB /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = B89FD80E380139C43DD4D7CE /* App.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = App/Resources/GHallelujah.entitlements;
+				DEVELOPMENT_TEAM = V2LNA795Y9;
+				INFOPLIST_FILE = App/Resources/Info.plist;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1B572E951E8E45A9389C57A3 /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				286BA7813B243957A59B9915 /* Debug */,
+				5699D583CA9EEFA76899FD85 /* Release */,
+				22F2405B2A707BF7349559EF /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		359520959B9CC127CE5D79C2 /* Build configuration list for PBXProject "GHallelujah" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C6509D36B4C3B4C2E77C2A3E /* Debug */,
+				1869D512F86D75ACF9E1F916 /* Release */,
+				348D15ADCC869008FC7D1F4F /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5772FD1A267BA5CF10B88E33 /* Build configuration list for PBXNativeTarget "GHallelujahUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6E5D82BB086CCA004773A7FA /* Debug */,
+				55FF6ABAF3C4F7CBC047544E /* Release */,
+				4F84ED11A7E04E900628C528 /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8215132E6BB6FD4A41D4B059 /* Build configuration list for PBXNativeTarget "GHallelujahTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				59827AFD91CDA393739C580C /* Debug */,
+				872E49F83656CC6574E5211C /* Release */,
+				DEF1EFB9D780EAA033CA78E1 /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8DAD61774194340F94CA4D89 /* Build configuration list for PBXNativeTarget "SiriIntentsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E27D6635C9A602F461DC1072 /* Debug */,
+				09E88A1E5B7B08B2F78F11C6 /* Release */,
+				90144D5ED213AA65839B6420 /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F5B2B70839D280E78B88367C /* Build configuration list for PBXNativeTarget "GHallelujah" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60FB0C2E7F671666DA65FBC9 /* Debug */,
+				EA70D19D3591700FAC550CAB /* Release */,
+				5E1B1B8B71D099D748BCB14F /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		07715F2B13C4E16A20BA511F /* XCRemoteSwiftPackageReference "GRDB" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.0;
+			};
+		};
+		1BC90C7E7FB9A762C3D9D6A5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+		7B05E293B8467DF55575E577 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.0.0;
+			};
+		};
+		FF68BBA6C7690756D44218A3 /* XCRemoteSwiftPackageReference "socket" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 16.1.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		04AF6C9D9AC8AEF217B549B4 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B05E293B8467DF55575E577 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		16C1705350C4E79C01B4FAC4 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1BC90C7E7FB9A762C3D9D6A5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		4A4552F313E6E86346F86D17 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B05E293B8467DF55575E577 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		53CEC26D6C68EF722AA69DD1 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B05E293B8467DF55575E577 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		565F46A9032F60674D94A8BF /* SocketIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FF68BBA6C7690756D44218A3 /* XCRemoteSwiftPackageReference "socket" */;
+			productName = SocketIO;
+		};
+		7890EBD848D1C7C7FEC54E2B /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 07715F2B13C4E16A20BA511F /* XCRemoteSwiftPackageReference "GRDB" */;
+			productName = GRDB;
+		};
+		87E3E032CD8038381A0BD4D0 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B05E293B8467DF55575E577 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		C32941353C89755CFE2C3481 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B05E293B8467DF55575E577 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		DC7A367E9B4D74548213DE4C /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B05E293B8467DF55575E577 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = C1BB736B61BF9ED5ADAACE7D /* Project object */;
+}

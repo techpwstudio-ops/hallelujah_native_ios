@@ -2,10 +2,10 @@
 # Usage: Scripts/relaunch.sh [--local|--dev|--prod] [--quick|--clean]
 #
 # Environment (default --dev):
-#   --local    "GHallelujah Development"  → localhost:3000 API (Debug build)
-#   --dev      "GHallelujah Staging"      → qa.api.hallelujah.today (QA stack)
-#   --prod     "GHallelujah Production"   → api.hallelujah.today
-#   (SCHEME="GHallelujah …" in the environment still works; a flag wins over it)
+#   --local    "Hallelujah Development"  → localhost:3000 API (Debug build)
+#   --dev      "Hallelujah Staging"      → qa.api.hallelujah.today (QA stack)
+#   --prod     "Hallelujah Production"   → api.hallelujah.today
+#   (SCHEME="Hallelujah …" in the environment still works; a flag wins over it)
 #
 # Mode (default: rebuild, reinstall over the existing app, keeps data):
 #   --quick    just terminate + launch, no build
@@ -19,16 +19,16 @@ SELF=${0:A}
 cd "${SELF:h}/.."
 
 DEVICE=${DEVICE:-E3774B69-2B27-46B9-89F2-C3C29DDD34C1}
-SCHEME=${SCHEME:-"GHallelujah Staging"}
+SCHEME=${SCHEME:-"Hallelujah Staging"}
 BUNDLE=com.hallelujah.user
-DD=${DD:-$HOME/Library/Developer/Xcode/DerivedData/GHallelujah-relaunch}
+DD=${DD:-$HOME/Library/Developer/Xcode/DerivedData/Hallelujah-relaunch}
 
 MODE=build
 for arg in "$@"; do
   case $arg in
-    --local)       SCHEME="GHallelujah Development" ;;
-    --dev)         SCHEME="GHallelujah Staging" ;;
-    --prod)        SCHEME="GHallelujah Production" ;;
+    --local)       SCHEME="Hallelujah Development" ;;
+    --dev)         SCHEME="Hallelujah Staging" ;;
+    --prod)        SCHEME="Hallelujah Production" ;;
     --quick)       MODE=quick ;;
     --clean)       MODE=clean ;;
     -h|--help)     sed -n '2,/^set -e/p' "$SELF" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -41,9 +41,9 @@ done
 case $SCHEME in
   *Production)  CONFIG=Release ;;
   *Development) CONFIG=Debug ;;
-  *)            CONFIG=${SCHEME#GHallelujah } ;;
+  *)            CONFIG=${SCHEME#Hallelujah } ;;
 esac
-APP="$DD/Build/Products/$CONFIG-iphonesimulator/GHallelujah.app"
+APP="$DD/Build/Products/$CONFIG-iphonesimulator/Hallelujah.app"
 
 step() { print -P "%F{cyan}▶ $1%f"; }
 
@@ -52,7 +52,7 @@ open -a Simulator
 
 if [[ $MODE != quick ]]; then
   step "Building $SCHEME (live compile progress below)"
-  xcodebuild build -project GHallelujah.xcodeproj -scheme "$SCHEME" \
+  xcodebuild build -project Hallelujah.xcodeproj -scheme "$SCHEME" \
     -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath "$DD" \
     ONLY_ACTIVE_ARCH=YES 2>&1 | awk '
       /^(CompileSwift|SwiftCompile|Ld |CodeSign|ProcessInfoPlist|CompileAssetCatalog|CopySwiftLibs|LinkAssetCatalog)/ { n++; printf "  [%d] %s\n", n, substr($0,1,90) }

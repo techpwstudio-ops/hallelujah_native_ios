@@ -104,13 +104,15 @@ struct PlayerSeekBar: View {
 
 /// The mini player's playback progress (`song_progress_bar.dart`'s
 /// `preview: true` indicator), drawn along the pill's bottom border instead
-/// of as a bar under it: the lower half of the outline of the same continuous
-/// rounded rectangle the glass uses (from the middle of the left end, round
-/// the bottom-left curve, along the flat, up the bottom-right curve to the
-/// middle of the right end), filled left to right for `progress` of its
-/// length. `progress == 1` is the whole bottom border, for the track behind.
+/// of as a bar under it: a straight line on the bottom edge of the same
+/// continuous rounded rectangle the glass uses, filled left to right for
+/// `progress` of its length. It starts where the left end curve has come down
+/// to within `2 * inset` of the bottom (the stroke's own thickness) and stops
+/// at the mirror point on the right, so it never bends up the ends — and its
+/// first sliver sits on the baseline, not halfway up the pill's side.
+/// `progress == 1` is the whole line, for the track behind.
 ///
-/// Stroke this with `lineWidth == 2 * inset`: the path is inset by half the
+/// Stroke this with `lineWidth == 2 * inset`: the line is inset by half the
 /// stroke so the stroke's outer edge lands exactly on the glass edge.
 struct PlayerProgressBottomBorder: Shape {
     var progress: Double
@@ -121,13 +123,39 @@ struct PlayerProgressBottomBorder: Shape {
     func path(in rect: CGRect) -> Path {
         let fraction = min(max(progress, 0), 1)
         guard fraction > 0 else { return Path() }
+        let insetRect = rect.insetBy(dx: inset, dy: inset)
         let outline = RoundedRectangle(cornerRadius: cornerRadius - inset, style: .continuous)
-            .path(in: rect.insetBy(dx: inset, dy: inset))
-        // `RoundedRectangle`'s path starts at 3 o'clock and runs clockwise
-        // (and is symmetric), so its first half is exactly the bottom border,
-        // traversed right to left and ending at 9 o'clock. Left-to-right
-        // progress is therefore the stretch that ends there.
-        let half = 0.5
-        return outline.trimmedPath(from: half - half * fraction, to: half)
+            .path(in: insetRect)
+        let rightEnd = Self.baselineRightEnd(of: outline, bottom: insetRect.maxY, rise: 2 * inset)
+        let leftEnd = insetRect.minX + insetRect.maxX - rightEnd // mirror image about the centre
+        var path = Path()
+        path.move(to: CGPoint(x: leftEnd, y: insetRect.maxY))
+        path.addLine(to: CGPoint(x: leftEnd + (rightEnd - leftEnd) * fraction, y: insetRect.maxY))
+        return path
+    }
+
+    /// The x at which the outline's bottom-right curve first comes within
+    /// `rise` of `bottom`. `RoundedRectangle`'s path starts at 3 o'clock and
+    /// runs clockwise, so the first quarter of it reaches 6 o'clock; bisecting
+    /// that quarter on the outline itself (rather than assuming a circular
+    /// arc) keeps this right for the continuous (squircle) corner.
+    private static func baselineRightEnd(of outline: Path, bottom: CGFloat, rise: CGFloat) -> CGFloat {
+        var low = 0.0
+        var high = 0.25 // 6 o'clock: always at the bottom
+        var x = outline.boundingRect.midX
+        for _ in 0..<24 {
+            let middle = (low + high) / 2
+            guard let point = outline.trimmedPath(from: 0, to: middle).currentPoint else {
+                low = middle
+                continue
+            }
+            if bottom - point.y <= rise {
+                high = middle
+                x = point.x
+            } else {
+                low = middle
+            }
+        }
+        return x
     }
 }

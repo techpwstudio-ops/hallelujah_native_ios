@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct PlaybackQueueTests {
     private let source = QueueAttribution(playerType: .companyPlaylist, id: "p1", title: "Mix")

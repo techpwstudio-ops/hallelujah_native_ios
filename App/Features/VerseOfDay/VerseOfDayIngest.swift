@@ -2,11 +2,11 @@ import Foundation
 
 extension Notification.Name {
     /// The current verse of the day, its cached counts, or its hidden flag changed.
-    static let verseOfDayDidChange = Notification.Name("GHallelujah.verseOfDayDidChange")
+    static let verseOfDayDidChange = Notification.Name("Hallelujah.verseOfDayDidChange")
     /// `verseOfDay.comment.added` — `userInfo["comment"]` is a `VerseOfDayComment`.
-    static let verseOfDayCommentAdded = Notification.Name("GHallelujah.verseOfDayCommentAdded")
+    static let verseOfDayCommentAdded = Notification.Name("Hallelujah.verseOfDayCommentAdded")
     /// `verseOfDay.comment.like` — `userInfo`: `commentId`, `likes`, `verseOfDayId`.
-    static let verseOfDayCommentLikesChanged = Notification.Name("GHallelujah.verseOfDayCommentLikesChanged")
+    static let verseOfDayCommentLikesChanged = Notification.Name("Hallelujah.verseOfDayCommentLikesChanged")
 }
 
 /// Everything Flutter does to `getRealm().add<VerseOfDay>(...)` plus

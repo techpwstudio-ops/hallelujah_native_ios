@@ -230,9 +230,11 @@ struct MiniPlayerDockView: View {
     }
 
     /// `song_progress_bar.dart`'s mini-player (`preview: true`) indicator, not
-    /// scrubbable. Runs along the pill's bottom border — same corner radius
-    /// as the glass, left end to right end — in white over a faint track of
-    /// that same border (the same `white @ 0.12` as the artwork's stroke).
+    /// scrubbable. A straight line on the pill's bottom edge — same corner
+    /// radius as the glass — from where the left end curve flattens onto the
+    /// baseline to where the right one leaves it, so progress begins at the
+    /// bottom and never bends up the ends — in white over a faint track of that
+    /// same line (the same `white @ 0.12` as the artwork's stroke).
     private var progressBorder: some View {
         ZStack {
             PlayerProgressBottomBorder(progress: 1, cornerRadius: Radius.full, inset: Self.progressLineWidth / 2)

@@ -23,6 +23,15 @@ enum DefaultThumbnail {
         return "hallelujah/system/public/avatars/\(symbol).webp"
     }
 
+    /// Whether `path` is no real cover yet: nothing stored, or the shared
+    /// letter tile (`hallelujah/system/public/avatars/…`) the backend seeds
+    /// until a playlist's own collage has been composited
+    /// (`user-playlists.job.js`).
+    static func isLetterTile(path: String?) -> Bool {
+        guard let path, !path.isEmpty else { return true }
+        return path.contains("hallelujah/system/public/avatars")
+    }
+
     /// Latin-1 accented letters -> their base letter, so "Ávila" lands on `a`
     /// like it does on the server (which folds via NFD). Anything outside
     /// this range falls through to the digit/default branches, same as there.
@@ -50,5 +59,21 @@ extension ArtworkURLResolver {
     /// fallback every non-thumbnail path takes in `getFileUrl`.
     func resolveDefaultThumbnail(name: String?) -> URL? {
         resolve(path: DefaultThumbnail.path(for: name), variant: .md, allowedVariants: nil)
+    }
+
+    /// `LoadImage(path:, fallbackName:)` (`effectivePath`/`effectiveVariants`):
+    /// a stored cover always wins; only when there is no path does the letter
+    /// tile for `fallbackName` stand in. A brand-new playlist has no path
+    /// until the server has composited its cover, and the flat skeleton reads
+    /// as a broken image rather than as a playlist. The tile carries no
+    /// variants — it has no `sm.webp` sibling — so `allowedVariants` only
+    /// applies to the stored path. A nil/empty name yields `nil`, same as
+    /// Dart returning the (null) path.
+    func resolve(path: String?, variant: ImageVariant, allowedVariants: String?, fallbackName: String?) -> URL? {
+        if let path, !path.isEmpty {
+            return resolve(path: path, variant: variant, allowedVariants: allowedVariants)
+        }
+        guard let fallbackName, !fallbackName.isEmpty else { return nil }
+        return resolveDefaultThumbnail(name: fallbackName)
     }
 }

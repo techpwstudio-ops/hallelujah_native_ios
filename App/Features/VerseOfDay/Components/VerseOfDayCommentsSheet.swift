@@ -71,6 +71,7 @@ struct VerseOfDayCommentsSheet: View {
                 onSend: { content in Task { await viewModel.postComment(content: content) } }
             )
             .padding(.top, Dimens.screenPaddingAll)
+            .padding(.bottom, Dimens.horizontalSpacing)
         }
         .task {
             await viewModel.onAppear()
@@ -116,8 +117,8 @@ private func verseOfDayTimeAgo(_ date: Date?) -> String {
 }
 
 /// `VerseOfDayCommentItem`: name (bodyLarge w600, "Anonymous" fallback) and
-/// time-ago (bodySmall, 60%) on one row, 6pt, the comment (bodyMedium,
-/// height 1.4), 10pt, then the like row (20pt heart in white 60% + count).
+/// time-ago (bodySmall, 60%) on one row, 8pt, the comment (bodyMedium,
+/// height 1.4), 12pt, then the like row (20pt heart in white 60%, 8pt, count).
 private struct VerseOfDayCommentRow: View {
     let comment: VerseOfDayComment
     let onToggleLike: () -> Void
@@ -131,14 +132,14 @@ private struct VerseOfDayCommentRow: View {
                 Text(verseOfDayTimeAgo(comment.createdAt))
                     .readText(Typography.bodySmall, color: ReadPalette.white60)
             }
-            Spacer().frame(height: 6)
+            Spacer().frame(height: 8)
             Text(comment.content)
                 .readText(Typography.bodyMedium)
                 .lineSpacing(14 * 0.2)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Spacer().frame(height: 10)
+            Spacer().frame(height: 12)
             Button(action: onToggleLike) {
-                HStack(spacing: 0) {
+                HStack(spacing: 8) {
                     VerseOfDayHeartIcon(isLiked: comment.isLiked, size: 20, color: ReadPalette.white60)
                         .scaleEffect(comment.isLiked ? 1.2 : 1.0)
                         .animation(.easeOut(duration: 0.18), value: comment.isLiked)
@@ -182,6 +183,8 @@ private struct VerseOfDayCommentInputBar: View {
                     text = String(newValue.prefix(Self.maxLength))
                 }
             }
+
+            Spacer().frame(height: 8)
 
             HStack(spacing: 0) {
                 VerseOfDayEmojiReactionBar { emoji in

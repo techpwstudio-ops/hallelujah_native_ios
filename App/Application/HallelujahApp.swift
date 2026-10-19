@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 @main
-struct GHallelujahApp: App {
+struct HallelujahApp: App {
     // T46 — the only way a background `URLSession` (`DownloadEngine`) reaches
     // `application(_:handleEventsForBackgroundURLSession:completionHandler:)`;
     // see `AppDelegate`'s own doc comment.

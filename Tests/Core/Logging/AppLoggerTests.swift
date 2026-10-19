@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct AppLoggerTests {
     @Test func gatesMessagesBelowTheConfiguredMinimumLevel() {

@@ -1,4 +1,4 @@
-name: GHallelujah
+name: Hallelujah
 
 options:
   projectFormat: xcode16_0
@@ -48,13 +48,13 @@ packages:
     from: 16.1.1
 
 targets:
-  GHallelujah:
+  Hallelujah:
     type: application
     platform: iOS
     sources:
       - path: App
         type: syncedFolder
-    # T18 — without this, App/Resources/GHallelujah.entitlements sits on disk
+    # T18 — without this, App/Resources/Hallelujah.entitlements sits on disk
     # unused: XcodeGen doesn't attach an entitlements file to the target on
     # its own, so CODE_SIGN_ENTITLEMENTS was never set and the associated
     # domains in it did nothing. No `properties:` sub-key here — the file's
@@ -63,7 +63,7 @@ targets:
     # rewrites the file as an empty <dict/>, silently dropping CarPlay, Siri,
     # push, Sign in with Apple and associated domains.
     entitlements:
-      path: App/Resources/GHallelujah.entitlements
+      path: App/Resources/Hallelujah.entitlements
       properties:
         com.apple.developer.carplay-audio: true
         com.apple.developer.siri: true
@@ -136,7 +136,7 @@ targets:
       Staging: Config/Shared/SiriIntentsExtension.xcconfig
       Release: Config/Shared/SiriIntentsExtension.xcconfig
 
-  GHallelujahTests:
+  HallelujahTests:
     type: bundle.unit-test
     platform: iOS
     sources:
@@ -147,9 +147,9 @@ targets:
       Staging: Config/Shared/Tests.xcconfig
       Release: Config/Shared/Tests.xcconfig
     dependencies:
-      - target: GHallelujah
+      - target: Hallelujah
 
-  GHallelujahUITests:
+  HallelujahUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
@@ -160,20 +160,20 @@ targets:
       Staging: Config/Shared/UITests.xcconfig
       Release: Config/Shared/UITests.xcconfig
     dependencies:
-      - target: GHallelujah
+      - target: Hallelujah
 
 schemes:
-  GHallelujah Development:
+  Hallelujah Development:
     build:
       targets:
-        GHallelujah: all
-        GHallelujahTests: [test]
-        GHallelujahUITests: [test]
+        Hallelujah: all
+        HallelujahTests: [test]
+        HallelujahUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
-      targets: [GHallelujahTests, GHallelujahUITests]
+      targets: [HallelujahTests, HallelujahUITests]
     profile:
       config: Debug
     analyze:
@@ -183,21 +183,21 @@ schemes:
     management:
       shared: true
 
-  GHallelujah Staging:
-    # GHallelujahTests is built out on purpose: Config/Shared/Release.xcconfig sets
+  Hallelujah Staging:
+    # HallelujahTests is built out on purpose: Config/Shared/Release.xcconfig sets
     # ENABLE_TESTABILITY = NO (Staging composes it — "QA tests a release build"), so
-    # a target doing `@testable import GHallelujah` cannot compile under this config.
+    # a target doing `@testable import Hallelujah` cannot compile under this config.
     # UI tests are black-box (XCUIApplication) and need no testability, so they still
     # verify the actual release-configured binary launches and behaves correctly.
     build:
       targets:
-        GHallelujah: all
-        GHallelujahUITests: [test]
+        Hallelujah: all
+        HallelujahUITests: [test]
     run:
       config: Staging
     test:
       config: Staging
-      targets: [GHallelujahUITests]
+      targets: [HallelujahUITests]
     profile:
       config: Staging
     analyze:
@@ -207,18 +207,18 @@ schemes:
     management:
       shared: true
 
-  GHallelujah Production:
-    # Same reasoning as GHallelujah Staging: Release.xcconfig disables testability,
+  Hallelujah Production:
+    # Same reasoning as Hallelujah Staging: Release.xcconfig disables testability,
     # so only the black-box UI test target runs here.
     build:
       targets:
-        GHallelujah: all
-        GHallelujahUITests: [test]
+        Hallelujah: all
+        HallelujahUITests: [test]
     run:
       config: Release
     test:
       config: Release
-      targets: [GHallelujahUITests]
+      targets: [HallelujahUITests]
     profile:
       config: Release
     analyze:
