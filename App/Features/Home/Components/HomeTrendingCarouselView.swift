@@ -49,8 +49,13 @@ struct HomeTrendingCarouselView: View {
 
     private var cardWidth: CGFloat { isEpisode ? HomeMetrics.episodeCardWidth : HomeMetrics.musicCarouselSize }
     private var imageHeight: CGFloat { isEpisode ? HomeMetrics.episodeCardHeight : HomeMetrics.musicCarouselSize }
-    private var cardHeight: CGFloat { imageHeight + 30 }
     private var railHeight: CGFloat { imageHeight + (isEpisode ? 30 : 10) }
+    /// Flutter declares the music card `thumbnailHeight + 30` (250), but the
+    /// `Positioned.fill` > `Align` that hosts it only offers the 230 rail, so the
+    /// `Container` is clamped to the rail height. Honouring the declared 250
+    /// here would let the rail's clip slice 10pt off the top of the front card
+    /// and cut away its rounded top corners.
+    private var cardHeight: CGFloat { min(imageHeight + 30, railHeight) }
 
     var body: some View {
         GeometryReader { proxy in

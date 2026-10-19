@@ -1,5 +1,5 @@
 import Foundation
-@testable import GHallelujah
+@testable import Hallelujah
 
 extension Song {
     /// A `Song` with only the fields a test names; everything else is nil /

@@ -1,7 +1,7 @@
 # Run: swiftlint (see Makefile's `lint` target for install notes).
 
 excluded:
-  - GHallelujah.xcodeproj
+  - Hallelujah.xcodeproj
   - .build
   - DerivedData
 

@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// `AiService._uploadTypeFromExt` + the profile photo's fixed type.
 struct UploadKindTests {

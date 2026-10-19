@@ -190,17 +190,38 @@ final class RemoteAuthRepository: AuthRepository {
         Task { await AppDataSync.shared.sync(force: true, silent: true) }
     }
 
-    /// A 403/404 logs the session out and throws, matching
-    /// `fetchUserDetails()`'s "Check for account deletion or access issues"
-    /// branch exactly. Every other failure (network error, 5xx, a decode
-    /// failure) is left for the caller to catch and ignore if it wants
-    /// Dart's background-refresh tolerance — `fetchUserDetails(background:
-    /// true)` swallows those rather than surfacing an error toast over an
-    /// app that already loaded fine from cache, and `verifyOTP` above relies
-    /// on exactly that tolerance via `try?`.
+    /// A 403 means the access token was refused (the session expired), so the
+    /// refresh token gets one chance before the session is declared over:
+    /// refresh, then ask again. The user is signed out only when the refresh
+    /// itself is refused (`Session` logs out on its own then) or the retried
+    /// call is still 403. A 404 (account deleted) ends the session straight
+    /// away, matching `fetchUserDetails()`'s "Check for account deletion or
+    /// access issues" branch.
+    ///
+    /// Every other failure — 5xx, a decode failure, a network error, a refresh
+    /// that couldn't be reached — never signs the user out; it is left for the
+    /// caller to catch and ignore if it wants Dart's background-refresh
+    /// tolerance. `fetchUserDetails(background: true)` swallows those rather
+    /// than surfacing an error toast over an app that already loaded fine from
+    /// cache, and `verifyOTP` above relies on exactly that tolerance via `try?`.
     @discardableResult
     func fetchCurrentUser() async throws -> User {
-        let response = try await client.send(.currentUser)
+        var response = try await client.send(.currentUser)
+
+        if response.statusCode == 403 {
+            logger.warning("current user refused (403); trying the refresh token once")
+            do {
+                try await session.refreshIfNeeded()
+            } catch {
+                guard Session.endsSession(after: error) else { throw error }
+                // The refresh token was refused or has lapsed — `Session` has
+                // already logged out; only the cached user is left to drop.
+                logger.warning("refresh refused after 403; signed out")
+                await currentUserStore.clear()
+                throw AuthRepositoryError.accountUnavailable(statusCode: 403)
+            }
+            response = try await client.send(.currentUser)
+        }
 
         if response.statusCode == 403 || response.statusCode == 404 {
             logger.warning("current user unavailable (\(response.statusCode)); logging out")

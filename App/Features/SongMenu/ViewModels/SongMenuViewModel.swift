@@ -95,7 +95,11 @@ final class SongMenuViewModel {
     }
 
     func loadPremium() async {
-        blocksPremium = premiumGate.restrictsFeatures && !(await premiumGate.hasPremium)
+        guard premiumGate.restrictsFeatures else {
+            blocksPremium = false
+            return
+        }
+        blocksPremium = !(await premiumGate.hasPremium)
     }
 
     /// `Formater.formatDurationText` + " Left" from `song_menu_sheet.dart`.

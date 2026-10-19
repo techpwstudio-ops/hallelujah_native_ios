@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 private final class CountingAppCheckSource: AppCheckTokenSource, @unchecked Sendable {
     private let lock = NSLock()

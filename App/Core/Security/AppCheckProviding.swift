@@ -10,7 +10,7 @@ protocol AppCheckProviding: Sendable {
 /// value. Not used at runtime — `FirebaseAppCheckProvider`
 /// (`App/Core/Firebase/`) is the real implementation `AppComposition`
 /// registers, since T15 already activated the provider factory
-/// (`GHallelujahAppCheckProviderFactory`, `FirebaseBootstrap.configure()`)
+/// (`HallelujahAppCheckProviderFactory`, `FirebaseBootstrap.configure()`)
 /// it depends on.
 struct UnavailableAppCheckProvider: AppCheckProviding {
     func limitedUseToken() async -> String? { nil }

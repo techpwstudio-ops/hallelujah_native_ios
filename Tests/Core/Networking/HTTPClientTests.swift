@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// Locks around a plain Int rather than using an actor: `MockURLProtocol`'s
 /// handler closure is synchronous, so it can't `await` an actor.

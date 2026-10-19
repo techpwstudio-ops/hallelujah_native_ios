@@ -64,4 +64,4 @@ CLANG_WARN_EMPTY_BODY = YES
 
 // The binary/product name. Distinct from APP_DISPLAY_NAME, which is what the
 // user sees on the home screen and changes per environment.
-APP_PRODUCT_NAME = GHallelujah
+APP_PRODUCT_NAME = Hallelujah

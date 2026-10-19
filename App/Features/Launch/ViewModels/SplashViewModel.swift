@@ -22,6 +22,9 @@ import Observation
 final class SplashViewModel {
     private(set) var destination: LaunchDestination?
     private(set) var availableUpdate: AppStoreVersionInfo?
+    /// A sign-out that landed while `destination` was still `nil` — see
+    /// `handleSignedOut()`.
+    private var signedOutBeforeResolved = false
 
     /// Deliberately NOT Dart's `_minSplashDuration` (`Duration(seconds: 0)`):
     /// the native splash plays a logo animation (`SplashView`), which needs
@@ -66,8 +69,15 @@ final class SplashViewModel {
         async let resolved = resolveDestination()
         try? await Task.sleep(for: Self.minimumDuration)
         let resolvedDestination = await resolved
-        logger.debug("splash: resolved to \(resolvedDestination)")
-        destination = resolvedDestination
+        // The background `/me` check (`resolveDestination()`) can end the
+        // session before this point — an expired session whose refresh token
+        // was also refused. That must win over the destination resolved from
+        // the cached session.
+        let signedOut = signedOutBeforeResolved
+        signedOutBeforeResolved = false
+        let finalDestination: LaunchDestination = signedOut ? .authentication : resolvedDestination
+        logger.debug("splash: resolved to \(finalDestination)")
+        destination = finalDestination
     }
 
     private func resolveDestination() async -> LaunchDestination {
@@ -121,16 +131,19 @@ final class SplashViewModel {
     /// `NavigationService.offAll(AuthenticationPage.routeName)`
     /// unconditionally, regardless of what screen was on top.
     ///
-    /// No-ops while `destination` is still `nil`: a cold launch with a
-    /// stale token whose refresh also fails can fire `SignOutSignal` from
-    /// inside `resolveDestination()`'s own `refreshWithTimeout()` call,
-    /// before `start()` has set `destination` for the first time.
-    /// `resolveDestination()` already re-checks the token/user after that
-    /// call and resolves straight to `.authentication` itself (see its own
-    /// doc comment), so reacting here too would only risk cutting the
-    /// splash's minimum-duration animation short for no benefit.
+    /// While `destination` is still `nil` this only records the sign-out, and
+    /// `start()` applies it once its minimum-duration animation is done — so
+    /// the splash isn't cut short. Two cold-launch paths fire the signal that
+    /// early: `resolveDestination()`'s own `refreshWithTimeout()` (which also
+    /// re-checks the token itself and resolves to `.authentication`), and the
+    /// background `/me` check, whose 403 → refresh → retry can finish before the
+    /// animation does. Dropping that second one used to strand a signed-out
+    /// user on Home.
     func handleSignedOut() {
-        guard destination != nil else { return }
+        guard destination != nil else {
+            signedOutBeforeResolved = true
+            return
+        }
         destination = .authentication
     }
 

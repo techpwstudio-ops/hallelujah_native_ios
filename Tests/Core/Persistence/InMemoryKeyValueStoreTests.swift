@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// The test double every store test leans on has to behave like the real
 /// `KeyValueStoring`, so it gets its own contract tests.

@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct SiriPlayServiceTests {
     private func results(top: SearchTopResultItem? = nil, music: [Song] = [], episodes: [Song] = []) -> SearchResults {

@@ -259,8 +259,9 @@ struct HomeSectionSkeletonView: View {
 
     private var carousel: some View {
         let cardWidth = isEpisode ? HomeMetrics.episodeCardHeight * 16 / 9 : HomeMetrics.musicCarouselSize
-        let cardHeight = (isEpisode ? HomeMetrics.episodeCardHeight : HomeMetrics.musicCarouselSize) + 30
         let railHeight = (isEpisode ? HomeMetrics.episodeCardHeight : HomeMetrics.musicCarouselSize) + (isEpisode ? 30 : 10)
+        // Clamped to the rail, as in `HomeTrendingCarouselView.cardHeight`.
+        let cardHeight = min((isEpisode ? HomeMetrics.episodeCardHeight : HomeMetrics.musicCarouselSize) + 30, railHeight)
         let sideScale = max(HomeTrendingCarouselView.minCardScale, 1 - HomeTrendingCarouselView.scaleStep)
         let offset = cardWidth / 2 + 10 + (cardWidth * sideScale) / 2
         return ZStack {

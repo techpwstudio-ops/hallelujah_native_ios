@@ -162,7 +162,9 @@ final class DownloadEngine {
             songArtworkVariants: song.displayImageVariants,
             songGenreName: song.primaryGenre?.name,
             songDurationSeconds: song.duration,
-            songType: song.type
+            songType: song.type,
+            songPrimaryArtists: song.primaryArtists,
+            songFeaturedArtists: song.featuredArtists
         )
         persist()
         await startNextQueuedIfNeeded()

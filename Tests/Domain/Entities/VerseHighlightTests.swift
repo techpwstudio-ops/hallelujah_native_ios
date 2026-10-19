@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct VerseHighlightTests {
     private let display = "3. In the beginning God"   // words: "3.", "In", "the", "beginning", "God"

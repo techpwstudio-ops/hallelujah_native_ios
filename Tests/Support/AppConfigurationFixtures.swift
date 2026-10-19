@@ -1,4 +1,4 @@
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// A hand-built `AppConfiguration` matching Config/Environments/Staging.xcconfig,
 /// for tests that need to target Staging regardless of which scheme built them.

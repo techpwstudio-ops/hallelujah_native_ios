@@ -3,4 +3,4 @@
 --maxwidth 120
 --self remove
 --importgrouping testable-bottom
---exclude GHallelujah.xcodeproj,.build,DerivedData
+--exclude Hallelujah.xcodeproj,.build,DerivedData

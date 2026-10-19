@@ -2,7 +2,7 @@ import Foundation
 
 /// Turns any thrown error into copy that is safe to show a person. Swift's own
 /// `localizedDescription` for a plain `Error` leaks type names
-/// ("The operation couldn't be completed. (GHallelujah.AuthRepositoryError error 1.)"),
+/// ("The operation couldn't be completed. (Hallelujah.AuthRepositoryError error 1.)"),
 /// so UI code should call this instead.
 enum UserFacingError {
     static var generic: String { String(localized: "Something went wrong. Please try again.") }

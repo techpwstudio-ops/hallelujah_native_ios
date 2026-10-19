@@ -56,26 +56,46 @@ private struct PlayerAdStripCard: View {
     let onOpen: (AdCreative) -> Void
     var onImpression: ((AdCreative) -> Void)?
 
-    /// The same size as a row in a list of songs, so the strip reads as a row of
-    /// the mini player's own.
-    private static let thumbnailSize = Dimens.listItemThumbnailSizeSm
+    // The pill is the mini player's (`MiniPlayerDockView`), measure for measure:
+    // the same glass, the same 64pt height and 48pt corner (a full capsule at
+    // that height), the same 14pt inner padding and 44pt rounded artwork, so
+    // the strip and the player under it read as one stack of the same object.
+    private static let height = Spacing.miniPlayerHeight
+    private static let contentHorizontalPadding: CGFloat = 14
+    private static let artworkSize: CGFloat = 44
+    private static let artworkCornerRadius: CGFloat = 12
     /// The button never takes more than this of the strip.
     private static let buttonMaxWidth: CGFloat = 120
-    /// `ColorTheme.darkFillColor` (0xFF282828).
-    private static let fill = Color(red: 40.0 / 255, green: 40.0 / 255, blue: 40.0 / 255)
 
     var body: some View {
         let caption = AdCaption(ad: ad)
+        GlassSurface(.regular, cornerRadius: Radius.full) {
+            contentRow(caption)
+                .padding(.horizontal, Self.contentHorizontalPadding)
+                .frame(height: Self.height)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: Radius.full, style: .continuous))
+        .onTapGesture {
+            if ad.hasDestination { onOpen(ad) }
+        }
+    }
+
+    private func contentRow(_ caption: AdCaption) -> some View {
         HStack(spacing: 0) {
             AdImpressionTrigger(onVisible: {
                 if let onImpression { onImpression(ad) } else { Self.countImpression(ad) }
             }) {
                 ArtworkView(
                     url: ad.assetUrl.flatMap(URL.init(string:)),
-                    width: Self.thumbnailSize,
-                    height: Self.thumbnailSize,
-                    cornerRadius: Dimens.cornerRadiusSmall
+                    width: Self.artworkSize,
+                    height: Self.artworkSize,
+                    cornerRadius: Self.artworkCornerRadius
                 )
+                .overlay {
+                    RoundedRectangle(cornerRadius: Self.artworkCornerRadius, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 3)
             }
 
             VStack(alignment: .leading, spacing: Dimens.spacing2) {
@@ -90,13 +110,13 @@ private struct PlayerAdStripCard: View {
                     if !caption.subtitle.isEmpty {
                         Text(caption.subtitle)
                             .typography(Typography.bodySmall)
-                            .foregroundStyle(Color.white.opacity(0.7))
+                            .foregroundStyle(Color.white.opacity(0.6))
                             .lineLimit(1)
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, Dimens.spacing12)
+            .padding(.leading, 12)
 
             if ad.hasDestination {
                 Button { onOpen(ad) } label: {
@@ -117,18 +137,6 @@ private struct PlayerAdStripCard: View {
             // Hosted by the app shell: opening any sheet hides the dock this
             // strip is part of, and a sheet owned by this button would go with it.
             AdOptionsButton(ad: ad, onDismissAd: onDismissAd, style: .plain, usesSharedHost: true)
-        }
-        .padding(EdgeInsets(
-            top: Dimens.spacing8,
-            leading: Dimens.spacing8,
-            bottom: Dimens.spacing8,
-            trailing: Dimens.spacing2
-        ))
-        .glassRounded(Dimens.cornerRadius)
-        .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadius))
-        .contentShape(RoundedRectangle(cornerRadius: Dimens.cornerRadius))
-        .onTapGesture {
-            if ad.hasDestination { onOpen(ad) }
         }
     }
 

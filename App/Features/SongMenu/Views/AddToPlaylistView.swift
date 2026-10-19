@@ -51,7 +51,12 @@ struct AddToPlaylistView: View {
         } label: {
             HStack(spacing: Dimens.paddingLarge) {
                 ArtworkView(
-                    url: ArtworkURLResolver().resolve(path: playlist.image, variant: .sm, allowedVariants: playlist.imageVariants),
+                    url: ArtworkURLResolver().resolve(
+                        path: playlist.image,
+                        variant: .sm,
+                        allowedVariants: playlist.imageVariants,
+                        fallbackName: playlist.title
+                    ),
                     width: 64,
                     height: 64,
                     cornerRadius: Dimens.cornerRadius

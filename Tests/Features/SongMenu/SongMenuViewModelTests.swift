@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// Only the pure parts of `SongMenuViewModel` are unit-tested; its actions
 /// need the full dependency graph (download engine, audio engine, queue) and

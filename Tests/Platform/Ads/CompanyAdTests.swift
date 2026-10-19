@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct CompanyAdTests {
     private func json(_ extra: [String: Any] = [:]) -> [String: Any] {

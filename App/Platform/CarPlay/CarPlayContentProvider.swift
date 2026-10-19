@@ -361,7 +361,7 @@ extension Song {
             audioUrls: SongAudioURLs(original: nil, low: nil, standard: nil, high: nil),
             duration: task.songDurationSeconds, language: nil, releaseDate: nil,
             plays: nil, likes: nil, shares: nil, downloads: nil,
-            writers: nil, primaryArtists: nil, featuredArtists: nil, isrcCode: nil,
+            writers: nil, primaryArtists: task.songPrimaryArtists, featuredArtists: task.songFeaturedArtists, isrcCode: nil,
             copyrightYear: nil, productionYear: nil, copyrightOwners: nil,
             songStatus: nil, reviewStatus: nil, processingStatus: nil, isScheduled: nil,
             dominantColor: nil, vibrantColor: nil, darkVibrantColor: nil, lightVibrantColor: nil,

@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 @MainActor
 struct PlayerArtworkPagerTests {

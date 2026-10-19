@@ -40,7 +40,14 @@ struct CreatorSongRow: View {
 
     private var subtitle: String {
         if let subtitleOverride { return subtitleOverride }
-        return isMusic ? (song.primaryGenre?.name ?? "") : parityDurationText(song.duration)
+        if isMusic { return song.primaryGenre?.name ?? "" }
+        // An episode without a duration yet shows nothing rather than "0 min".
+        guard let duration = song.duration, duration > 0 else { return "" }
+        return parityDurationText(duration)
+    }
+
+    private var episodeDescription: String {
+        (song.description ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var body: some View {
@@ -60,10 +67,12 @@ struct CreatorSongRow: View {
                         .foregroundStyle(isActive ? ParityColor.yellow500 : Color.white)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                    Spacer().frame(height: 4)
-                    Text(subtitle)
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(ParityColor.white70)
+                    if !subtitle.isEmpty {
+                        Spacer().frame(height: 4)
+                        Text(subtitle)
+                            .typography(Typography.bodySmall)
+                            .foregroundStyle(ParityColor.white70)
+                    }
                     if let statusView {
                         statusView.padding(.vertical, 4)
                     }
@@ -84,18 +93,21 @@ struct CreatorSongRow: View {
                 }
             }
 
-            if !isMusic {
+            if !isMusic, !episodeDescription.isEmpty || song.releaseDate != nil {
                 Spacer().frame(height: 12)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(song.description ?? "")
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(ParityColor.white60)
-                        .lineLimit(2)
-                        .truncationMode(.tail)
-                    Spacer().frame(height: 6)
-                    Text(parityDateText(song.releaseDate))
-                        .typography(Typography.bodySmall)
-                        .foregroundStyle(ParityColor.white54)
+                VStack(alignment: .leading, spacing: 6) {
+                    if !episodeDescription.isEmpty {
+                        Text(episodeDescription)
+                            .typography(Typography.bodySmall)
+                            .foregroundStyle(ParityColor.white60)
+                            .lineLimit(2)
+                            .truncationMode(.tail)
+                    }
+                    if song.releaseDate != nil {
+                        Text(parityDateText(song.releaseDate))
+                            .typography(Typography.bodySmall)
+                            .foregroundStyle(ParityColor.white54)
+                    }
                 }
             }
         }

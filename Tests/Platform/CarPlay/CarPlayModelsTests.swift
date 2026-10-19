@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct CarPlayModelsTests {
     private let source = QueueAttribution(playerType: .home, id: nil, title: "")

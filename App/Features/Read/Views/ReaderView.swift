@@ -7,11 +7,13 @@ import SwiftUI
 ///   icon and a vertical "more" icon; search swaps it for a 44pt #333333
 ///   field (12pt radius) with a close button and a dropdown panel
 ///   (`BibleSearchPanel`) over a 60% black scrim.
-/// - Body padded 16 horizontally: the chapter's verses (`VerseRowView`, top
-///   and bottom edges softly masked like `CustomShadedMask`), then a bottom
-///   row — book name + up chevron (opens the table of contents), prev/next
-///   chevrons (18pt) around "n/max" (opens the chapter grid) — with 84pt of
-///   room under it for the floating tab bar (`Ios26BottomSpacing(1.5)`).
+/// - Body: the chapter's verses (`VerseRowView`, padded 20 horizontally, top
+///   and bottom edges softly masked like `CustomShadedMask`) scroll full
+///   width, with a floating glass row laid over their bottom edge — book name
+///   + up chevron (opens the table of contents), prev/next chevrons around
+///   "n/max" (opens the chapter grid). The row is the size of the system tab
+///   bar under it, so verses scroll behind it, and the list ends with enough
+///   padding to scroll the last verse clear of it.
 /// - Loading / failed / empty chapter states: a spinner, or "Something went
 ///   wrong please check your network" with a Retry button.
 /// - Chapter boundaries toast "This is first chapter" / "This is last chapter".
@@ -41,8 +43,14 @@ struct ReaderView: View {
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
 
-    // The system tab bar / mini player inset already reserve the bottom space.
-    private static let bottomDockSpacing: CGFloat = 0
+    // The bottom row matches the system tab bar below it (iOS 26 floating bar,
+    // measured on a 402pt-wide iPhone): 62pt tall, inset 21pt from each edge.
+    // The tab bar / mini player inset already reserve the space under it.
+    private static let bottomBarHeight: CGFloat = 62
+    private static let bottomBarSideInset: CGFloat = 21
+    private static let bottomBarGap: CGFloat = Spacing.sm
+    /// Scroll room under the last verse so it can clear the floating row.
+    private static let versesBottomClearance: CGFloat = bottomBarHeight + bottomBarGap + Spacing.md
 
     var body: some View {
         ZStack {
@@ -57,7 +65,6 @@ struct ReaderView: View {
 
                 ZStack {
                     bodyContent
-                        .padding(.horizontal, Dimens.spacing20)
 
                     if isSearching && hasSearchPanelContent {
                         searchOverlay
@@ -355,17 +362,14 @@ struct ReaderView: View {
     // MARK: - Body
 
     private var bodyContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            mainArea
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if viewModel.state == .loaded {
-                bottomBar
+        mainArea
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Over the list, not under it, so verses scroll behind the glass.
+            .overlay(alignment: .bottom) {
+                if viewModel.state == .loaded {
+                    bottomBar
+                }
             }
-
-            Spacer()
-                .frame(height: isSearching ? 0 : Self.bottomDockSpacing)
-        }
     }
 
     @ViewBuilder
@@ -381,6 +385,7 @@ struct ReaderView: View {
                         .foregroundStyle(ReadPalette.white)
                     retryButton
                 }
+                .padding(.horizontal, Dimens.spacing20)
             } else {
                 emptyState
             }
@@ -402,6 +407,7 @@ struct ReaderView: View {
             Spacer().frame(height: 16)
             retryButton
         }
+        .padding(.horizontal, Dimens.spacing20)
     }
 
     private var retryButton: some View {
@@ -444,8 +450,9 @@ struct ReaderView: View {
                         .id(verse.verseNumber)
                     }
                 }
+                .padding(.horizontal, Dimens.spacing20)
                 .padding(.top, 12)
-                .padding(.bottom, 32)
+                .padding(.bottom, Self.versesBottomClearance)
             }
             .mask(
                 LinearGradient(
@@ -512,12 +519,13 @@ struct ReaderView: View {
             }
         }
         .padding(.horizontal, 20)
-        .frame(height: 52)
+        .frame(height: Self.bottomBarHeight)
         .glassCapsule()
-        .padding(.horizontal, 16)
-        // Breathing room so the pill never touches the tab bar below.
-        .padding(.top, 6)
-        .padding(.bottom, 10)
+        // Taps on the row's empty space must not fall through to verses behind.
+        .contentShape(Capsule())
+        .padding(.horizontal, Self.bottomBarSideInset)
+        // Same gap as between the mini player and the tab bar.
+        .padding(.bottom, Self.bottomBarGap)
     }
 
     private func navIcon(systemName: String, action: @escaping () -> Void) -> some View {

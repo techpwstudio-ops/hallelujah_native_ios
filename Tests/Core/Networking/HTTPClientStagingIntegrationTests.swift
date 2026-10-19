@@ -1,5 +1,5 @@
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// Hits the real Staging backend (qa.api.hallelujah.today) — not a mock.
 /// This is T05's own Done criterion ("a real endpoint round-trips against

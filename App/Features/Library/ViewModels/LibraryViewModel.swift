@@ -26,6 +26,7 @@ final class LibraryViewModel {
     private var page = LibraryItemsPage()
     private let repository: any LibraryRepository
     private let logger = AppLogger(category: .content)
+    private var coverPollTask: Task<Void, Never>?
 
     init(container: DependencyContainer = .current) {
         repository = container.resolve()
@@ -43,10 +44,75 @@ final class LibraryViewModel {
         async let itemsVoid: Void = loadMoreItems()
         async let countsVoid: Void = loadCounts()
         _ = await (itemsVoid, countsVoid)
+        startCoverPollIfNeeded()
     }
 
     func refresh() async {
         await load()
+    }
+
+    /// Re-fetches page 1 and swaps it into the loaded list WITHOUT clearing it
+    /// first, so a playlist's new cover (or a playlist created/changed
+    /// elsewhere) shows up with no flash and without losing the scroll
+    /// position or any later pages already loaded. `refresh()` can't do that —
+    /// it resets to an empty list.
+    ///
+    /// This is what `users.playlist.updated` (Dart: writes the Realm row, the
+    /// list rebuilds off it) maps to here, and also the fallback for when that
+    /// silent push never arrives — see `UserPlaylist.coverPollDelays`. Page 1
+    /// is authoritative; rows after it are kept, minus any duplicates.
+    func silentRefresh() async {
+        guard hasLoadedOnce, !page.isLoading else { return }
+        let requestedFilter = filter
+        let result: Paginated<LibraryEntry>
+        do {
+            result = try await repository.fetchItems(songType: requestedFilter, page: 1)
+        } catch {
+            logger.warning("library silent refresh failed: \(error)")
+            return
+        }
+        // A filter change or reload began while this was in flight — stale.
+        guard filter == requestedFilter, !page.isLoading else { return }
+
+        let freshIDs = Set(result.items.map(\.id))
+        let tail = page.items.dropFirst(result.items.count).filter { !freshIDs.contains($0.id) }
+        page.items = result.items + tail
+        if page.page <= 1 {
+            page.page = result.page
+            page.hasMore = result.hasMore
+        }
+        startCoverPollIfNeeded()
+    }
+
+    /// Cancels the cover re-checks; the view calls this when it leaves screen.
+    func stopCoverPoll() {
+        coverPollTask?.cancel()
+        coverPollTask = nil
+    }
+
+    /// A playlist that has songs but still shows the letter tile is waiting on
+    /// its server-built cover. Re-checks on `UserPlaylist.coverPollDelays`
+    /// until none is waiting, instead of relying on the best-effort push alone.
+    private var hasCoverPending: Bool {
+        page.items.contains { entry in
+            guard case let .userPlaylist(_, _, image, _, songsCount, _, _) = entry else { return false }
+            return (songsCount ?? 0) > 0 && DefaultThumbnail.isLetterTile(path: image)
+        }
+    }
+
+    private func startCoverPollIfNeeded() {
+        guard coverPollTask == nil, hasCoverPending else { return }
+        coverPollTask = Task { [weak self] in
+            for delay in UserPlaylist.coverPollDelays {
+                try? await Task.sleep(for: delay)
+                guard !Task.isCancelled, let self else { return }
+                await self.silentRefresh()
+                if !self.hasCoverPending { break }
+            }
+            // A cancelled run was already cleared (and maybe replaced) by
+            // `stopCoverPoll()`; only a run that finished on its own clears itself.
+            if !Task.isCancelled { self?.coverPollTask = nil }
+        }
     }
 
     func loadMoreItemsIfNeeded(currentItem: LibraryEntry) async {

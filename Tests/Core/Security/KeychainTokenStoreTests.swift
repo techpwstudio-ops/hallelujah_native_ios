@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 struct KeychainTokenStoreTests {
     /// A service string distinct from the real app's — must never touch the

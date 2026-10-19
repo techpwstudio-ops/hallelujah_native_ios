@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// A scripted `PlayerAdSource`: hands out the queued ads, counts the asks.
 @MainActor

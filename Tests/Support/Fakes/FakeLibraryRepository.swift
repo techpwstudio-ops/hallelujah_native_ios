@@ -1,5 +1,5 @@
 import Foundation
-@testable import GHallelujah
+@testable import Hallelujah
 
 /// A scriptable `LibraryRepository` for store/view-model tests.
 final class FakeLibraryRepository: LibraryRepository, @unchecked Sendable {

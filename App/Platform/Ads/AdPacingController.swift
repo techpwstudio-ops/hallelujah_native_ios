@@ -162,6 +162,9 @@ final class AdPacingController {
     /// `_onAdBreakStarted` (`bloc.dart:2479`).
     private func startAdBreak(with ad: AdCreative) {
         guard !isAdBreak else { return }
+        // Held for the whole break, so a song the listener picks meanwhile is
+        // queued behind the ad instead of playing over it (`endAdBreak` lifts it).
+        engine.isPlaybackHeld = true
         engine.pause()
 
         currentAd = ad
@@ -243,6 +246,9 @@ final class AdPacingController {
         adTotalDuration = 0
         adSkipUnlocksAt = nil
         isAdPaused = false
+        // Whatever is current — the song the break interrupted, or the one the
+        // listener queued during it — starts now, ad finished or skipped alike.
+        engine.isPlaybackHeld = false
         engine.resume()
     }
 

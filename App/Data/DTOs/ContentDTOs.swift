@@ -273,6 +273,18 @@ struct SongDTO: Decodable, Sendable {
 }
 
 extension SongDTO {
+    /// `song.dart`'s `_primaryArtistsFromJson`: the legacy `primaryArtists`
+    /// string when it actually holds a value, else the structured
+    /// `songPrimaryArtists[].name` joined by `dotSign` (`" • "`). Newer uploads
+    /// credit artists only through the relation and leave the legacy column
+    /// null (or the literal "null"), so reading the column alone left the mini
+    /// player / full player / lock-screen subtitle blank for those songs.
+    private var resolvedPrimaryArtists: String? {
+        if let legacy = sanitized(primaryArtists) { return legacy }
+        let names = (songPrimaryArtists ?? []).compactMap { sanitized($0.name) }
+        return names.isEmpty ? nil : names.joined(separator: " \u{2022} ")
+    }
+
     func toDomain() -> Song {
         Song(
             id: id,
@@ -299,7 +311,7 @@ extension SongDTO {
             shares: shares,
             downloads: downloads,
             writers: sanitized(writers),
-            primaryArtists: sanitized(primaryArtists),
+            primaryArtists: resolvedPrimaryArtists,
             featuredArtists: sanitized(featuredArtists),
             isrcCode: sanitized(isrcCode),
             copyrightYear: copyrightYear,

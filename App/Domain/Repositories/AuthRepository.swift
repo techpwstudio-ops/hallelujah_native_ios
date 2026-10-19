@@ -47,10 +47,12 @@ protocol AuthRepository: Sendable {
     func saveLanguages(_ languages: [String], primaryLanguage: String?) async throws
 
     /// `OurSession.fetchUserDetails()`'s network half — re-confirms the
-    /// account and refreshes the cached `User`. A 403/404 logs the session
-    /// out and throws; any other failure is swallowed by the caller's own
-    /// tolerance for it, matching Dart's background-refresh tolerance (see
-    /// the implementation's doc comment).
+    /// account and refreshes the cached `User`. A 403 first tries the refresh
+    /// token once and only logs the session out (and throws) if that is also
+    /// refused or the retry is still 403; a 404 logs out straight away. Any
+    /// other failure (5xx, network) never signs out and is swallowed by the
+    /// caller's own tolerance for it, matching Dart's background-refresh
+    /// tolerance (see the implementation's doc comment).
     @discardableResult
     func fetchCurrentUser() async throws -> User
 

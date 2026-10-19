@@ -12,7 +12,7 @@ import Foundation
 /// arrive before `AppNavigationCoordinator` exists (cold-start launch racing
 /// the splash/auth flow), so this needs a stable identity from before that
 /// point, and a lazy `static let`'s first access is guaranteed to happen
-/// after `GHallelujahApp.init()` already has. Structurally mirrors
+/// after `HallelujahApp.init()` already has. Structurally mirrors
 /// `DeepLinkService` closely: a buffered pending payload flushed by
 /// `attach(coordinator:)` instead of dropping a tap that races the shell
 /// mounting, same shape as that type's own `pendingURL`.
