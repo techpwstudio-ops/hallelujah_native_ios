@@ -139,7 +139,10 @@ final class AVEngineVoiceMicCapture: VoiceMicCapture {
         carry.removeAll(keepingCapacity: true)
 
         let bufferFrameCount = AVAudioFrameCount(hardwareFormat.sampleRate * 0.02) // ~20ms
-        inputNode.installTap(onBus: 0, bufferSize: bufferFrameCount, format: hardwareFormat) { [weak self] buffer, _ in
+        // `@Sendable`: the tap runs on the audio render thread, and a
+        // `@MainActor`-inferred block would trap Swift 6's isolation check.
+        inputNode.installTap(onBus: 0, bufferSize: bufferFrameCount, format: hardwareFormat) { @Sendable [weak self] buffer, _ in
+            nonisolated(unsafe) let buffer = buffer
             Task { @MainActor in self?.handleTap(buffer) }
         }
 
@@ -165,12 +168,10 @@ final class AVEngineVoiceMicCapture: VoiceMicCapture {
         isRunning = true
     }
 
+    /// The SDK's async overload — a hand-written completion closure here
+    /// would be `@MainActor`-inferred and trap on TCC's background queue.
     private func requestPermission() async -> Bool {
-        await withCheckedContinuation { continuation in
-            AVAudioApplication.requestRecordPermission { granted in
-                continuation.resume(returning: granted)
-            }
-        }
+        await AVAudioApplication.requestRecordPermission()
     }
 
     /// Re-frames variable-size tap buffers into exact 3200-byte frames.

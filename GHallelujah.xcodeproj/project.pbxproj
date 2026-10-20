@@ -537,7 +537,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = B89FD80E380139C43DD4D7CE /* App.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = App/Resources/GHallelujah.entitlements;
+				CODE_SIGN_ENTITLEMENTS = App/Resources/Hallelujah.entitlements;
 				DEVELOPMENT_TEAM = V2LNA795Y9;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 			};
@@ -547,7 +547,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = B89FD80E380139C43DD4D7CE /* App.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = App/Resources/GHallelujah.entitlements;
+				CODE_SIGN_ENTITLEMENTS = App/Resources/Hallelujah.entitlements;
 				DEVELOPMENT_TEAM = V2LNA795Y9;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 			};
@@ -599,7 +599,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = B89FD80E380139C43DD4D7CE /* App.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = App/Resources/GHallelujah.entitlements;
+				CODE_SIGN_ENTITLEMENTS = App/Resources/Hallelujah.entitlements;
 				DEVELOPMENT_TEAM = V2LNA795Y9;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 			};

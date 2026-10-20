@@ -20,17 +20,19 @@ SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY = YES
 SWIFT_EMIT_LOC_STRINGS = YES
 
 // ── Identity ────────────────────────────────────────────────────────────────
-// The single source of truth for who we are. Environments append a suffix.
+// The single source of truth for who we are. Environments may append a
+// bundle-id suffix; the home-screen name is the same in every environment.
 APP_BUNDLE_ID_BASE = com.hallelujah.user
 APP_NAME_BASE = Hallelujah
+APP_DISPLAY_NAME = $(APP_NAME_BASE)
 ORGANIZATION_NAME = Hallelujah
 
 // ── Versioning ──────────────────────────────────────────────────────────────
 // This app REPLACES the Flutter app (same bundle id), so the version must be
 // above Flutter's last release (4.0.2, build 330) or the App Store / installs
 // treat it as a downgrade. CI overrides CURRENT_PROJECT_VERSION.
-MARKETING_VERSION = 4.1.0
-CURRENT_PROJECT_VERSION = 331
+MARKETING_VERSION = 4.0.3
+CURRENT_PROJECT_VERSION = 332
 
 // ── Signing ─────────────────────────────────────────────────────────────────
 // DEVELOPMENT_TEAM is intentionally not committed. Set it in
@@ -63,5 +65,5 @@ CLANG_WARN_EMPTY_BODY = YES
 #include? "../Secrets.xcconfig"
 
 // The binary/product name. Distinct from APP_DISPLAY_NAME, which is what the
-// user sees on the home screen and changes per environment.
+// user sees on the home screen.
 APP_PRODUCT_NAME = Hallelujah

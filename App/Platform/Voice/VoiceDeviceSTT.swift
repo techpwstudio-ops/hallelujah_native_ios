@@ -128,21 +128,22 @@ final class SFSpeechDeviceSTT: VoiceDeviceSTT {
         return true
     }
 
+    /// The handler is `@Sendable` so it isn't inferred `@MainActor`: TCC
+    /// calls it on a background XPC queue, where Swift 6's runtime isolation
+    /// check would trap (the crash `VoiceSearchController.authorize()` hit).
     private func requestSpeechAuthorization() async -> Bool {
         if SFSpeechRecognizer.authorizationStatus() == .authorized { return true }
         return await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
+            SFSpeechRecognizer.requestAuthorization { @Sendable status in
                 continuation.resume(returning: status == .authorized)
             }
         }
     }
 
+    /// The SDK's async overload — a hand-written completion closure here
+    /// would be `@MainActor`-inferred and trap on TCC's background queue.
     private func requestMicPermission() async -> Bool {
-        await withCheckedContinuation { continuation in
-            AVAudioApplication.requestRecordPermission { granted in
-                continuation.resume(returning: granted)
-            }
-        }
+        await AVAudioApplication.requestRecordPermission()
     }
 
     func start(localeId: String?) async {
@@ -185,7 +186,10 @@ final class SFSpeechDeviceSTT: VoiceDeviceSTT {
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+        // `@Sendable`: the tap runs on the audio render thread, and a
+        // `@MainActor`-inferred block would trap Swift 6's isolation check.
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { @Sendable [weak self] buffer, _ in
+            nonisolated(unsafe) let buffer = buffer
             Task { @MainActor in self?.handleTap(buffer) }
         }
 

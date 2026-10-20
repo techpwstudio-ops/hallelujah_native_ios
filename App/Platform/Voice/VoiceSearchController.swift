@@ -181,8 +181,10 @@ final class VoiceSearchController {
     // MARK: Permission / locale
 
     private func authorize() async -> Bool {
+        // `@Sendable` so the handler isn't inferred `@MainActor`: TCC calls it
+        // on a background XPC queue, and Swift 6's isolation check traps there.
         let speech = await withCheckedContinuation { (continuation: CheckedContinuation<SFSpeechRecognizerAuthorizationStatus, Never>) in
-            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
+            SFSpeechRecognizer.requestAuthorization { @Sendable status in continuation.resume(returning: status) }
         }
         let mic = await AVAudioApplication.requestRecordPermission()
         if speech == .authorized && mic { return true }
