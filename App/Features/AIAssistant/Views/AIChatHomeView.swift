@@ -177,6 +177,8 @@ struct AIChatHomeView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 24)
+                // Native-only tablet/Mac adaptation: the chat column.
+                .readableContentWidth()
                 .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                 .contentShape(Rectangle())
                 .onTapGesture { aiDismissKeyboard() }
@@ -216,6 +218,8 @@ struct AIChatHomeView: View {
             }
         }
         .frame(height: 104)
+        // Native-only tablet/Mac adaptation: lines up with the input bar below.
+        .readableContentWidth()
     }
 
     // MARK: - Actions
@@ -406,6 +410,9 @@ struct AIChatConversationView: View {
                     }
                     .padding(.top, 12)
                     .padding(.bottom, 8)
+                    // Native-only tablet/Mac adaptation: a readable chat column;
+                    // the input bar holds the same column.
+                    .readableContentWidth()
                 }
                 .defaultScrollAnchor(.bottom)
                 .scrollDismissesKeyboard(.interactively)

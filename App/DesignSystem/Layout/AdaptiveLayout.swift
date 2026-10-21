@@ -80,6 +80,23 @@ private struct LayoutWidthReader: ViewModifier {
     }
 }
 
+/// A sheet's own width replaces the window's only once the window is wider
+/// than a phone, where the sheet becomes a centred card. On a phone the sheet
+/// keeps the window's width — what every phone rule was written against — as
+/// an iOS 26 sheet at a partial detent is inset a few points from the screen
+/// edges.
+private struct SheetLayoutWidthReader: ViewModifier {
+    @Environment(\.layoutWidth) private var windowWidth
+    @State private var sheetWidth: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        let usesSheetWidth = AdaptiveLayout.isWide(windowWidth) && sheetWidth > 0
+        content
+            .environment(\.layoutWidth, usesSheetWidth ? sheetWidth : windowWidth)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { sheetWidth = $0 }
+    }
+}
+
 /// Holds content to a centred column once the window is wider than a phone.
 /// At phone width both frames are all-`nil`, which leaves layout untouched.
 private struct ReadableWidth: ViewModifier {
@@ -97,10 +114,16 @@ private struct ReadableWidth: ViewModifier {
 
 extension View {
     /// Measures this view's width and publishes it as `layoutWidth`. Applied
-    /// once at the window root and again at the root of every sheet, whose
-    /// width on iPad and Mac is not the window's.
+    /// once, at the window root.
     func measuresLayoutWidth() -> some View {
         modifier(LayoutWidthReader())
+    }
+
+    /// At the root of every sheet: publishes the sheet's own width as
+    /// `layoutWidth` on a tablet or Mac window, where a sheet is a card
+    /// narrower than the window; on a phone it keeps the window's width.
+    func measuresSheetLayoutWidth() -> some View {
+        modifier(SheetLayoutWidthReader())
     }
 
     /// Caps content at `maxWidth`, centred, on a tablet, foldable or Mac

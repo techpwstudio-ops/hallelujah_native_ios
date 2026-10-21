@@ -63,7 +63,12 @@ struct SelectableVerseText: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
-        let width = proposal.width ?? UIScreen.main.bounds.width
+        // An unspecified width falls back to the window (or sheet) — the screen
+        // on a phone — not `UIScreen`, which is the whole display in Split View
+        // and on a Mac (native-only tablet/Mac adaptation).
+        let layoutWidth = context.environment.layoutWidth
+        let fallbackWidth = layoutWidth > 0 ? layoutWidth : (uiView.window?.bounds.width ?? AdaptiveLayout.phoneMaxWidth)
+        let width = proposal.width ?? fallbackWidth
         let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
         return CGSize(width: width, height: ceil(fitted.height))
     }

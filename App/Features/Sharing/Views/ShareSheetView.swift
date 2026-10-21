@@ -26,6 +26,8 @@ struct ShareSheetView: View {
     @State private var isSavingImage = false
     @State private var isPhotoAccessDialogPresented = false
 
+    @Environment(\.layoutWidth) private var layoutWidth
+
     init(target: ShareTarget, title: String, subtitle: String?, artworkURL: URL?, aspectRatio: String = "1:1") {
         self.target = target
         self.title = title
@@ -51,9 +53,11 @@ struct ShareSheetView: View {
 
     private var isLandscape: Bool { aspectRatio == "16:9" }
 
-    /// 1:1 -> `screenWidth * 0.8`; 16:9 -> `screenWidth - 40`.
+    /// 1:1 -> `screenWidth * 0.8`; 16:9 -> `screenWidth - 40`. Native-only
+    /// tablet/Mac adaptation: the width is the sheet's (`AppSheetContainer`
+    /// publishes it), not `UIScreen`'s, and stops growing at the media column.
     private var cardWidth: CGFloat {
-        let screen = UIScreen.main.bounds.width
+        let screen = AdaptiveLayout.proportionalWidth(layoutWidth > 0 ? layoutWidth : AdaptiveLayout.phoneMaxWidth)
         return isLandscape ? screen - Dimens.spacing40 : screen * 0.8
     }
 

@@ -50,6 +50,8 @@ struct AITtsBar: View {
         .padding(.top, Dimens.spacing8)
         .padding(.bottom, Dimens.spacing4)
         .padding(.horizontal, Dimens.spacing12)
+        // Native-only tablet/Mac adaptation: lines up with the chat column.
+        .readableContentWidth()
     }
 
     /// `audio_video_progress_bar` look (`thumbRadius: 6`, 4pt round-capped bar).

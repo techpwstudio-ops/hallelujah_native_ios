@@ -69,7 +69,7 @@ struct AppSheetContainer<Content: View>: View {
         .frame(maxWidth: .infinity)
         .background(Self.fill, in: sheetShape)
         // On iPad and Mac a sheet is a centred card, narrower than the window.
-        .measuresLayoutWidth()
+        .measuresSheetLayoutWidth()
         .onAppear { coordinator?.sheetPresented() }
         .onDisappear { coordinator?.sheetDismissed() }
     }

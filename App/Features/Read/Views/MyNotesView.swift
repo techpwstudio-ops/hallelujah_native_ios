@@ -108,6 +108,8 @@ struct MyNotesView: View {
 
             Text("Notes")
                 .readText(Typography.bodyLarge, weight: .regular, color: ReadPalette.secondaryText)
+                // Native-only tablet/Mac adaptation: lines up with the note column below.
+                .readableContentWidth(alignment: .leading)
 
             Spacer().frame(height: 12)
 
@@ -151,6 +153,8 @@ struct MyNotesView: View {
                     }
                 }
                 .padding(.horizontal, 8)
+                // Native-only tablet/Mac adaptation: a readable column in a wide sheet.
+                .readableContentWidth()
             }
         }
     }

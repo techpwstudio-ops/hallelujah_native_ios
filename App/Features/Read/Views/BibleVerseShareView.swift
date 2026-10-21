@@ -56,6 +56,9 @@ struct BibleVerseShareView: View {
             preview
                 .frame(maxHeight: .infinity)
             controls
+                // Native-only tablet/Mac adaptation: the controls keep the
+                // preview card's column instead of spanning the window.
+                .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
         }
         .background(ReadPalette.background.ignoresSafeArea())
         .preferredColorScheme(.dark)
@@ -110,7 +113,9 @@ struct BibleVerseShareView: View {
 
     private var preview: some View {
         GeometryReader { proxy in
-            let availableWidth = max(proxy.size.width - Dimens.spacing40 * 2, 1)
+            // Native-only tablet/Mac adaptation: on a tall iPad the card would
+            // otherwise grow with the window; it stops at the media column.
+            let availableWidth = max(AdaptiveLayout.proportionalWidth(proxy.size.width) - Dimens.spacing40 * 2, 1)
             let availableHeight = max(proxy.size.height - Dimens.spacing12 * 2, 1)
             let ratio = Dimens.verseCardCanvasWidth / Dimens.verseCardCanvasHeight
             let width = min(availableWidth, availableHeight * ratio)

@@ -18,10 +18,18 @@ struct ChapterGridSheet: View {
     let onBack: () -> Void
     let onSelect: (Int) -> Void
 
+    @Environment(\.layoutWidth) private var layoutWidth
+
     private static let columnCount = 6
 
+    /// Flutter's six columns; a wider sheet gets more (native-only tablet/Mac
+    /// adaptation) so the 48pt tiles keep roughly their phone spacing.
+    private static func gridColumnCount(in width: CGFloat) -> Int {
+        AdaptiveLayout.columns(phone: columnCount, minItemWidth: 64, in: width)
+    }
+
     private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 8), count: Self.columnCount)
+        Array(repeating: GridItem(.flexible(), spacing: 8), count: Self.gridColumnCount(in: layoutWidth))
     }
 
     private var chapterRange: [Int] {
@@ -60,7 +68,7 @@ struct ChapterGridSheet: View {
                 }
                 .onAppear {
                     guard isCurrentBook, currentChapter > 0 else { return }
-                    let row = (currentChapter - 1) / Self.columnCount
+                    let row = (currentChapter - 1) / Self.gridColumnCount(in: layoutWidth)
                     if row >= 6 {
                         proxy.scrollTo(currentChapter, anchor: .top)
                     }
@@ -103,11 +111,18 @@ struct ChapterGridSheet: View {
     /// Flutter caps the sheet at 70% of the screen but lets it shrink to its
     /// content: drag handle + back row + gap + grid rows. Mirrors that so a
     /// 21-chapter book doesn't open as a mostly empty 70% panel.
-    static func sheetHeight(chapterCount: Int, screenHeight: CGFloat) -> CGFloat {
-        let rows = CGFloat((max(chapterCount, 1) + columnCount - 1) / columnCount)
-        let cell = (UIScreen.main.bounds.width - 16 - 40) / CGFloat(columnCount)
+    ///
+    /// `width` and `screenHeight` are the window's — the screen on a phone —
+    /// rather than `UIScreen`'s, which is the whole display in Split View and
+    /// on a Mac (native-only tablet/Mac adaptation).
+    static func sheetHeight(chapterCount: Int, width: CGFloat, screenHeight: CGFloat) -> CGFloat {
+        let count = gridColumnCount(in: width)
+        let rows = CGFloat((max(chapterCount, 1) + count - 1) / count)
+        // 8pt sheet padding each side, 8pt between columns.
+        let cell = max((width - 16 - 8 * CGFloat(count - 1)) / CGFloat(count), 0)
         let grid = rows * cell + (rows - 1) * 8
         let chrome: CGFloat = 8 + 28 + 24 + Dimens.bottomPadding + 8 + 34
-        return min(chrome + grid, screenHeight * 0.7)
+        // Unmeasured window (before the reader's first layout): uncapped, never a zero detent.
+        return screenHeight > 0 ? min(chrome + grid, screenHeight * 0.7) : chrome + grid
     }
 }

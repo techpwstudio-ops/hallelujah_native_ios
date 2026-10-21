@@ -136,6 +136,8 @@ struct AIChatHistoryView: View {
                     .foregroundStyle(AIColors.white38)
             }
             .frame(minHeight: conversation.lastMessageSnippet == nil ? 56 : 72)
+            // Native-only tablet/Mac adaptation: rows keep a readable column.
+            .readableContentWidth()
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

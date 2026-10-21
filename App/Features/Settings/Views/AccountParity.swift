@@ -430,7 +430,7 @@ private struct ParityFitSheetContent<Content: View>: View {
         content
             .frame(maxWidth: .infinity)
             // On iPad and Mac a sheet is a centred card, narrower than the window.
-            .measuresLayoutWidth()
+            .measuresSheetLayoutWidth()
             .padding(.bottom, 20)
             .background(
                 GeometryReader { proxy in

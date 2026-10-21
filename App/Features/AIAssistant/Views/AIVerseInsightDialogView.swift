@@ -26,6 +26,8 @@ struct AIVerseInsightDialogView: View {
     var language: String? = nil
 
     @State private var viewModel = VerseInsightViewModel()
+    /// The cover's full height (the screen on a phone).
+    @State private var containerHeight: CGFloat = 0
 
     @Environment(\.dismiss) private var dismiss
     @Environment(AppNavigationCoordinator.self) private var coordinator
@@ -34,12 +36,15 @@ struct AIVerseInsightDialogView: View {
         VerseInsightRequest.fromTarget(target, selectedText: selectedText, language: language)
     }
 
-    /// `MediaQuery.of(context).size.height * 0.42`.
-    private var maxAnswerHeight: CGFloat { UIScreen.main.bounds.height * 0.42 }
+    /// `MediaQuery.of(context).size.height * 0.42`, of the measured cover
+    /// rather than `UIScreen`, which is the whole display in Split View and on
+    /// a Mac (native-only tablet/Mac adaptation). Uncapped until measured.
+    private var maxAnswerHeight: CGFloat? { containerHeight > 0 ? containerHeight * 0.42 : nil }
 
     var body: some View {
         ZStack {
             Color.black.opacity(0.65)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { containerHeight = $0 }
                 .ignoresSafeArea()
                 .onTapGesture { dismiss() }
 

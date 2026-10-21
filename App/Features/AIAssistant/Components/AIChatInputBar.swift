@@ -83,6 +83,8 @@ struct AIChatInputBar: View {
         .glassRounded(20, interactive: true)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
+        // Native-only tablet/Mac adaptation: lines up with the chat column.
+        .readableContentWidth()
     }
 
     // MARK: - Right action
