@@ -120,6 +120,9 @@ struct CreatePlaylistView: View {
                     }
                 }
                 .padding(.horizontal, 32)
+                // Native-only tablet/Mac adaptation: a centred form column
+                // instead of a field and button the width of the window.
+                .readableContentWidth(AdaptiveLayout.formWidth)
             }
             .scrollDismissesKeyboard(.interactively)
 

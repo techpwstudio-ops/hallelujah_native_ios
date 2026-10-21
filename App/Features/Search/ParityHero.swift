@@ -44,7 +44,34 @@ struct ParityHeroImage: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .aspectRatio(aspect, contentMode: .fit)
+        .parityHeroFrame(aspect: aspect)
+    }
+}
+
+/// Native-only tablet/Mac adaptation (no Flutter counterpart): on a phone a
+/// full-bleed hero is `aspect` of the window width, as in Dart; on a wider
+/// window it keeps spanning the window but takes its height from a media
+/// column, so a 4:3 or square hero doesn't fill the whole screen.
+private struct ParityHeroFrame: ViewModifier {
+    @Environment(\.layoutWidth) private var layoutWidth
+    /// width / height.
+    let aspect: CGFloat
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if AdaptiveLayout.isWide(layoutWidth) {
+            content.frame(height: AdaptiveLayout.proportionalWidth(layoutWidth) / aspect)
+        } else {
+            content.aspectRatio(aspect, contentMode: .fit)
+        }
+    }
+}
+
+extension View {
+    /// Sizes a full-bleed hero (or the frame it is overlaid on) by
+    /// `aspect`; see `ParityHeroFrame`.
+    func parityHeroFrame(aspect: CGFloat) -> some View {
+        modifier(ParityHeroFrame(aspect: aspect))
     }
 }
 
@@ -177,6 +204,11 @@ struct ParityGradientHeader<Extra: View, Content: View>: View {
             VStack(alignment: .leading, spacing: 0) {
                 Color.clear.frame(height: 60 + 48)
 
+                // Native-only tablet/Mac adaptation: the title and subtitle
+                // sit in the readable column the caller holds its rows to,
+                // rather than spreading Shuffle/Play to the window's far
+                // edge. `extra()` and `content()` (which holds the scroll
+                // view) are the caller's to constrain.
                 HStack(spacing: 0) {
                     Text(title)
                         .typography(Self.titleStyle)
@@ -188,6 +220,7 @@ struct ParityGradientHeader<Extra: View, Content: View>: View {
                         .padding(8)
                 }
                 .padding(.horizontal, 16)
+                .readableContentWidth()
 
                 Spacer().frame(height: 8)
 
@@ -195,6 +228,7 @@ struct ParityGradientHeader<Extra: View, Content: View>: View {
                     .font(.custom(Typography.fontFamily, size: 14))
                     .foregroundStyle(ParityColor.white70)
                     .padding(.horizontal, 16)
+                    .readableContentWidth(alignment: .leading)
 
                 Spacer().frame(height: 16)
 

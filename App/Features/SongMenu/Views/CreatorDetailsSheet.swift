@@ -75,8 +75,13 @@ struct CreatorDetailsSheet: View {
     private var details: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                ArtworkView(url: artworkURL(.lg), width: UIScreen.main.bounds.width - 32, height: 357, cornerRadius: 10)
-                    .frame(maxWidth: .infinity)
+                // Dart's `screenWidth - 32` is the full width inside the 16pt
+                // padding; measured here, so on iPad/Mac it follows the
+                // sheet rather than the screen.
+                GeometryReader { proxy in
+                    ArtworkView(url: artworkURL(.lg), width: proxy.size.width, height: 357, cornerRadius: 10)
+                }
+                .frame(height: 357)
                 Spacer().frame(height: 16)
                 HStack(spacing: 10) {
                     if let text = CreatorDetailsViewModel.listenersText(viewModel.followersCount) {

@@ -41,9 +41,14 @@ struct ContentSearchView: View {
             .ignoresSafeArea(edges: .top)
 
             VStack(spacing: 0) {
+                // Native-only tablet/Mac adaptation: the field, the chips and
+                // (inside `resultsBody`'s scroll views) the rows share one
+                // readable column; the scroll views still span the window.
                 searchBar
+                    .readableContentWidth()
                 if !trimmedQuery.isEmpty {
                     filterBar
+                        .readableContentWidth()
                 }
                 resultsBody
             }
@@ -139,7 +144,7 @@ struct ContentSearchView: View {
         if viewModel.searchFieldText.isEmpty {
             recentSearchesSection
         } else if viewModel.isBusy {
-            ScrollView { ParityShimmerList() }
+            ScrollView { ParityShimmerList().readableContentWidth() }
                 .scrollDisabled(true)
         } else if !viewModel.hasAnyResults {
             ParityEmptyState(
@@ -159,6 +164,7 @@ struct ContentSearchView: View {
                         }
                         Color.clear.frame(height: 16)
                     }
+                    .readableContentWidth()
                 }
                 .scrollDismissesKeyboard(.immediately)
                 .onChange(of: viewModel.activeFilter) { _, _ in
@@ -208,6 +214,7 @@ struct ContentSearchView: View {
                     }
                 }
                 .padding(Dimens.screenPadding)
+                .readableContentWidth()
             }
             .scrollDismissesKeyboard(.immediately)
         }

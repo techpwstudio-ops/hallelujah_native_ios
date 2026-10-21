@@ -132,11 +132,16 @@ struct UserPlaylistDetailView: View {
                     }
                 )
 
+                // Native-only tablet/Mac adaptation: the hero stays full
+                // bleed (`ParityHeroImage`), the info block and songs sit in
+                // a readable column.
                 info(playlist: playlist)
+                    .readableContentWidth()
                     .parityEntrance(delay: 0.0375, duration: 0.375, offset: 28)
 
                 if let page {
                     songList(page: page)
+                        .readableContentWidth()
                 } else {
                     ParityEmptyText(text: "No songs yet")
                 }

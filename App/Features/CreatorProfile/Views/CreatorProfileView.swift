@@ -116,9 +116,11 @@ struct CreatorProfileView: View {
                 // Square frame; the image inside moves down by half the scroll
                 // distance so it appears to scroll at half speed. No top scrim:
                 // it darkened the top third of the photo, and the glass back /
-                // more buttons stay legible without it.
+                // more buttons stay legible without it. On a wider window the
+                // frame stays full bleed but stops growing taller
+                // (`parityHeroFrame`, native-only tablet/Mac adaptation).
                 Color.clear
-                    .aspectRatio(1, contentMode: .fit)
+                    .parityHeroFrame(aspect: 1)
                     .overlay {
                         ParityHeroImage(
                             url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants),
@@ -145,7 +147,10 @@ struct CreatorProfileView: View {
                         }
                     )
 
+                // Native-only tablet/Mac adaptation: the info block, the tab
+                // labels and the list share one readable column.
                 info(creator: creator)
+                    .readableContentWidth()
 
                 if !viewModel.tabs.isEmpty {
                     tabBar
@@ -165,6 +170,7 @@ struct CreatorProfileView: View {
                 tabContent
                     .padding(.vertical, Dimens.screenPaddingAll)
                     .padding(.horizontal, Dimens.screenPaddingAll * 2 - Dimens.paddingMedium)
+                    .readableContentWidth()
                 Color.clear.frame(height: 16)
             }
         }
@@ -266,6 +272,9 @@ struct CreatorProfileView: View {
                 }
             }
         }
+        // The labels follow the readable column; the hairline and the black
+        // fill below still span the window.
+        .readableContentWidth()
         .frame(height: 48)
         .background(alignment: .bottom) {
             Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)

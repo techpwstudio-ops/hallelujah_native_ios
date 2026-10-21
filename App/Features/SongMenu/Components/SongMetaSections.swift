@@ -102,6 +102,7 @@ struct SongMetaSections: View {
     @State private var detailsCreator: Creator?
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
+    @Environment(\.layoutWidth) private var layoutWidth
 
     private struct Trigger: Hashable { let songId: String; let excludeId: String? }
 
@@ -140,11 +141,8 @@ struct SongMetaSections: View {
         if let creator = song.creator {
             let creatorID = viewModel.mainCreatorID
             ZStack(alignment: .bottomLeading) {
-                ArtworkView(
-                    url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants),
-                    width: UIScreen.main.bounds.width - 2 * Dimens.screenPaddingAll,
-                    height: UIScreen.main.bounds.width - 2 * Dimens.screenPaddingAll,
-                    cornerRadius: Dimens.cornerRadiusMedium
+                creatorArtwork(
+                    url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants)
                 )
                 LinearGradient(
                     stops: [
@@ -178,6 +176,32 @@ struct SongMetaSections: View {
             .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .circular))
             .contentShape(Rectangle())
             .onTapGesture { if let creatorID { openCreator(creatorID) } }
+        }
+    }
+
+    /// Dart's `screenWidth - 2 * screenPaddingAll` square on a phone, where
+    /// the window is the screen. Native-only tablet/Mac adaptation (and the
+    /// fallback before the window is measured): a square as wide as the
+    /// column this view is given, since the player holds its column well
+    /// short of the window.
+    @ViewBuilder
+    private func creatorArtwork(url: URL?) -> some View {
+        if layoutWidth > 0, !AdaptiveLayout.isWide(layoutWidth) {
+            let side = layoutWidth - 2 * Dimens.screenPaddingAll
+            ArtworkView(url: url, width: side, height: side, cornerRadius: Dimens.cornerRadiusMedium)
+        } else {
+            Color.clear
+                .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    GeometryReader { proxy in
+                        ArtworkView(
+                            url: url,
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            cornerRadius: Dimens.cornerRadiusMedium
+                        )
+                    }
+                }
         }
     }
 
