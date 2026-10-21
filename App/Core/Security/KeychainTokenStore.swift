@@ -5,11 +5,11 @@ enum KeychainError: Error, Sendable {
     case unhandled(OSStatus)
 }
 
-/// Reading the Flutter app's existing session on upgrade (so users aren't
-/// forced to re-login) is deferred — see Q4 in progress.md. Flutter's token
-/// isn't a plain Keychain item: it lives in an AES-encrypted Hive box, with
-/// only the AES key in Keychain. This store starts empty for upgraders until
-/// that migration is built.
+/// Starts empty for users updating from the Flutter build; `SessionHandoff`
+/// fills it from Flutter's session on their first native launch — from the
+/// record both builds share, or, for a Flutter build older than that, from
+/// its AES-encrypted Hive box (`LegacyFlutterSessionMigration`) — Q4 in
+/// progress.md.
 final class KeychainTokenStore: TokenStoring {
     private let service: String
     private let account = "session"

@@ -28,3 +28,18 @@ struct MaterialSpinner: View {
             }
     }
 }
+
+/// `Loader.instance`'s look (`lib/services/loading_service.dart`):
+/// `showDialog(barrierDismissible: false)` + `ProgressSpinner(40)` —
+/// Material's default barrier is black at 54%. Covers the whole screen and
+/// swallows taps while shown.
+struct BlockingSpinnerOverlay: View {
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.54).ignoresSafeArea()
+            MaterialSpinner(color: .white, size: 40, lineWidth: 3)
+        }
+        .contentShape(Rectangle())
+        .transition(.identity)
+    }
+}

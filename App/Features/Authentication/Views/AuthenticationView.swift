@@ -166,6 +166,17 @@ struct AuthenticationView: View {
                 }
             }
         }
+        // Dart wraps `googleSignIn`/`loginWithApple` in `Loader.instance`.
+        // The provider's own sheet covers this while it's up; once it
+        // dismisses, `/auth/oauth/verify` + the `/me` refresh can take a few
+        // seconds, and without this the screen looks frozen until `.success`
+        // swaps `RootView` to the dashboard. `GlobalLoader` can't be used
+        // here — it only renders on the signed-in shell.
+        .overlay {
+            if socialAuthViewModel.state == .loading {
+                BlockingSpinnerOverlay()
+            }
+        }
         .toastOverlay()
     }
 

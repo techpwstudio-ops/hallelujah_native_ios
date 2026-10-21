@@ -19,7 +19,7 @@ actor CurrentUserStore {
     private(set) var user: User?
 
     private let keyValueStore: any KeyValueStoring
-    private static let storageKey = "currentUser"
+    static let storageKey = "currentUser"
 
     init(keyValueStore: any KeyValueStoring) {
         self.keyValueStore = keyValueStore

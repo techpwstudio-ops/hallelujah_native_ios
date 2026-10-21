@@ -20,14 +20,8 @@ private struct AppInfrastructureHostModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay {
-                // `showDialog(barrierDismissible: false)` + `ProgressSpinner(40)`:
-                // Material's default barrier is black at 54%.
                 if loader.isLoading {
-                    ZStack {
-                        Color.black.opacity(0.54).ignoresSafeArea()
-                        MaterialSpinner(color: .white, size: 40, lineWidth: 3)
-                    }
-                    .transition(.identity)
+                    BlockingSpinnerOverlay()
                 }
             }
             .premiumInviteSheets(inviteCoordinator)

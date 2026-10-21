@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var keyValueStore: any KeyValueStoring = DependencyContainer.current.resolve()
     @State private var membershipStore: MembershipStore = DependencyContainer.current.resolve()
     @State private var premiumGate: PremiumGate = DependencyContainer.current.resolve()
+    @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
 
     @State private var user: User?
     @State private var membership: Membership?
@@ -192,9 +193,15 @@ struct SettingsView: View {
         }
         .parityFitSheet(isPresented: $isAudioQualityPickerPresented) {
             AudioQualitySheet(selected: selectedAudioQuality) { quality in
+                let changed = quality != selectedAudioQuality
                 audioQualitySelector.setUserSelectedQuality(quality)
                 selectedAudioQuality = quality
                 isAudioQualityPickerPresented = false
+                // `changeAudioQuality`'s `reloadSourcesAtCurrentPosition()`:
+                // what's already playing switches to the new quality now.
+                if changed {
+                    Task { await audioEngine.reloadSourcesAtCurrentPosition() }
+                }
             }
         }
         .parityConfirmationDialog(

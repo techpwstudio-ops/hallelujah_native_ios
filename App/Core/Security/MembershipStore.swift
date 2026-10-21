@@ -17,7 +17,7 @@ actor MembershipStore {
     private(set) var membership: Membership?
 
     private let keyValueStore: any KeyValueStoring
-    private static let storageKey = "currentMembership"
+    static let storageKey = "currentMembership"
 
     init(keyValueStore: any KeyValueStoring) {
         self.keyValueStore = keyValueStore
@@ -27,9 +27,11 @@ actor MembershipStore {
     }
 
     func setMembership(_ membership: Membership?) {
+        let hadMembership = self.membership != nil
         self.membership = membership
         guard let membership else {
             keyValueStore.removeValue(forKey: Self.storageKey)
+            if hadMembership { AudioQualitySelector.resetUserSelectedQuality(in: keyValueStore) }
             return
         }
         if let data = try? JSONEncoder().encode(membership) {
@@ -38,6 +40,7 @@ actor MembershipStore {
     }
 
     func clear() {
+        if membership != nil { AudioQualitySelector.resetUserSelectedQuality(in: keyValueStore) }
         membership = nil
         keyValueStore.removeValue(forKey: Self.storageKey)
     }

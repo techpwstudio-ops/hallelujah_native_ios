@@ -40,14 +40,22 @@ enum AppComposition {
         // The refresh client deliberately has no authProvider: using the
         // authenticated client here would let a 401 from the refresh call
         // itself recurse back into Session.refreshIfNeeded().
-        let tokenStore = KeychainTokenStore()
+        let keychainTokenStore = KeychainTokenStore()
         // Tokens issued by another backend (Staging / Production / local share
         // a bundle ID, so the Keychain) are useless here — drop them BEFORE
         // `Session` loads them, so nothing stale is ever sent and the splash
         // resolves straight to sign-in. The full sign-out teardown (cached
         // user, downloads, …) runs below once `onLogout` is wired.
         let environmentChanged = SessionEnvironmentGuard(apiBaseURL: configuration.apiBaseURL).environmentChanged()
-        if environmentChanged { try? tokenStore.clear() }
+        if environmentChanged { try? keychainTokenStore.clear() }
+        // Q4 — an App Store update between this build and the Flutter one,
+        // either way round, keeps the user signed in: takes over the session
+        // the other build left before `Session`, `CurrentUserStore` and
+        // `MembershipStore` below load it, then republishes this build's on
+        // every change through the stores they're given.
+        let sessionHandoff = SessionHandoff(tokenStore: keychainTokenStore)
+        let handoffEndedSession = sessionHandoff.syncAtLaunch()
+        let tokenStore = sessionHandoff.publishing(keychainTokenStore)
         let refreshClient = HTTPClient(configuration: configuration)
         let session = Session(tokenStore: tokenStore, refreshClient: refreshClient)
         container.register(Session.self) { session }
@@ -59,14 +67,14 @@ enum AppComposition {
         // a View's `@State`), so every resolver needs the SAME actor, the
         // same reason `session`/`database` are captured `let`s rather than
         // built fresh inside their registration closures.
-        let currentUserStore = CurrentUserStore(keyValueStore: UserDefaultsKeyValueStore())
+        let currentUserStore = CurrentUserStore(keyValueStore: sessionHandoff.publishing(UserDefaultsKeyValueStore()))
         container.register(CurrentUserStore.self) { currentUserStore }
         // T61 — a captured shared instance, same reasoning as
         // `currentUserStore` immediately above: `RemoteAuthRepository`
         // writes to it on login/refresh/logout, and every resolver
         // (`SettingsView`, `SubscriptionPlansView`) must observe the SAME
         // actor, not an independent copy.
-        let membershipStore = MembershipStore(keyValueStore: UserDefaultsKeyValueStore())
+        let membershipStore = MembershipStore(keyValueStore: sessionHandoff.publishing(UserDefaultsKeyValueStore()))
         container.register(MembershipStore.self) { membershipStore }
         // Saved library items — one shared instance so every save button in
         // the app flips together (and so sign-out below can clear it).
@@ -147,10 +155,12 @@ enum AppComposition {
                 // scoped to their old session's rooms.
                 Task { @MainActor in realtimeConnectionManager.disconnect() }
             }
-            // The base URL changed since the last launch: sign out through the
-            // normal path so the previous backend's user, membership, saved
-            // library, downloads and cached feeds don't carry over.
-            if environmentChanged {
+            // The base URL changed since the last launch, or the Flutter build
+            // signed out (or into another account) since this one last ran:
+            // sign out through the normal path so the previous user,
+            // membership, saved library, downloads and cached feeds don't
+            // carry over.
+            if environmentChanged || handoffEndedSession {
                 await session.logout()
             }
         }

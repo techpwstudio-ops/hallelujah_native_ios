@@ -83,7 +83,7 @@
 		D4BE455C0AB68EBB6D6722D9 /* GHallelujahUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GHallelujahUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E8229D5A08BB25F75B3C2B1B /* SiriIntentsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiriIntentsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA719F38624B1A2B7E4B56B7 /* UITests.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = UITests.xcconfig; sourceTree = "<group>"; };
-		EE51BF0C1434D4C8FC0EFC91 /* GHallelujah.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GHallelujah.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE51BF0C1434D4C8FC0EFC91 /* Hallelujah.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hallelujah.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -140,7 +140,7 @@
 		1DD99F054BC899780703C62C /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				EE51BF0C1434D4C8FC0EFC91 /* GHallelujah.app */,
+				EE51BF0C1434D4C8FC0EFC91 /* Hallelujah.app */,
 				D18829B05AD563A056CCA389 /* GHallelujahTests.xctest */,
 				D4BE455C0AB68EBB6D6722D9 /* GHallelujahUITests.xctest */,
 				B3F67C15422D46F6D72DE24A /* NotificationServiceExtension.appex */,
@@ -281,7 +281,7 @@
 				565F46A9032F60674D94A8BF /* SocketIO */,
 			);
 			productName = GHallelujah;
-			productReference = EE51BF0C1434D4C8FC0EFC91 /* GHallelujah.app */;
+			productReference = EE51BF0C1434D4C8FC0EFC91 /* Hallelujah.app */;
 			productType = "com.apple.product-type.application";
 		};
 		82B5D56F5013DF307DABEB2C /* GHallelujahTests */ = {

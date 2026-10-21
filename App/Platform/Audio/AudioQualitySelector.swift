@@ -23,10 +23,8 @@ struct AudioQualitySelector: Sendable {
         self.connectivityType = connectivityType
     }
 
-    /// `OurSession.selectedAudioQuality`, default `.standard`. No Settings
-    /// screen writes this key yet (Settings is a later milestone) — reading
-    /// it here now means that screen only ever has to start writing it, with
-    /// no engine-side change needed once it exists.
+    /// `OurSession.selectedAudioQuality`, default `.standard`. Written by
+    /// Settings' "Audio Quality" sheet.
     var userSelectedQuality: AudioQuality {
         get async {
             keyValueStore.string(forKey: Self.userQualityKey).flatMap(AudioQuality.init(rawValue:)) ?? .standard
@@ -35,6 +33,13 @@ struct AudioQualitySelector: Sendable {
 
     func setUserSelectedQuality(_ quality: AudioQuality) {
         keyValueStore.setString(quality.rawValue, forKey: Self.userQualityKey)
+    }
+
+    /// `setMembershipDetails(null)` (`session.dart:91-96`) wipes the stored
+    /// choice, so a listener whose subscription is gone falls back to the
+    /// default rather than keeping a premium-only pick.
+    static func resetUserSelectedQuality(in keyValueStore: any KeyValueStoring) {
+        keyValueStore.removeValue(forKey: userQualityKey)
     }
 
     /// `effectiveAudioQuality` × `streamableVariant`, combined the way

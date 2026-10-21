@@ -103,6 +103,11 @@ final class AudioEngine {
     private var itemSongIDs: [ObjectIdentifier: String] = [:]
     private var retriedViaProxy: Set<String> = []
 
+    /// The same-song item `reloadSourcesAtCurrentPosition` swapped in —
+    /// `topUpWindow` must not read that swap as an advance (no
+    /// `onSongChanged`, so no ad-pacing tick; Dart's `suppressBlocUpdates`).
+    @ObservationIgnored private weak var reloadedItem: AVPlayerItem?
+
     private static let residentWindowAhead = 2
 
     private var wasPlayingBeforeInterruption = false
@@ -186,6 +191,48 @@ final class AudioEngine {
             itemSongIDs[ObjectIdentifier(item)] = nil
         }
         await appendAheadItems(afterLogicalIndex: currentIndex)
+    }
+
+    /// `reloadSourcesAtCurrentPosition` (`audio_service.dart:1735-1779`):
+    /// rebuilds the resident items after the user picks a new audio quality
+    /// so the change is heard now, not from the next song on. The current
+    /// song resumes where it was, in the same play/pause state. A downloaded
+    /// current song has no quality to change, so only its ahead items are
+    /// rebuilt.
+    func reloadSourcesAtCurrentPosition() async {
+        guard let song = currentSong,
+              logicalQueue.indices.contains(logicalIndex),
+              logicalQueue[logicalIndex].id == song.id
+        else { return }
+
+        if localFileURLProvider?(song.id) == nil {
+            guard let item = await makePlayerItem(for: song), currentSong?.id == song.id else { return }
+            swapInReloadedItem(item, songID: song.id)
+        } else {
+            for item in player.items().dropFirst() {
+                player.remove(item)
+                itemSongIDs[ObjectIdentifier(item)] = nil
+            }
+        }
+        await appendAheadItems(afterLogicalIndex: logicalIndex)
+    }
+
+    /// Synchronous on purpose: from an `async` context `player.seek(to:)`
+    /// resolves to the completion-handler overload, which AVFoundation
+    /// rejects on an item that isn't `readyToPlay` yet. The plain overload
+    /// just queues the seek until it is.
+    private func swapInReloadedItem(_ item: AVPlayerItem, songID: String) {
+        let wasPlaying = player.timeControlStatus != .paused
+        let position = currentPosition
+        reloadedItem = item
+        player.removeAllItems()
+        itemSongIDs.removeAll()
+        player.insert(item, after: nil)
+        itemSongIDs[ObjectIdentifier(item)] = songID
+        player.seek(to: CMTime(seconds: position, preferredTimescale: 1000))
+        if wasPlaying {
+            activateSessionAndPlay()
+        }
     }
 
     func resume() {
@@ -448,6 +495,7 @@ final class AudioEngine {
     /// once it moves past it, so there's no matching "trim" step needed here.
     private func topUpWindow() async {
         guard let currentItem = player.currentItem,
+              currentItem !== reloadedItem,
               let songID = itemSongIDs[ObjectIdentifier(currentItem)],
               let newIndex = logicalQueue.firstIndex(where: { $0.id == songID })
         else { return }
