@@ -123,7 +123,17 @@ struct LanguageGridView: View {
     let canToggle: (String) -> Bool
     let onTap: (String) -> Void
 
-    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible())]
+    /// The grid's own width — it sits in a capped column, not across the window.
+    @State private var gridWidth: CGFloat = 0
+
+    /// Two columns on a phone. Native-only tablet/Mac adaptation (no Flutter
+    /// counterpart): a wider grid adds columns of roughly phone-sized cards
+    /// instead of stretching two. The last column keeps no trailing spacing,
+    /// exactly as the phone pair had.
+    private var columns: [GridItem] {
+        let count = AdaptiveLayout.columns(phone: 2, minItemWidth: 190, in: gridWidth)
+        return Array(repeating: GridItem(.flexible(), spacing: 12), count: count - 1) + [GridItem(.flexible())]
+    }
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {
@@ -137,6 +147,7 @@ struct LanguageGridView: View {
                 )
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { gridWidth = $0 }
     }
 }
 

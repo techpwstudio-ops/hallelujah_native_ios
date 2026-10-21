@@ -164,6 +164,8 @@ struct ManageFamilyMembersView: View {
                 }
             }
             .padding(Dimens.paddingLarge)
+            // Native-only tablet/Mac adaptation (no Flutter counterpart).
+            .readableContentWidth()
         }
         .refreshable { await viewModel.refresh() }
     }

@@ -132,6 +132,9 @@ struct OTPView: View {
                     }
                 }
                 .padding(.horizontal, Spacing.md * 2)
+                // Native-only tablet/Mac adaptation (no Flutter counterpart):
+                // the phone form, centred in a form-width column.
+                .readableContentWidth(AdaptiveLayout.formWidth)
             }
         }
         .navigationBarBackButtonHidden(true)

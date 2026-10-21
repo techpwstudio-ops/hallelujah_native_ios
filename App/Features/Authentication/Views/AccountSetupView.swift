@@ -93,6 +93,10 @@ struct AccountSetupView: View {
                         }
                     }
                     .padding(Dimens.screenPaddingAll)
+                    // Native-only tablet/Mac adaptation (no Flutter counterpart):
+                    // the phone form, centred in a form-width column; the
+                    // bottom action below shares it.
+                    .readableContentWidth(AdaptiveLayout.formWidth)
                 }
                 .scrollDismissesKeyboard(.interactively)
 
@@ -103,8 +107,10 @@ struct AccountSetupView: View {
                         viewModel: languageViewModel,
                         onContinue: { Task { await finishLanguages() } }
                     )
+                    .readableContentWidth(AdaptiveLayout.formWidth)
                 } else {
                     continueButton
+                        .readableContentWidth(AdaptiveLayout.formWidth)
                 }
             }
             .padding(Dimens.screenPaddingAll)

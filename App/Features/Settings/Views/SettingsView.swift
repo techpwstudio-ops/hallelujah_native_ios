@@ -180,6 +180,9 @@ struct SettingsView: View {
             }
             .padding(.vertical, Dimens.screenPaddingAll)
             .padding(.horizontal, Dimens.screenPaddingAll * 1.5)
+            // Native-only tablet/Mac adaptation (no Flutter counterpart): rows
+            // stay in a readable column instead of spanning the window.
+            .readableContentWidth()
         }
         .parityScaffold()
         .parityNavTitle("Settings", leading: true)

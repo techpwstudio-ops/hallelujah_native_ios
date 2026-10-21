@@ -56,6 +56,9 @@ struct HelpView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.06))
         )
         .padding(.horizontal, 16)
+        // Native-only tablet/Mac adaptation (no Flutter counterpart): the same
+        // readable column as the tab pages below.
+        .readableContentWidth()
     }
 
     @ViewBuilder

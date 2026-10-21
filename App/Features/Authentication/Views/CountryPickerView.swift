@@ -32,6 +32,9 @@ struct CountryPickerView: View {
     var body: some View {
         VStack(spacing: 0) {
             searchField
+                // Native-only tablet/Mac adaptation (no Flutter counterpart):
+                // field and rows stay in a readable column on a wide sheet.
+                .readableContentWidth()
                 .padding(Spacing.md)
 
             List {
@@ -85,6 +88,7 @@ struct CountryPickerView: View {
                     .typography(Typography.bodyMedium)
                     .foregroundStyle(theme.color(.textSecondary))
             }
+            .readableContentWidth()
         }
         .buttonStyle(.plain)
         .listRowBackground(Color.clear)

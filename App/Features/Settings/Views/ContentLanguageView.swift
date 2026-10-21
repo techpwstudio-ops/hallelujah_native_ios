@@ -60,6 +60,9 @@ struct ContentLanguageView: View {
                         )
                     }
                     .padding(.horizontal, Dimens.screenPaddingAll)
+                    // Native-only tablet/Mac adaptation (no Flutter counterpart):
+                    // a readable column, shared by the Save bar below.
+                    .readableContentWidth()
                 }
                 saveBar
             }
@@ -90,6 +93,7 @@ struct ContentLanguageView: View {
         .disabled(!isChanged || viewModel.saveState == .loading)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
+        .readableContentWidth()
     }
 
     private func toggle(_ name: String) {

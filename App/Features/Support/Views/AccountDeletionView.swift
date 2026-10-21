@@ -86,6 +86,8 @@ struct DeleteAccountContentView: View {
                     }
                 }
                 .padding(16)
+                // Native-only tablet/Mac adaptation (no Flutter counterpart).
+                .readableContentWidth()
             }
             .scrollDismissesKeyboard(.interactively)
 

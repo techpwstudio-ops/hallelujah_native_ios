@@ -105,6 +105,9 @@ struct AuthenticationView: View {
                     .frame(minHeight: max(0, geometry.size.height - Spacing.md * 2))
                     .padding(.horizontal, Spacing.lg)
                     .padding(.vertical, Spacing.md)
+                    // Native-only tablet/Mac adaptation (no Flutter counterpart):
+                    // the phone form, centred in a form-width column.
+                    .readableContentWidth(AdaptiveLayout.formWidth)
                 }
             }
             .scrollDismissesKeyboard(.interactively)
@@ -118,6 +121,8 @@ struct AuthenticationView: View {
                     TermsAndPrivacyTextView()
                         .padding(.horizontal, Spacing.lg)
                         .padding(.bottom, Spacing.md)
+                        // Same column as the form above; the fill stays full width.
+                        .readableContentWidth(AdaptiveLayout.formWidth)
                         .background(AuthColors.background)
                 }
             }

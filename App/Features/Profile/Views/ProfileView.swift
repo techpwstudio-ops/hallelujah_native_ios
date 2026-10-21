@@ -86,6 +86,9 @@ private struct ProfileContentView: View {
                     dateField
                     genderField
                 }
+                // Native-only tablet/Mac adaptation (no Flutter counterpart): the
+                // form stays in a readable column, shared by the Save bar below.
+                .readableContentWidth()
             }
             .scrollDismissesKeyboard(.interactively)
 
@@ -424,6 +427,7 @@ private struct ProfileContentView: View {
         .disabled(!isChanged || viewModel.state == .loading)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
+        .readableContentWidth()
     }
 
     // MARK: - Validation / change tracking
