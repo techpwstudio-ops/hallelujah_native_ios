@@ -87,6 +87,9 @@ private struct ToastOverlay: View {
                     .padding(.horizontal, Spacing.md)
                     .padding(.vertical, Spacing.sm)
                     .glassRounded(Radius.lg)
+                    // A long message wraps at a readable width on a tablet
+                    // or Mac window instead of running edge to edge.
+                    .frame(maxWidth: AdaptiveLayout.readableWidth)
                     .padding(.horizontal, Spacing.xl)
                     .padding(.bottom, Spacing.xl)
                     .transition(.move(edge: .bottom).combined(with: .opacity))

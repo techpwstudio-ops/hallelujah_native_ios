@@ -49,6 +49,8 @@ private struct AudioAdBreak: View {
             AdBreakArtwork(ad: ad)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             AdBreakControlPanel(pacing: pacing, ad: ad, coordinator: coordinator)
+                // Tablet/Mac: the transport stays a player-width column.
+                .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
         }
     }
 }
@@ -77,6 +79,7 @@ private struct VideoAdBreak: View {
                     .background(scrim(fromTop: true))
                 Spacer(minLength: 0)
                 AdBreakControlPanel(pacing: pacing, ad: ad, coordinator: coordinator)
+                    .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                     .background(scrim(fromTop: false))
             }
         }

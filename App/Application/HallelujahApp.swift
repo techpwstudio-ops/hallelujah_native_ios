@@ -21,6 +21,10 @@ struct HallelujahApp: App {
 
         WindowGroup {
             RootView()
+                // Outside `RootView`'s splash/auth/app switch, so the measured
+                // width survives that hand-off instead of restarting at 0.
+                .measuresLayoutWidth()
+                .onAppear { MacWindowSizing.apply() }
                 .environment(\.appTheme, .standard)
                 // In-app language (Settings → App Language): SwiftUI text
                 // follows this locale the moment it changes.

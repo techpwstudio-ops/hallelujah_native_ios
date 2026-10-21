@@ -60,6 +60,9 @@ struct SongLyricsView: View {
                             .id(line.id)
                         }
                     }
+                    // Tablet/Mac: lyric lines keep a readable measure; the
+                    // scroll view itself still spans the window.
+                    .readableContentWidth()
                 }
                 .mask(LyricsEdgeFadeMask())
                 .onChange(of: activeIndex) { _, newValue in
@@ -78,6 +81,7 @@ struct SongLyricsView: View {
             ) { target in
                 engine.seek(to: target)
             }
+            .readableContentWidth()
             .padding(.top, 16)
 
             Button {
