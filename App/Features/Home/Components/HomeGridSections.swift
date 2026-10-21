@@ -1,19 +1,21 @@
 import SwiftUI
 
-/// One grid row: two items, the right one absent on an odd tail.
-private struct HomePairRow<T>: Identifiable {
+/// One grid row: up to `columns` items, the trailing ones absent on a short tail.
+private struct HomeGridRow<T>: Identifiable {
     let id: Int
-    let left: T
-    let right: T?
+    let items: [T]
 }
 
-/// Pairs `items` two to a row.
-private func homePairs<T>(_ items: [T]) -> [HomePairRow<T>] {
-    var rows: [HomePairRow<T>] = []
+/// Chunks `items` `columns` to a row — two on a phone, more on a wide window
+/// (`HomeMetrics.gridColumns`).
+private func homeRows<T>(_ items: [T], columns: Int) -> [HomeGridRow<T>] {
+    let columns = max(1, columns)
+    var rows: [HomeGridRow<T>] = []
     var index = 0
     while index < items.count {
-        rows.append(HomePairRow(id: index, left: items[index], right: index + 1 < items.count ? items[index + 1] : nil))
-        index += 2
+        let end = min(index + columns, items.count)
+        rows.append(HomeGridRow<T>(id: index, items: Array(items[index..<end])))
+        index += columns
     }
     return rows
 }
@@ -27,16 +29,19 @@ struct HomeRecommendationGridView: View {
     let uiId: String
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
+    @Environment(\.layoutWidth) private var layoutWidth
 
     var body: some View {
+        let columns = HomeMetrics.gridColumns(in: layoutWidth)
         VStack(spacing: HomeMetrics.recommendationGap) {
-            ForEach(homePairs(songs)) { row in
+            ForEach(homeRows(songs, columns: columns)) { row in
                 HStack(spacing: HomeMetrics.recommendationGap) {
-                    card(row.left)
-                    if let right = row.right {
-                        card(right)
-                    } else {
-                        Color.clear.frame(maxWidth: .infinity)
+                    ForEach(0..<columns, id: \.self) { slot in
+                        if slot < row.items.count {
+                            card(row.items[slot])
+                        } else {
+                            Color.clear.frame(maxWidth: .infinity)
+                        }
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -83,20 +88,23 @@ struct HomeCompanyPlaylistGridView: View {
     let playlists: [Playlist]
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
+    @Environment(\.layoutWidth) private var layoutWidth
 
     private var capped: [Playlist] {
         Array(playlists.prefix(HomeMetrics.companyGridMaxItems))
     }
 
     var body: some View {
+        let columns = HomeMetrics.gridColumns(in: layoutWidth)
         VStack(spacing: HomeMetrics.companyGridGap) {
-            ForEach(homePairs(capped)) { row in
+            ForEach(homeRows(capped, columns: columns)) { row in
                 HStack(spacing: HomeMetrics.companyGridGap) {
-                    card(row.left)
-                    if let right = row.right {
-                        card(right)
-                    } else {
-                        Color.clear.frame(maxWidth: .infinity)
+                    ForEach(0..<columns, id: \.self) { slot in
+                        if slot < row.items.count {
+                            card(row.items[slot])
+                        } else {
+                            Color.clear.frame(maxWidth: .infinity)
+                        }
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)

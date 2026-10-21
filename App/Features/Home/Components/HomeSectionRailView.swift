@@ -45,6 +45,9 @@ struct HomeSectionRailView: View {
             // `_VerseOfDaySection`: a full-width block with no generic header
             // and a hidden verse takes up no space at all.
             VerseOfDayCardView()
+                // Native-only tablet/Mac adaptation (no Flutter counterpart):
+                // the verse reads in a column, not one line across the window.
+                .readableContentWidth()
                 .padding(.horizontal, Dimens.sectionPaddingH)
         } else {
             railBody
@@ -110,6 +113,9 @@ struct HomeSectionRailView: View {
                         HomeListSongCardView(song: song, songs: songs, uiId: section.id)
                     }
                 }
+                // Native-only tablet/Mac adaptation (no Flutter counterpart): the
+                // full-width 16:9 cards stop growing at a centred media column.
+                .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                 .padding(.horizontal, HomeMetrics.listInset)
             case "recommended" where !isEpisode:
                 HomeSectionContainer(

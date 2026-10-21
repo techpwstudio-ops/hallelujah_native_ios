@@ -120,6 +120,8 @@ struct FavouriteSongsView: View {
                 // `ImplicitlyAnimatedList`: 300ms fade/slide on insert and remove.
                 .animation(.easeOut(duration: 0.3), value: viewModel.songs.map { $0.id })
                 .padding(Dimens.screenPaddingAll)
+                // Native-only tablet/Mac adaptation (no Flutter counterpart).
+                .readableContentWidth()
             }
         }
     }

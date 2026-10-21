@@ -15,6 +15,8 @@ struct RecentSongsView: View {
                     .id(selected)
                 Color.clear.frame(height: HomeMetrics.pageBottomSpacing)
             }
+            // Native-only tablet/Mac adaptation (no Flutter counterpart).
+            .readableContentWidth()
         }
         .background(HomeColors.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)

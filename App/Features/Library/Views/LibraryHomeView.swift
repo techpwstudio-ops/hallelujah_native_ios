@@ -44,6 +44,8 @@ struct LibraryHomeView: View {
                 DockClearance()
             }
             .padding(.horizontal, Dimens.screenPaddingAll)
+            // Native-only tablet/Mac adaptation (no Flutter counterpart).
+            .readableContentWidth()
         }
         .background(Color.black)
         .refreshable { await viewModel.refresh() }

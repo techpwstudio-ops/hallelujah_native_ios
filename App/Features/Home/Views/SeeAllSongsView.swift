@@ -54,22 +54,30 @@ struct SeeAllSongsView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            // Native-only tablet/Mac adaptation (no Flutter counterpart): the
+            // square hero stops growing at a media column and sits centred,
+            // with the title row and songs in that column (as on
+            // `PlaylistDetailView`).
+            let heroSize = AdaptiveLayout.proportionalWidth(geometry.size.width)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     HomeHeroHeader(
                         url: HomeArt.url(image, imageVariants, .lg),
-                        width: geometry.size.width,
+                        width: heroSize,
                         state: scroll
                     )
+                    .frame(maxWidth: AdaptiveLayout.isWide(geometry.size.width) ? CGFloat.infinity : nil)
                     titleRow
+                        .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                     list
+                        .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                     Color.clear.frame(height: HomeMetrics.pageBottomSpacing)
                 }
             }
             .coordinateSpace(name: HomeHeroHeader.space)
             .ignoresSafeArea(edges: .top)
             .overlay(alignment: .top) {
-                HomeCollapsedBarBackdrop(state: scroll, threshold: geometry.size.width - 100)
+                HomeCollapsedBarBackdrop(state: scroll, threshold: heroSize - 100)
             }
         }
         .background(HomeColors.background.ignoresSafeArea())

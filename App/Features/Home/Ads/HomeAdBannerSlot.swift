@@ -151,6 +151,10 @@ struct HomeAdBannerSlot: View {
         .onTapGesture {
             openAdAction(ad, coordinator: coordinator, adsRepository: adsRepository)
         }
+        // Native-only tablet/Mac adaptation (no Flutter counterpart): a banner
+        // sized by its aspect ratio stops growing at a centred media column,
+        // the same one the episode cards it mirrors use.
+        .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
         .padding(.horizontal, Dimens.sectionPaddingH)
         .frame(maxWidth: .infinity)
         .modifier(BannerImpression(ad: ad) {
