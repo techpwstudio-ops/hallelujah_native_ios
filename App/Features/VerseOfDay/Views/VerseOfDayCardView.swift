@@ -17,13 +17,22 @@ struct VerseOfDayCardView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        Group {
+        // A real (zero-height when hidden) container, not a `Group`: with
+        // nothing inside, a `Group` is an empty view and its modifiers below
+        // can be dropped, so a hidden card stopped listening for "unhide"
+        // and only a pull-to-refresh (which rebuilt it) brought it back.
+        VStack(spacing: 0) {
             if viewModel.isVisible, let verse = viewModel.verse {
                 VerseOfDayCardContentView(verse: verse, viewModel: viewModel)
             }
         }
+        .frame(maxWidth: .infinity)
         .task {
             await viewModel.refresh()
+        }
+        // Back on Home (another tab, or popped back from Settings).
+        .onAppear {
+            Task { @MainActor in await viewModel.refresh() }
         }
         // The Home feed, a delivered push or a realtime update just stored a
         // newer verse / count (Flutter's `VerseOfDayHistoryBloc` state stream).
