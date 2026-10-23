@@ -362,10 +362,7 @@ struct BibleVerseShareView: View {
             return
         }
         do {
-            try await PHPhotoLibrary.shared().performChanges {
-                let request = PHAssetCreationRequest.forAsset()
-                request.addResource(with: .photo, data: data, options: nil)
-            }
+            try await PhotoLibrarySaver.save(imageData: data)
             finish(notice: .saved, action: .saveImage)
         } catch {
             finish(

@@ -339,9 +339,7 @@ struct ShareSheetView: View {
             return
         }
         do {
-            try await PHPhotoLibrary.shared().performChanges {
-                _ = PHAssetChangeRequest.creationRequestForAsset(from: uiImage)
-            }
+            try await PhotoLibrarySaver.save(uiImage)
             showConfirmation(String(localized: "Saved to Photos"))
         } catch {
             showConfirmation(String(localized: "Couldn\u{2019}t save the image. Please try again."))
