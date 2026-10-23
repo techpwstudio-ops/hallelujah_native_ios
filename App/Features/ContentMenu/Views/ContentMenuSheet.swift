@@ -28,7 +28,12 @@ struct ContentMenuSheet: View {
 
     var body: some View {
         if showsShare, let shareTarget = viewModel.target.shareTarget {
-            ShareSheetView(target: shareTarget, title: viewModel.target.title, subtitle: nil, artworkURL: nil)
+            ShareSheetView(
+                target: shareTarget,
+                title: viewModel.target.title,
+                subtitle: nil,
+                artworkURL: viewModel.target.artworkURL
+            )
         } else {
             menu
         }

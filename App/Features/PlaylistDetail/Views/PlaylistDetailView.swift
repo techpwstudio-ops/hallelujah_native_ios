@@ -59,7 +59,12 @@ struct PlaylistDetailView: View {
         .background(HomeColors.background.ignoresSafeArea())
         .contentMenu(target: $menuTarget)
         .appSheet(isPresented: $isShareSheetPresented) {
-            ShareSheetView(target: .companyPlaylist(id: playlist.id), title: playlist.title, subtitle: nil, artworkURL: nil)
+            ShareSheetView(
+                target: .companyPlaylist(id: playlist.id),
+                title: playlist.title,
+                subtitle: nil,
+                artworkURL: ArtworkURLResolver().resolve(path: playlist.image, variant: .lg, allowedVariants: playlist.imageVariants)
+            )
         }
         .task { await viewModel.loadIfNeeded() }
     }

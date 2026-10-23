@@ -32,6 +32,16 @@ enum ContentMenuTarget: Identifiable, Equatable, Sendable {
         }
     }
 
+    /// The share card's artwork (`showContentShareSheet(image:)`).
+    var artworkURL: URL? {
+        switch self {
+        case .playlist(let playlist):
+            ArtworkURLResolver().resolve(path: playlist.image, variant: .lg, allowedVariants: playlist.imageVariants)
+        case .creator(let creator):
+            ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants)
+        }
+    }
+
     var libraryItem: (type: LibraryItemType, id: String)? {
         switch self {
         case .playlist(let playlist): (playlist.libraryItemType, playlist.id)
