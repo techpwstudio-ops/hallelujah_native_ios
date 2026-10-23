@@ -39,4 +39,20 @@ struct VerseOfDay: Sendable, Equatable, Identifiable, Codable {
         guard let bookName, let chapterNumber, let verseNumber else { return nil }
         return "\(bookName) \(chapterNumber):\(verseNumber)"
     }
+
+    /// This verse as it looks right after the user taps the heart: like
+    /// flipped, count moved by one. The card shows it straight away and the
+    /// server's answer replaces it.
+    func withLikeToggled() -> VerseOfDay {
+        let liked = !isLiked
+        return VerseOfDay(
+            id: id, title: title, deliveryStatus: deliveryStatus, image: image,
+            backgroundImage: backgroundImage, verseId: verseId, languageName: languageName,
+            verseText: verseText, bookName: bookName, bookNumber: bookNumber,
+            chapterNumber: chapterNumber, verseNumber: verseNumber,
+            likes: max(0, likes + (liked ? 1 : -1)), shares: shares, comments: comments,
+            isLiked: liked, scheduledAt: scheduledAt, sentAt: sentAt,
+            createdAt: createdAt, updatedAt: updatedAt
+        )
+    }
 }

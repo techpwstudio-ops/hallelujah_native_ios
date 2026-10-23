@@ -67,7 +67,6 @@ private struct VerseOfDayCardContentView: View {
             Spacer().frame(height: 14)
             VerseOfDayActionBar(
                 verse: verse,
-                isTogglingLike: viewModel.isTogglingLike,
                 shareURL: viewModel.shareURL,
                 onLikeTap: { Task { await viewModel.toggleLike() } },
                 onCommentTap: { showCommentsSheet = true },
@@ -254,7 +253,6 @@ struct VerseOfDayHeartIcon: View {
 /// 8pt vertical tap padding), a 6pt gap to the count where there is one.
 private struct VerseOfDayActionBar: View {
     let verse: VerseOfDay
-    let isTogglingLike: Bool
     let shareURL: URL?
     let onLikeTap: () -> Void
     let onCommentTap: () -> Void
@@ -266,7 +264,7 @@ private struct VerseOfDayActionBar: View {
         HStack(spacing: 0) {
             slot(onTap: onLikeTap) {
                 HStack(spacing: 6) {
-                    VerseOfDayHeartIcon(isLiked: verse.isLiked, isLoading: isTogglingLike, size: Self.iconSize)
+                    VerseOfDayHeartIcon(isLiked: verse.isLiked, size: Self.iconSize)
                     if verse.likes > 0 {
                         VerseOfDayAnimatedCount(count: verse.likes)
                     }

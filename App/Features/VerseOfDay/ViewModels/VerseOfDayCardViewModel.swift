@@ -53,14 +53,20 @@ final class VerseOfDayCardViewModel {
         isHiddenToday = true
     }
 
+    /// Optimistic: the heart flips the moment it is tapped, the request runs
+    /// behind it, and a failure puts the old state back. Taps while a request
+    /// is in flight are dropped so the count can't drift from the server's.
     func toggleLike() async {
-        guard let verse, !isTogglingLike else { return }
+        guard let previous = verse, !isTogglingLike else { return }
         isTogglingLike = true
         defer { isTogglingLike = false }
+        verse = previous.withLikeToggled()
         do {
-            self.verse = try await repository.toggleLike(id: verse.id)
+            let updated = try await repository.toggleLike(id: previous.id)
+            if verse?.id == previous.id { verse = updated }
         } catch {
             logger.warning("verse of day like toggle failed: \(error)")
+            if verse?.id == previous.id { verse = previous }
         }
     }
 }
