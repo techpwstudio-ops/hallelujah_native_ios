@@ -161,11 +161,18 @@ struct SongMetaSections: View {
                         .foregroundStyle(Color.white)
                         .shadow(color: .black, radius: 8, x: 0, y: 2)
                     if let bio = creator.bio, !bio.isEmpty {
-                        Text(bio)
-                            .typography(TypographyToken(size: 14, weight: .light, lineHeightMultiple: 1.5))
-                            .foregroundStyle(Color.white.opacity(0.7))
-                            .lineLimit(2)
-                            .onTapGesture { detailsCreator = creator }
+                        // `ExpandableText(maxLines: 2, onTap: showCreatorDetailsSheet)`:
+                        // "Read more" under a clipped bio opens the full one.
+                        PlayerExpandableText(
+                            text: bio,
+                            maxLines: 2,
+                            token: TypographyToken(size: 14, weight: .light, lineHeightMultiple: 1.5),
+                            color: Color.white.opacity(0.7),
+                            linkColor: Color.white.opacity(0.7),
+                            onReadMore: { detailsCreator = creator }
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture { detailsCreator = creator }
                     }
                 }
                 .padding(16)

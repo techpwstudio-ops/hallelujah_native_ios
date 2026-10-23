@@ -361,9 +361,15 @@ private struct PlayerAddToPlaylistSheet: View {
 
 /// `ExpandableText` (`verse_unit_ui.dart`): `bodySmall`, three lines with a
 /// "Read more" / "Read less" toggle shown only when the text overflows.
+/// With `onReadMore` (the creator card's bio, `CreatorMetaUi`), "Read more"
+/// runs that instead of expanding in place, as Flutter's `onTap` does.
 struct PlayerExpandableText: View {
     let text: String
     var maxLines: Int = 3
+    var token: TypographyToken = Typography.bodySmall
+    var color: Color = PlayerStyle.white
+    var linkColor: Color = PlayerStyle.white
+    var onReadMore: (() -> Void)? = nil
 
     @State private var isExpanded = false
     @State private var fullHeight: CGFloat = 0
@@ -374,13 +380,13 @@ struct PlayerExpandableText: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(text)
-                .typography(Typography.bodySmall)
-                .foregroundStyle(PlayerStyle.white)
+                .typography(token)
+                .foregroundStyle(color)
                 .lineLimit(isExpanded ? nil : maxLines)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     Text(text)
-                        .typography(Typography.bodySmall)
+                        .typography(token)
                         .lineLimit(maxLines)
                         .fixedSize(horizontal: false, vertical: true)
                         .hidden()
@@ -388,16 +394,18 @@ struct PlayerExpandableText: View {
                 )
                 .background(
                     Text(text)
-                        .typography(Typography.bodySmall)
+                        .typography(token)
                         .fixedSize(horizontal: false, vertical: true)
                         .hidden()
                         .background(HeightReader { fullHeight = $0 })
                 )
             if overflows {
-                Button { isExpanded.toggle() } label: {
+                Button {
+                    if let onReadMore { onReadMore() } else { isExpanded.toggle() }
+                } label: {
                     Text(isExpanded ? "Read less" : "Read more")
-                        .typography(TypographyToken(size: 12, weight: .bold, lineHeightMultiple: 1.5))
-                        .foregroundStyle(PlayerStyle.white)
+                        .typography(TypographyToken(size: token.size, weight: .bold, lineHeightMultiple: 1.5))
+                        .foregroundStyle(linkColor)
                 }
                 .buttonStyle(.plain)
             }
