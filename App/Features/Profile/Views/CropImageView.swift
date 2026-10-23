@@ -34,7 +34,6 @@ struct CropImageView: View {
         GeometryReader { proxy in
             let isLandscape = proxy.size.width > proxy.size.height
             ZStack {
-                Color.black.ignoresSafeArea()
                 if isLandscape {
                     HStack(spacing: 0) {
                         VStack(spacing: 0) {
@@ -67,6 +66,11 @@ struct CropImageView: View {
                 }
             }
         }
+        // The black fill sits behind the layout, not inside the ZStack: as a
+        // ZStack child that ignores the safe area it stretched the stack to
+        // full screen, which pushed the header up under the status bar where
+        // the close button and Done couldn't be tapped.
+        .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .task { loadImage() }
     }
