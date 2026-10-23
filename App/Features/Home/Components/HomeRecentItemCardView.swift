@@ -32,7 +32,9 @@ struct HomeRecentItemCardView: View {
 
     var body: some View {
         Group {
-            if item.isEpisode {
+            if item.isEpisode, item.itemType == "creator" {
+                artistWideCard
+            } else if item.isEpisode {
                 wideCard
             } else {
                 HomeSquareCard(
@@ -92,6 +94,56 @@ struct HomeRecentItemCardView: View {
                     )
                     .padding(Dimens.spacing12)
             }
+        }
+        .frame(width: HomeMetrics.episodeCardWidth, height: HomeMetrics.episodeCardHeight)
+        .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadiusSmall, style: .circular))
+        .padding(.trailing, HomeMetrics.cardSpacing)
+    }
+
+    /// An artist in the wide rail. Artist photos are square, so filling the
+    /// 256x144 frame cut the face off. The card keeps the rail's wide shape,
+    /// but the whole photo sits on the left at full card height (inset), over
+    /// a blurred, darkened copy of itself, with the name beside it.
+    private var artistSubtitle: String {
+        let subtitle = (item.subtitle ?? "").homeTrimmed
+        return subtitle.isEmpty ? String(localized: "Artist") : subtitle
+    }
+
+    private var artistWideCard: some View {
+        let inset = Dimens.spacing12
+        let photoSize = HomeMetrics.episodeCardHeight - inset * 2
+        return ZStack {
+            ArtworkView(
+                url: artworkURL,
+                width: HomeMetrics.episodeCardWidth,
+                height: HomeMetrics.episodeCardHeight,
+                cornerRadius: 0
+            )
+            .blur(radius: 24)
+            .overlay(Color.black.opacity(0.45))
+            HStack(alignment: .center, spacing: Dimens.spacing12) {
+                ArtworkView(
+                    url: artworkURL,
+                    width: photoSize,
+                    height: photoSize,
+                    cornerRadius: Dimens.cornerRadiusSmall
+                )
+                VStack(alignment: .leading, spacing: 2) {
+                    Text((item.title ?? "").homeTrimmed)
+                        .typography(Typography.titleSmall)
+                        .foregroundStyle(Color.white)
+                        .lineLimit(2)
+                    Text(artistSubtitle)
+                        .typography(Typography.bodySmall)
+                        .foregroundStyle(Color.white.opacity(0.9))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(inset)
+        }
+        .overlay(alignment: .bottom) {
+            HomeRecentProgressBar(item: item)
         }
         .frame(width: HomeMetrics.episodeCardWidth, height: HomeMetrics.episodeCardHeight)
         .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadiusSmall, style: .circular))
