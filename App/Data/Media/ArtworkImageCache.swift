@@ -73,8 +73,14 @@ actor ArtworkImageCache {
         }
 
         let task = Task<SendableImage?, Never> {
-            let headers = headers ?? (await Self.proxyAuthHeaders(for: url))
-            return await Self.fetchAndDownsample(url: url, maxPixelSize: maxPixelSize, headers: headers).map(SendableImage.init)
+            // `??` takes an autoclosure, which can't contain an `await`.
+            let resolvedHeaders: [String: String]?
+            if let headers {
+                resolvedHeaders = headers
+            } else {
+                resolvedHeaders = await Self.proxyAuthHeaders(for: url)
+            }
+            return await Self.fetchAndDownsample(url: url, maxPixelSize: maxPixelSize, headers: resolvedHeaders).map(SendableImage.init)
         }
         inFlight[key] = task
         let result = await task.value
