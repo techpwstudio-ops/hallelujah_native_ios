@@ -120,7 +120,14 @@ extension Endpoint {
     /// `body` for a GET request is query params — see `DioService.getData`'s
     /// own doc comment).
     static func creatorSongs(id: String, type: HomeContentType, page: Int) -> Endpoint {
-        .get("/creators/songs/\(id)?page=\(page)&type=\(type.rawValue)")
+        // `.all` means "no filter": Flutter's queue/"all" callers send no
+        // `type` at all (`QueueSourceService`'s `{'page': '1'}`). This sent
+        // `type=all` instead, and an artist's "Add to queue" came back with
+        // nothing to add.
+        if type == .all {
+            return .get("/creators/songs/\(id)?page=\(page)")
+        }
+        return .get("/creators/songs/\(id)?page=\(page)&type=\(type.rawValue)")
     }
 
     /// `getCreatorPlaylistsApi` — `/creators/playlists/:id`.
