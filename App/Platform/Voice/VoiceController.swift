@@ -97,6 +97,11 @@ final class VoiceController {
     private var vadSpeaking = false
     private var queueSpeaking = false
     private var replyDone = false
+    /// Music goes down for the whole conversation and comes back after
+    /// (`_pauseMusicForLoop` / `_resumeMusicIfWePaused`): resuming between
+    /// turns would play the song into the open mic.
+    private let musicHold = MusicPauseHold()
+
     private var lastSentenceSeq = 0
     private var bargeWatermark: Int?
     private var bargeSuppressedUntil: Date?
@@ -254,6 +259,9 @@ final class VoiceController {
         captureRestarts = 0
         resetTurn()
         fire(.started)
+        // Before the session switches to `.playAndRecord`, or the switch can
+        // let the song carry on under Emet's voice.
+        musicHold.pauseMusic()
 
         do {
             try await audioSession.acquireForConversation()
@@ -291,6 +299,7 @@ final class VoiceController {
         await speech.stopAll()
         channel.close()
         await audioSession.release()
+        musicHold.resumeMusic()
 
         vad.reset()
         resetTurn()
@@ -319,10 +328,11 @@ final class VoiceController {
         speech.dispose()
         deviceStt.dispose()
 
-        Task { [mic, channel, audioSession] in
+        Task { [mic, channel, audioSession, musicHold] in
             await mic.dispose()
             channel.close()
             await audioSession.release()
+            musicHold.resumeMusic()
         }
     }
 

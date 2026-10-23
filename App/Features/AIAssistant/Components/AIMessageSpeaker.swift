@@ -42,6 +42,9 @@ final class AIMessageSpeaker: NSObject {
     private var speakingGeneration = 0
     private var baseOffset = 0
     private var settleTask: Task<Void, Never>?
+    /// Keeps the song down while Emet reads (`tts_player_provider.dart`).
+    private let musicHold = MusicPauseHold()
+    private var isObservingMusic = false
 
     override init() {
         super.init()
@@ -57,9 +60,14 @@ final class AIMessageSpeaker: NSObject {
             return
         }
         guard let content, !content.isEmpty else { return }
-        stopUtterance()
+        stopUtterance(resumeMusic: false)
         let text = Self.stripMarkdown(content)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else {
+            musicHold.resumeMusic()
+            return
+        }
+        musicHold.pauseMusic()
+        observeMusic()
         activeMessageID = messageID
         fullText = text
         charTotal = (text as NSString).length
@@ -77,6 +85,7 @@ final class AIMessageSpeaker: NSObject {
             status = .paused
         case .paused:
             guard synthesizer.isPaused else { return }
+            musicHold.pauseMusic()
             synthesizer.continueSpeaking()
             status = .playing
         case .idle, .loading:
@@ -97,7 +106,7 @@ final class AIMessageSpeaker: NSObject {
 
     // MARK: - Private
 
-    private func stopUtterance() {
+    private func stopUtterance(resumeMusic: Bool = true) {
         generation += 1
         settleTask?.cancel()
         if synthesizer.isSpeaking || synthesizer.isPaused {
@@ -108,6 +117,30 @@ final class AIMessageSpeaker: NSObject {
         charOffset = 0
         charTotal = 0
         isRestarting = false
+        if resumeMusic { musicHold.resumeMusic() }
+    }
+
+    /// When the user starts music while Emet is speaking, pause the reading
+    /// (not close it — they keep their place), as `_playerSub` does in
+    /// `tts_player_provider.dart`.
+    private func observeMusic() {
+        guard !isObservingMusic,
+              let engine = DependencyContainer.current.resolveIfRegistered(AudioEngine.self) else { return }
+        isObservingMusic = true
+        withObservationTracking {
+            _ = engine.status
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.isObservingMusic = false
+                if engine.status == .playing, self.status == .playing, !self.isRestarting {
+                    self.musicHold.forget()
+                    self.synthesizer.pauseSpeaking(at: .word)
+                    self.status = .paused
+                }
+                if self.activeMessageID != nil { self.observeMusic() }
+            }
+        }
     }
 
     private func restart(from offset: Int) {
