@@ -53,8 +53,8 @@ enum AIErrorParser {
         if let isOnline {
             online = isOnline
         } else {
-            let reachability: (any ReachabilityMonitoring)? = DependencyContainer.current.resolveIfRegistered()
-            online = reachability?.isOnline ?? true
+            // A resolved monitor is never started and always reads online.
+            online = ReachabilityBroadcast.shared.isOnline
         }
         return online
             ? String(localized: "Connection failed. Please try again.")
