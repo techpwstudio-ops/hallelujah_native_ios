@@ -21,8 +21,11 @@ struct LanguagePickerSheet: View {
         self.languages = languages
         self.currentLanguage = currentLanguage
         self.onSelect = onSelect
-        let reachability: any ReachabilityMonitoring = DependencyContainer.current.resolve()
-        _isOnline = State(initialValue: reachability.isOnline)
+        // The app's live status. This used to resolve its own
+        // `ReachabilityMonitoring`, but the container builds a new monitor per
+        // resolve and nobody starts it, so it always read "online" and the
+        // offline filter below never applied.
+        _isOnline = State(initialValue: ReachabilityBroadcast.shared.isOnline)
     }
 
     /// Offline, a language can't be fetched on demand, so only ones already
@@ -66,6 +69,12 @@ struct LanguagePickerSheet: View {
                     }
                     .scrollDismissesKeyboard(.interactively)
                 }
+            }
+        }
+        // Flutter's `StreamBuilder` on `InternetService.onStatusChange`.
+        .task {
+            for await online in ReachabilityBroadcast.shared.changes() {
+                isOnline = online
             }
         }
     }

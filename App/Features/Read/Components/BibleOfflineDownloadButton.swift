@@ -18,8 +18,8 @@ func startBibleOfflineDownload(
         toast.show(String(localized: "The \(language) Bible is already downloading."))
         return
     }
-    let reachability: any ReachabilityMonitoring = DependencyContainer.current.resolve()
-    if !reachability.isOnline {
+    // See `LanguagePickerSheet`: a resolved monitor is never started.
+    if !ReachabilityBroadcast.shared.isOnline {
         toast.show(String(localized: "You need an internet connection to save the \(language) Bible for offline reading."))
         return
     }

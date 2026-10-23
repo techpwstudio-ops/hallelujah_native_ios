@@ -125,8 +125,10 @@ final class BibleOfflineDownloadService {
             language = saved
         }
         if isLanguageDownloaded(language) || isDownloading(language) { return }
-        let reachability = DependencyContainer.current.resolveIfRegistered((any ReachabilityMonitoring).self)
-        if let reachability, !reachability.isOnline { return }
+        // The live status, not a freshly resolved monitor: the container hands
+        // out a new, never-started `ReachabilityMonitoring` per resolve, and
+        // that one always reads "online".
+        if !ReachabilityBroadcast.shared.isOnline { return }
         await downloadLanguage(language)
     }
 
