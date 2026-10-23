@@ -73,7 +73,8 @@ actor ArtworkImageCache {
         }
 
         let task = Task<SendableImage?, Never> {
-            await Self.fetchAndDownsample(url: url, maxPixelSize: maxPixelSize, headers: headers).map(SendableImage.init)
+            let headers = headers ?? (await Self.proxyAuthHeaders(for: url))
+            return await Self.fetchAndDownsample(url: url, maxPixelSize: maxPixelSize, headers: headers).map(SendableImage.init)
         }
         inFlight[key] = task
         let result = await task.value
@@ -86,6 +87,20 @@ actor ArtworkImageCache {
             cache.setObject(result.image, forKey: key as NSString, cost: pixels * 4)
         }
         return result?.image
+    }
+
+    /// `S3Service.headersFor` (`s3_service.dart:315-323`): a proxy URL needs
+    /// the bearer token, a CDN URL must not get it. Every `ArtworkView` used
+    /// to fetch proxy images bare, so private uploads (Emet chat image
+    /// attachments, which are never CDN thumbnails) came back as an empty
+    /// box.
+    private static func proxyAuthHeaders(for url: URL) async -> [String: String]? {
+        let container = DependencyContainer.current
+        guard let configuration = container.resolveIfRegistered(AppConfiguration.self),
+              let host = url.host, host == configuration.proxyBaseURL.host,
+              let session = container.resolveIfRegistered(Session.self),
+              let token = await session.currentAccessToken() else { return nil }
+        return ["Authorization": "Bearer \(token)"]
     }
 
     private func cacheKey(url: URL, maxPixelSize: CGFloat) -> String {
