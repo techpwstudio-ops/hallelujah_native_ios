@@ -38,16 +38,16 @@ struct CropImageView: View {
                 if isLandscape {
                     HStack(spacing: 0) {
                         VStack(spacing: 0) {
-                            header
+                            header.zIndex(1)
                             cropArea
                         }
                         toolbar(horizontal: false)
                     }
                 } else {
                     VStack(spacing: 0) {
-                        header
+                        header.zIndex(1)
                         cropArea
-                        toolbar(horizontal: true)
+                        toolbar(horizontal: true).zIndex(1)
                     }
                 }
                 if isProcessing {
@@ -131,8 +131,10 @@ struct CropImageView: View {
                         .offset(offset)
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .clipped()
-                        .gesture(dragGesture(image: image, width: frameWidth, height: frameHeight))
-                        .simultaneousGesture(zoomGesture(image: image, width: frameWidth, height: frameHeight))
+                        // `.clipped()` only clips drawing: the cover-scaled
+                        // image still hit-tested far outside this area and
+                        // swallowed every tap on the header (close / Done).
+                        .allowsHitTesting(false)
                 }
                 CropScrim(frameWidth: frameWidth, frameHeight: frameHeight)
                     .fill(Color.black.opacity(0.55), style: FillStyle(eoFill: true))
@@ -141,6 +143,10 @@ struct CropImageView: View {
                     .allowsHitTesting(false)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
+            .contentShape(Rectangle())
+            .gesture(cropDragGesture(width: frameWidth, height: frameHeight))
+            .simultaneousGesture(cropZoomGesture(width: frameWidth, height: frameHeight))
             .onAppear { frameSide = side }
             .onChange(of: proxy.size) { _, newSize in frameSide = cropSide(in: newSize) }
         }
@@ -163,9 +169,10 @@ struct CropImageView: View {
         )
     }
 
-    private func dragGesture(image: UIImage, width: CGFloat, height: CGFloat) -> some Gesture {
+    private func cropDragGesture(width: CGFloat, height: CGFloat) -> some Gesture {
         DragGesture()
             .onChanged { value in
+                guard let image = displayImage else { return }
                 let proposed = CGSize(
                     width: committedOffset.width + value.translation.width,
                     height: committedOffset.height + value.translation.height
@@ -175,9 +182,10 @@ struct CropImageView: View {
             .onEnded { _ in committedOffset = offset }
     }
 
-    private func zoomGesture(image: UIImage, width: CGFloat, height: CGFloat) -> some Gesture {
+    private func cropZoomGesture(width: CGFloat, height: CGFloat) -> some Gesture {
         MagnifyGesture()
             .onChanged { value in
+                guard let image = displayImage else { return }
                 scale = min(max(committedScale * value.magnification, 1), 8)
                 offset = clamp(offset, image: image, width: width, height: height, scale: scale)
             }
