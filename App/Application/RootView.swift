@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Branches between the splash and whatever it resolves to
 /// (`FlashScreen`'s `NavigationService.offAll(destination)` —
