@@ -131,14 +131,14 @@ struct SettingsView: View {
                     leading: { leadingIcon("asset:settings_download_icon") },
                     trailing: { AppToggle(isOn: downloadOverWifiOnlyBinding) }
                 )
-                if isVerseOfDayHidden {
-                    ParityListTile(
-                        title: "Verse of Day",
-                        subtitle: Text("Hidden for today. Toggle to show."),
-                        leading: { leadingIcon("book") },
-                        trailing: { AppToggle(isOn: verseOfDayBinding) }
-                    )
-                }
+                // Always listed, on while the verse is hidden: hiding it from
+                // Home turns this on, switching it off brings the card back.
+                ParityListTile(
+                    title: "Hide Verse of the Day",
+                    subtitle: Text("Hides the Verse of the Day on Home for today"),
+                    leading: { leadingIcon("book") },
+                    trailing: { AppToggle(isOn: verseOfDayBinding) }
+                )
 
                 Spacer().frame(height: Dimens.dividerSpacing)
                 ParityHeading(text: "App & Terms")
@@ -191,6 +191,10 @@ struct SettingsView: View {
             isDownloadOverWifiOnly = keyValueStore.bool(forKey: Self.downloadOverWifiOnlyKey)
             isVerseOfDayHidden = VerseOfDayLocalStore(keyValueStore: keyValueStore).isHiddenToday
         }
+        // Hidden or shown from Home while this screen is alive.
+        .onReceive(NotificationCenter.default.publisher(for: .verseOfDayDidChange)) { _ in
+            isVerseOfDayHidden = VerseOfDayLocalStore(keyValueStore: keyValueStore).isHiddenToday
+        }
         .parityFitSheet(isPresented: $isAudioQualityPickerPresented) {
             AudioQualitySheet(selected: selectedAudioQuality) { quality in
                 let changed = quality != selectedAudioQuality
@@ -215,10 +219,13 @@ struct SettingsView: View {
 
     private var verseOfDayBinding: Binding<Bool> {
         Binding(
-            get: { false },
-            set: { _ in
-                VerseOfDayLocalStore(keyValueStore: keyValueStore).unhide()
-                isVerseOfDayHidden = false
+            get: { isVerseOfDayHidden },
+            set: { hide in
+                // Same stored value Home's long-press "Hide for today" writes;
+                // both post `.verseOfDayDidChange`, so the Home card updates.
+                let store = VerseOfDayLocalStore(keyValueStore: keyValueStore)
+                if hide { store.hideForToday() } else { store.unhide() }
+                isVerseOfDayHidden = hide
             }
         )
     }

@@ -14,6 +14,7 @@ import UIKit
 /// comment on why there's no network fetch here).
 struct VerseOfDayCardView: View {
     @State private var viewModel = VerseOfDayCardViewModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -27,6 +28,12 @@ struct VerseOfDayCardView: View {
         // The Home feed, a delivered push or a realtime update just stored a
         // newer verse / count (Flutter's `VerseOfDayHistoryBloc` state stream).
         .onReceive(NotificationCenter.default.publisher(for: .verseOfDayDidChange)) { _ in
+            Task { @MainActor in await viewModel.refresh() }
+        }
+        // "Hide for today" ends at midnight: re-check when the app comes
+        // back rather than staying hidden until the next relaunch.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
             Task { @MainActor in await viewModel.refresh() }
         }
     }
@@ -59,8 +66,7 @@ private struct VerseOfDayCardContentView: View {
         VStack(alignment: .leading, spacing: 0) {
             VerseOfDayContentBlock(
                 verse: verse,
-                onVerseTap: navigateToReader,
-                onLongPress: { showOptionsSheet = true }
+                onVerseTap: navigateToReader
             )
             Spacer().frame(height: 6)
             VerseOfDayMetaText(verse: verse)
@@ -84,9 +90,12 @@ private struct VerseOfDayCardContentView: View {
             .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous))
         )
         .contentShape(Rectangle())
-        .onLongPressGesture {
-            showOptionsSheet = true
-        }
+        // Simultaneous, so a long-press anywhere on the card opens the
+        // options without swallowing the verse tap, the action buttons or
+        // the feed's scrolling.
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.5).onEnded { _ in showOptionsSheet = true }
+        )
         .readSheet(
             isPresented: $showOptionsSheet,
             onDismiss: {
@@ -98,7 +107,9 @@ private struct VerseOfDayCardContentView: View {
         ) {
             VerseOfDayOptionsSheet(
                 verse: verse,
-                onHide: { viewModel.hideForToday() },
+                // After the sheet is gone: hiding first removed the card the
+                // sheet was presented from, yanking the sheet away mid-tap.
+                onHide: { pendingAfterOptions = { withAnimation { viewModel.hideForToday() } } },
                 onAskEmet: { pendingAfterOptions = { showAskEmetSheet = true } },
                 onClose: { showOptionsSheet = false }
             )
@@ -129,13 +140,9 @@ private struct VerseOfDayCardContentView: View {
 /// the verse between bold-italic quotation marks (text bodyLarge w700).
 struct VerseOfDayContentBlock: View {
     let verse: VerseOfDay
+    /// A plain tap gesture, not a `Button`: a button swallowed the touch so
+    /// the card's long-press (its options sheet) never fired over the verse.
     let onVerseTap: () -> Void
-    /// The card's options sheet. The verse fills most of the card, and a
-    /// `Button` here swallowed the touch so the card's own long-press never
-    /// fired over it — the "Hide for today" sheet was effectively unreachable.
-    /// Tap and long-press on the same view mirror Flutter's outer
-    /// `GestureDetector(onLongPress:)` beating the inner tap in the arena.
-    var onLongPress: (() -> Void)? = nil
 
     private var comma: Text {
         Text("\"")
@@ -158,7 +165,6 @@ struct VerseOfDayContentBlock: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onVerseTap)
-                .onLongPressGesture { onLongPress?() }
                 .accessibilityAddTraits(.isButton)
         }
     }
