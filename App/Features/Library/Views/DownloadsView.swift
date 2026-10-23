@@ -73,6 +73,13 @@ struct DownloadsView: View {
             content: { list }
         )
         .background(Color.black)
+        // Downloads saved before thumbnails were kept on disk: fill them in
+        // while online so they survive going offline.
+        .task {
+            for task in allTasks where task.state == .completed {
+                DownloadEngine.keepArtworkForOffline(path: task.songArtworkPath, variants: task.songArtworkVariants)
+            }
+        }
     }
 
     private var typeToggle: some View {

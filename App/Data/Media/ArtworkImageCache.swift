@@ -103,6 +103,18 @@ actor ArtworkImageCache {
         return ["Authorization": "Bearer \(token)"]
     }
 
+    /// Fetches `url` once and keeps the bytes on disk so the image still
+    /// loads with no connection — called when a song is downloaded.
+    static func keepForOffline(_ url: URL) async {
+        guard !OfflineArtworkStore.contains(url) else { return }
+        var request = URLRequest(url: url)
+        (await proxyAuthHeaders(for: url))?.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+        guard let (data, response) = try? await session.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode ?? 200 == 200,
+              !data.isEmpty else { return }
+        OfflineArtworkStore.save(data, for: url)
+    }
+
     private func cacheKey(url: URL, maxPixelSize: CGFloat) -> String {
         "\(url.absoluteString)#\(Int(maxPixelSize.rounded()))"
     }
@@ -120,7 +132,11 @@ actor ArtworkImageCache {
     private static func fetchAndDownsample(url: URL, maxPixelSize: CGFloat, headers: [String: String]?) async -> UIImage? {
         var request = URLRequest(url: url)
         headers?.forEach { request.setValue($1, forHTTPHeaderField: $0) }
-        guard let (data, _) = try? await session.data(for: request) else { return nil }
+        // Offline (or the fetch failed): a downloaded song's artwork was kept
+        // on disk by `keepForOffline(_:)`.
+        guard let data = (try? await session.data(for: request))?.0 ?? OfflineArtworkStore.data(for: url) else {
+            return nil
+        }
 
         let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else { return nil }

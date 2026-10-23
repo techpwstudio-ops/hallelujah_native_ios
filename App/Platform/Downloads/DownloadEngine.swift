@@ -167,7 +167,15 @@ final class DownloadEngine {
             songFeaturedArtists: song.featuredArtists
         )
         persist()
+        Self.keepArtworkForOffline(path: song.displayImage, variants: song.displayImageVariants)
         await startNextQueuedIfNeeded()
+    }
+
+    /// The thumbnail the Downloads list shows (`CreatorSongRow`, `.sm`), kept
+    /// on disk while we're still online so it survives going offline.
+    static func keepArtworkForOffline(path: String?, variants: String?) {
+        guard let url = ArtworkURLResolver().resolve(path: path, variant: .sm, allowedVariants: variants) else { return }
+        Task.detached { await ArtworkImageCache.keepForOffline(url) }
     }
 
     func pause(songID: String) {
@@ -300,6 +308,7 @@ final class DownloadEngine {
                 try? fileManager.removeItem(at: url)
             }
         }
+        OfflineArtworkStore.removeAll()
         persist()
         CarIntegrationNotifier.downloadsChanged()
     }
