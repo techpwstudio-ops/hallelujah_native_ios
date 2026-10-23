@@ -51,10 +51,14 @@ case "${CI_XCODE_SCHEME:-}" in
   *Production*) IS_PRODUCTION=1 ;;
 esac
 
-# Never let QA ship to the prod branch's workflow, or the reverse.
+# Xcode Cloud builds only qa and prod (main and everything else is skipped by
+# the workflows' start conditions; this is the backstop if one is misconfigured),
+# and a branch must never build the other branch's scheme.
 case "${CI_BRANCH:-}" in
   prod) [ "$IS_PRODUCTION" = 1 ] || fail "branch prod must archive the GHallelujah Production scheme (got '${CI_XCODE_SCHEME:-}')." ;;
   qa) [ "$IS_PRODUCTION" = 0 ] || fail "branch qa must not archive the Production scheme (got '${CI_XCODE_SCHEME:-}')." ;;
+  "") ;;
+  *) fail "Xcode Cloud only builds the qa and prod branches (got '$CI_BRANCH'). Set this workflow's start condition to one of them." ;;
 esac
 
 if [ "$IS_PRODUCTION" = 1 ]; then

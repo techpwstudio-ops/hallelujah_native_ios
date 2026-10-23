@@ -13,6 +13,11 @@ branch only decides which workflow runs. `ci_scripts/ci_post_clone.sh` fails the
 and scheme disagree (`qa` with the Production scheme, or `prod` with anything else), so a
 misconfigured workflow cannot ship the wrong backend.
 
+Xcode Cloud does not run on `main` (or any other branch). Each workflow's start condition is a
+single branch, `qa` or `prod`, and there is no workflow for `main`. If a workflow is ever pointed at
+another branch, `ci_post_clone.sh` fails the build immediately instead of archiving it. Delete any
+workflow you created earlier with a `main` start condition.
+
 The `prod` workflow archives the Production scheme, publishes to TestFlight internal testing, and that
 same build is what you submit for App Store release. Nothing is rebuilt between testing and release,
 so what testers ran is what users get.
