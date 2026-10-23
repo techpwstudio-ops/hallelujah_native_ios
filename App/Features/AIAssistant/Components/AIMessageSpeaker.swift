@@ -42,6 +42,11 @@ final class AIMessageSpeaker: NSObject {
     private var speakingGeneration = 0
     private var baseOffset = 0
     private var settleTask: Task<Void, Never>?
+    /// The utterance being spoken. Delegate callbacks for any other one (a
+    /// reply that was replaced, or a stop that reports late) are ignored;
+    /// without this a late "finished" from the previous answer closed the
+    /// bar right after the next one started, so it flickered in and out.
+    private var currentUtterance: ObjectIdentifier?
     /// Keeps the song down while Emet reads (`tts_player_provider.dart`).
     private let musicHold = MusicPauseHold()
     private var isObservingMusic = false
@@ -83,6 +88,8 @@ final class AIMessageSpeaker: NSObject {
             guard synthesizer.isSpeaking else { return }
             synthesizer.pauseSpeaking(at: .word)
             status = .paused
+            // Emet paused: give the song back until Emet is resumed.
+            musicHold.resumeMusic()
         case .paused:
             guard synthesizer.isPaused else { return }
             musicHold.pauseMusic()
@@ -109,6 +116,7 @@ final class AIMessageSpeaker: NSObject {
     private func stopUtterance(resumeMusic: Bool = true) {
         generation += 1
         settleTask?.cancel()
+        currentUtterance = nil
         if synthesizer.isSpeaking || synthesizer.isPaused {
             synthesizer.stopSpeaking(at: .immediate)
         }
@@ -133,7 +141,10 @@ final class AIMessageSpeaker: NSObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.isObservingMusic = false
-                if engine.status == .playing, self.status == .playing, !self.isRestarting {
+                // Ignore the player echoing our own pause/resume: only a
+                // user pressing play should pause the reading.
+                if engine.status == .playing, self.status == .playing, !self.isRestarting,
+                   !self.musicHold.changedMusicRecently {
                     self.musicHold.forget()
                     self.synthesizer.pauseSpeaking(at: .word)
                     self.status = .paused
@@ -148,6 +159,7 @@ final class AIMessageSpeaker: NSObject {
         generation = target
         isRestarting = true
         charOffset = offset
+        currentUtterance = nil
         if synthesizer.isSpeaking || synthesizer.isPaused {
             synthesizer.stopSpeaking(at: .immediate)
         }
@@ -171,6 +183,7 @@ final class AIMessageSpeaker: NSObject {
         let utterance = AVSpeechUtterance(string: remainder)
         utterance.voice = voice
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        currentUtterance = ObjectIdentifier(utterance)
         synthesizer.speak(utterance)
         status = .playing
     }
@@ -185,13 +198,13 @@ final class AIMessageSpeaker: NSObject {
         return space.location + 1
     }
 
-    fileprivate func handleWillSpeak(range: NSRange) {
-        guard generation == speakingGeneration else { return }
+    fileprivate func handleWillSpeak(range: NSRange, utterance: ObjectIdentifier) {
+        guard utterance == currentUtterance, generation == speakingGeneration else { return }
         charOffset = baseOffset + range.location
     }
 
-    fileprivate func handleDidFinish() {
-        guard generation == speakingGeneration, !isRestarting else { return }
+    fileprivate func handleDidFinish(utterance: ObjectIdentifier) {
+        guard utterance == currentUtterance, generation == speakingGeneration, !isRestarting else { return }
         stopUtterance()
     }
 
@@ -231,14 +244,16 @@ extension AIMessageSpeaker: AVSpeechSynthesizerDelegate {
         willSpeakRangeOfSpeechString characterRange: NSRange,
         utterance: AVSpeechUtterance
     ) {
+        let id = ObjectIdentifier(utterance)
         Task { @MainActor [weak self] in
-            self?.handleWillSpeak(range: characterRange)
+            self?.handleWillSpeak(range: characterRange, utterance: id)
         }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        let id = ObjectIdentifier(utterance)
         Task { @MainActor [weak self] in
-            self?.handleDidFinish()
+            self?.handleDidFinish(utterance: id)
         }
     }
 

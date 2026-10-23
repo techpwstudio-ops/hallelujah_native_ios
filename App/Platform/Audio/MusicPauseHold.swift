@@ -13,6 +13,23 @@ import Foundation
 @MainActor
 final class MusicPauseHold {
     private(set) var pausedMusic = false
+    /// When this hold last paused or resumed the player. The player reports
+    /// the new state a moment later, and an observer must not mistake that
+    /// echo for the user pressing play themselves.
+    private var lastChange: ContinuousClock.Instant?
+
+    private var lastResume: ContinuousClock.Instant?
+
+    private var resumedRecently: Bool {
+        guard let lastResume else { return false }
+        return ContinuousClock.now - lastResume < .milliseconds(1500)
+    }
+
+    /// True for a short while after `pauseMusic()`/`resumeMusic()` acted.
+    var changedMusicRecently: Bool {
+        guard let lastChange else { return false }
+        return ContinuousClock.now - lastChange < .milliseconds(1500)
+    }
 
     private var engine: AudioEngine? {
         DependencyContainer.current.resolveIfRegistered(AudioEngine.self)
@@ -24,6 +41,15 @@ final class MusicPauseHold {
         switch engine.status {
         case .playing, .loading:
             pausedMusic = true
+            lastChange = .now
+            lastResume = nil
+            engine.pause()
+        case .paused where resumedRecently:
+            // We just asked it to resume and the player hasn't reported
+            // playing yet: it is about to play, so pause it again.
+            pausedMusic = true
+            lastChange = .now
+            lastResume = nil
             engine.pause()
         case .idle, .paused, .failed:
             break
@@ -35,7 +61,11 @@ final class MusicPauseHold {
     func resumeMusic() {
         guard pausedMusic else { return }
         pausedMusic = false
-        guard let engine, engine.status == .paused else { return }
+        // Our own pause may not have been reported yet (still `.playing`);
+        // resuming then is harmless and keeps the song from staying paused.
+        guard let engine, engine.status == .paused || changedMusicRecently else { return }
+        lastChange = .now
+        lastResume = .now
         engine.resume()
     }
 
