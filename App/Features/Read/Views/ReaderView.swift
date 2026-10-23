@@ -30,7 +30,21 @@ struct ReaderView: View {
     @State private var showLanguage = false
     @State private var showNotes = false
     @State private var showTableOfContents = false
-    @State private var chapterGridBook: BibleBook?
+    /// The book whose chapters the table-of-contents sheet is showing; `nil`
+    /// shows the book list.
+    @State private var tocChapterBook: BibleBook?
+
+    private static let bookPickerAnimation = Animation.easeInOut(duration: 0.25)
+
+    /// The table of contents' height, or the chapter grid's for its book.
+    /// Changing it while the sheet is up animates the sheet to the new size.
+    private var bookPickerDetent: PresentationDetent {
+        guard let book = tocChapterBook else { return .fraction(0.75) }
+        return .height(ChapterGridSheet.sheetHeight(
+            chapterCount: book.chapters,
+            screenHeight: UIScreen.main.bounds.height
+        ))
+    }
     @State private var verseOfDayCommentsID: String?
     @State private var noteEditorVerse: BibleVerse?
     @State private var askEmetVerse: AskEmetSelection?
@@ -125,43 +139,53 @@ struct ReaderView: View {
                 )
             }
         }
-        .readSheet(
-            isPresented: $showTableOfContents,
-            onDismiss: runPendingAction,
-            detents: [.fraction(0.75)],
-            cornerRadius: 16
-        ) {
-            BookTableOfContentsSheet(
-                books: viewModel.books,
-                currentBookNumber: viewModel.currentBook?.bookNumber,
-                language: viewModel.currentLanguage
-            ) { book in
-                showTableOfContents = false
-                pendingAfterDismiss = { chapterGridBook = book }
-            }
-        }
-        .readSheet(
-            item: $chapterGridBook,
-            onDismiss: runPendingAction,
-            detents: [.height(ChapterGridSheet.sheetHeight(
-                chapterCount: chapterGridBook?.chapters ?? 0,
-                screenHeight: UIScreen.main.bounds.height
-            ))]
-        ) { book in
-            ChapterGridSheet(
-                book: book,
-                language: viewModel.currentLanguage,
-                currentChapter: viewModel.currentChapterNumber,
-                currentBookNumber: viewModel.currentBook?.bookNumber,
-                onBack: {
-                    chapterGridBook = nil
-                    pendingAfterDismiss = { showTableOfContents = true }
-                },
-                onSelect: { chapter in
-                    chapterGridBook = nil
-                    viewModel.select(bookNumber: book.bookNumber, chapterNumber: chapter)
+        // Books and chapters share one sheet, like Flutter's table of
+        // contents: picking a book swaps the grid in place (and resizes the
+        // sheet) instead of closing this sheet and opening a second one.
+        .sheet(isPresented: $showTableOfContents, onDismiss: {
+            tocChapterBook = nil
+            runPendingAction()
+        }) {
+            ReadSheetContainer {
+                ZStack {
+                    if let book = tocChapterBook {
+                        ChapterGridSheet(
+                            book: book,
+                            language: viewModel.currentLanguage,
+                            currentChapter: viewModel.currentChapterNumber,
+                            currentBookNumber: viewModel.currentBook?.bookNumber,
+                            onBack: {
+                                withAnimation(Self.bookPickerAnimation) { tocChapterBook = nil }
+                            },
+                            onSelect: { chapter in
+                                showTableOfContents = false
+                                viewModel.select(bookNumber: book.bookNumber, chapterNumber: chapter)
+                            }
+                        )
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .trailing).combined(with: .opacity)
+                        ))
+                    } else {
+                        BookTableOfContentsSheet(
+                            books: viewModel.books,
+                            currentBookNumber: viewModel.currentBook?.bookNumber,
+                            language: viewModel.currentLanguage
+                        ) { book in
+                            withAnimation(Self.bookPickerAnimation) { tocChapterBook = book }
+                        }
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .leading).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        ))
+                    }
                 }
-            )
+                .clipped()
+            }
+            .presentationDetents([bookPickerDetent])
+            .presentationDragIndicator(.hidden)
+            .presentationCornerRadius(16)
+            .presentationBackground(ReadPalette.sheetBackground)
         }
         .readSheet(item: $noteEditorVerse, detents: [.large]) { verse in
             VerseNoteEditorSheet(
@@ -505,7 +529,8 @@ struct ReaderView: View {
                 }
                 Button {
                     if let book = viewModel.currentBook {
-                        chapterGridBook = book
+                        tocChapterBook = book
+                        showTableOfContents = true
                     }
                 } label: {
                     Text("\(viewModel.currentChapterNumber)/\(viewModel.maxChapters)")
