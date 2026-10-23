@@ -32,7 +32,7 @@ ORGANIZATION_NAME = Hallelujah
 // above Flutter's last release (4.0.2, build 330) or the App Store / installs
 // treat it as a downgrade. CI overrides CURRENT_PROJECT_VERSION.
 MARKETING_VERSION = 4.0.3
-CURRENT_PROJECT_VERSION = 332
+CURRENT_PROJECT_VERSION = 333
 
 // ── Signing ─────────────────────────────────────────────────────────────────
 // DEVELOPMENT_TEAM is intentionally not committed. Set it in

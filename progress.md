@@ -530,6 +530,28 @@ Answer before the task that depends on it.
   locked package sources (hive 2.2.3, flutter_secure_storage_darwin 0.3.2).
   Downloads and other Hive-box settings (audio quality, reader colours, last song)
   are still not migrated.
+  **Two-way handoff added 2026-10-21 (UNVERIFIED — not built or run):** so a later
+  native → Flutter App Store update keeps the session too, both builds keep one
+  Keychain record current — generic password, service
+  `com.hallelujah.user.session-handoff`, account `session`, after-first-unlock, not
+  synchronizable, JSON `{"version":1,"writer":"native"|"flutter","deviceId":…,
+  "session":null|{"tokens":{token,refreshToken,accessTokenExpiry,refreshTokenExpiry},
+  "user":{…},"membership":{…}|null}}` (`user`/`membership` in the server's wire
+  shape). Each build rewrites it at launch and on every token/user/membership change.
+  At launch a record stamped by the *other* build wins: same account, or nobody
+  signed in here → adopted; signed out there, or into another account → the local
+  session ends and the user signs in again. Native: `SessionHandoff`
+  (`App/Core/Security/`), run from `AppComposition` before the stores load, publishing
+  through `PublishingTokenStore`/`PublishingKeyValueStore`. `LegacyFlutterSessionMigration`
+  now only runs when there is no Flutter-written record (Flutter builds older than the
+  handoff), throws so an unreadable Keychain/file retries next launch, is marked done
+  when a record is adopted, and skips only when native already has tokens *and* a
+  cached user. Flutter side — uncommitted in `../ghallelujah`, must ship in any future
+  Flutter release: `lib/services/session_handoff_service.dart`, called from `main.dart`
+  after `StorageService.init()`; publish hooks in `lib/utils/session.dart`;
+  `lib/views/launch/flash.dart` signs out when the native app ended the session. A
+  Flutter release after native needs a version above native's 4.0.3 (332) — Flutter's
+  `dev` branch is already at 4.0.3+333.
 - **Q5 (blocks T15) — Firebase. ANSWERED 2026-09-16 by user direction:** all five
   products the Flutter app uses carry over — Auth (phone OTP, feeds T20-T24), App Check,
   Cloud Messaging (FCM, feeds T66's push notifications / push-driven deep-linked taps —
