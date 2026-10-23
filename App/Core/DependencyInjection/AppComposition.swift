@@ -144,6 +144,11 @@ enum AppComposition {
                 Task { @MainActor in librarySavedStore.clear() }
                 // Recommendations belong to the signed-out user's taste.
                 Task { @MainActor in container.resolve(RelatedContentService.self).clear() }
+                // `StopPlayerEvent` on logout: the signed-out user's song must
+                // not keep playing (or stay on the lock screen / CarPlay) under
+                // the sign-in screen. Resolved lazily because `QueueController`
+                // is constructed further below this closure.
+                Task { @MainActor in container.resolveIfRegistered(QueueController.self)?.clear() }
                 // T26 — tells `RootView` to fall back to the sign-in flow
                 // from wherever it currently is, matching `session.dart`'s
                 // `NavigationService.offAll(AuthenticationPage.routeName)`.
