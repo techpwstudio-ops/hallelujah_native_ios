@@ -118,6 +118,10 @@ final class AudioEngine {
     nonisolated(unsafe) private var itemFailureObserver: NSObjectProtocol?
     private var currentItemObservation: NSKeyValueObservation?
     private var timeControlStatusObservation: NSKeyValueObservation?
+    /// `status` of whichever item is current. A stream refused before it
+    /// starts (a 401 on the first request) only ever flips this to
+    /// `.failed` — `FailedToPlayToEndTime` never fires for it.
+    private var currentItemStatusObservation: NSKeyValueObservation?
     nonisolated(unsafe) private var timeObserverToken: Any?
 
     init(
@@ -544,6 +548,7 @@ final class AudioEngine {
         currentItemObservation = player.observe(\.currentItem, options: [.new]) { [weak self] player, _ in
             Task { @MainActor in
                 guard let self else { return }
+                self.observeCurrentItemStatus()
                 if player.currentItem == nil {
                     await self.onQueueExhausted?()
                 } else {
@@ -554,6 +559,18 @@ final class AudioEngine {
         timeControlStatusObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
             Task { @MainActor in
                 self?.applyTimeControlStatus(player.timeControlStatus)
+            }
+        }
+    }
+
+    /// `.initial` as well: a lookahead item that already failed while it
+    /// waited reports it the moment it becomes current.
+    private func observeCurrentItemStatus() {
+        currentItemStatusObservation = player.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+            guard item.status == .failed else { return }
+            let identifier = ObjectIdentifier(item)
+            Task { @MainActor in
+                await self?.handleItemFailure(identifier: identifier)
             }
         }
     }
@@ -616,7 +633,7 @@ final class AudioEngine {
 
         var options: [String: Any] = [:]
         if resolved.requiresAuthHeader {
-            let token = await tokenProvider.currentAccessToken() ?? ""
+            let token = await tokenProvider.validAccessToken() ?? ""
             options["AVURLAssetHTTPHeaderFieldsKey"] = [
                 "Content-Type": "application/json",
                 "Authorization": "Bearer \(token)",
@@ -649,6 +666,11 @@ final class AudioEngine {
         }
     }
 
+    /// An HTTP 401/403 in the item's access/error log.
+    private static func isAuthFailure(_ item: AVPlayerItem) -> Bool {
+        item.errorLog()?.events.contains { [401, 403].contains($0.errorStatusCode) } ?? false
+    }
+
     private func handleItemFailure(identifier: ObjectIdentifier) async {
         guard let currentItem = player.currentItem, ObjectIdentifier(currentItem) == identifier,
               let songID = itemSongIDs[identifier],
@@ -663,6 +685,15 @@ final class AudioEngine {
         retriedViaProxy.insert(song.id)
         logger.warning("playback item failed for song \(song.id); retrying via proxy")
 
+        // The stream was refused for the token (stale after an update or a
+        // long background): get a fresh one before the retry, or the retry
+        // carries the same dead token and the song is stuck loading until
+        // the user signs out and in again.
+        if Self.isAuthFailure(currentItem) {
+            logger.warning("playback item for song \(song.id) was refused (auth); refreshing the session")
+            _ = try? await tokenProvider.refreshIfNeeded()
+        }
+
         guard let retryItem = await makePlayerItem(for: song, forceProxy: true) else {
             status = .failed(String(localized: "Couldn't play this song"))
             return
@@ -672,7 +703,9 @@ final class AudioEngine {
         let stillCurrent = player.currentItem.map { ObjectIdentifier($0) == identifier } ?? false
         guard stillCurrent else { return }
 
-        let wasPlaying = status == .playing
+        // `.loading` counts: a song that never started was still meant to
+        // play, and leaving the retry paused is the "stuck" player.
+        let wasPlaying = status == .playing || status == .loading
         player.replaceCurrentItem(with: retryItem)
         if wasPlaying {
             activateSessionAndPlay()

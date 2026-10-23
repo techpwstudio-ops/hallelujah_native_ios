@@ -123,7 +123,7 @@ final class NowPlayingCoordinator {
         guard let proxyHost, url.host == proxyHost else {
             return await ArtworkImageCache.shared.image(for: url, maxPixelSize: Self.artworkMaxPixelSize)
         }
-        let token = await tokenProvider.currentAccessToken() ?? ""
+        let token = await tokenProvider.validAccessToken() ?? ""
         return await ArtworkImageCache.shared.image(
             for: url, maxPixelSize: Self.artworkMaxPixelSize, headers: ["Authorization": "Bearer \(token)"]
         )

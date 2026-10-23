@@ -83,6 +83,19 @@ actor Session: AuthTokenProviding {
         return tokens?.accessToken
     }
 
+    /// `refreshIfNeeded` before handing the token out, as Dart's request
+    /// path does: right after launch (or an app update) the stored access
+    /// token is usually stale, and the token monitor only refreshes it a
+    /// couple of seconds later. Anything built in that window (the restored
+    /// player queue) carried a dead token and kept failing. A failed refresh
+    /// still returns the current token; callers fall back to their 401 path.
+    func validAccessToken() async -> String? {
+        if tokens != nil, isAccessTokenExpired() {
+            _ = try? await refreshIfNeeded()
+        }
+        return currentAccessToken()
+    }
+
     /// Matches Dart's `_isExpiringSoon` buffer (`lib/utils/session.dart`,
     /// default `bufferSeconds: 120`): expired the moment it enters its last
     /// 2 minutes, not only once it actually lapses. No tokens at all counts

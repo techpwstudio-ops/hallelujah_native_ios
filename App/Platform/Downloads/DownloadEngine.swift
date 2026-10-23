@@ -399,7 +399,7 @@ final class DownloadEngine {
             // this). May go stale by the time the OS actually runs the
             // background task — acceptable per this task's own contract;
             // the user retries with a fresh token if that happens.
-            let token = await tokenProvider.currentAccessToken() ?? ""
+            let token = await tokenProvider.validAccessToken() ?? ""
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 

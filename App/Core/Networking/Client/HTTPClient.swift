@@ -155,7 +155,7 @@ final class HTTPClient: Sendable {
     }
 
     private func headers() async -> [String: String] {
-        let token = await authProvider?.currentAccessToken() ?? ""
+        let token = await authProvider?.validAccessToken() ?? ""
         // `buildHeaders()` (`DioService.dart`): app-check-token, device-id,
         // device-model, os, app-version, build-number. Several endpoints
         // branch on `os` server-side (`getPremiumPlans`/

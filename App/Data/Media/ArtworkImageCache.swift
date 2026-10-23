@@ -105,7 +105,7 @@ actor ArtworkImageCache {
         guard let configuration = container.resolveIfRegistered(AppConfiguration.self),
               let host = url.host, host == configuration.proxyBaseURL.host,
               let session = container.resolveIfRegistered(Session.self),
-              let token = await session.currentAccessToken() else { return nil }
+              let token = await session.validAccessToken() else { return nil }
         return ["Authorization": "Bearer \(token)"]
     }
 
