@@ -66,8 +66,16 @@ struct AppSheetContainer<Content: View>: View {
             }
             content
         }
-        .frame(maxWidth: .infinity)
-        .background(Self.fill, in: sheetShape)
+        // Fill the whole detent, not just the content's height: the sheet's
+        // own background is `.clear`, so a menu shorter than `.medium` used
+        // to leave a see-through band under it with the screen behind
+        // showing through (the "odd overlay" on the playlist ⋯ menu).
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background {
+            sheetShape
+                .fill(Self.fill)
+                .ignoresSafeArea(edges: .bottom)
+        }
         .onAppear { coordinator?.sheetPresented() }
         .onDisappear { coordinator?.sheetDismissed() }
     }
