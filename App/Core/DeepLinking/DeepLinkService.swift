@@ -131,7 +131,12 @@ final class DeepLinkService {
                 ToastCenter.shared.show("Unable to open this link. Please try again.")
                 return
             }
-            openShareable(shareableType: validation.deepLink.shareableType, item: validation.item, coordinator: coordinator)
+            // Flutter's `openShareable` is a no-op without an item.
+            guard let item = validation.item else {
+                logger.warning("deep link \(code) validate returned no item")
+                return
+            }
+            openShareable(shareableType: validation.shareableType, item: item, coordinator: coordinator)
         } catch {
             logger.warning("deep link \(code) validate failed: \(error)")
         }
@@ -358,27 +363,36 @@ private struct ShareLinkDataDTO: Decodable {
     let link: String
     let image: String?
     let imageVariants: String?
+
+    private enum CodingKeys: String, CodingKey { case link, image, imageVariants }
+
+    /// Only `link` is required; the card image is optional extra, so a
+    /// mistyped image field must never fail minting the link itself.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        link = try container.decode(String.self, forKey: .link)
+        image = try? container.decodeIfPresent(String.self, forKey: .image)
+        imageVariants = try? container.decodeIfPresent(String.self, forKey: .imageVariants)
+    }
 }
 
 /// The `{deepLink, item}` envelope `handle()` expects from
-/// `validateDeepLinkApi` — parsed with `JSONSerialization` rather than
-/// `Codable` for `item`, since its shape varies per `ShareableType` and
-/// nothing decodes it into a model yet (see `openShareable`'s note on
-/// caching).
+/// `validateDeepLinkApi`, read with `JSONSerialization` the way Flutter reads
+/// it (`body['deepLink']`, `body['item']`): only `shareableType` is needed,
+/// so nothing else in `deepLink` is decoded. Strict `Decodable` into
+/// `DeepLink` meant any field the server sent with another type (a number,
+/// an object) failed the whole decode and the link ended in "Unable to open
+/// this link", where Flutter's untyped read would have opened it.
 private struct DeepLinkValidationResponse {
-    let deepLink: DeepLink
-    let item: [String: Any]
+    let shareableType: String?
+    let item: [String: Any]?
 
     init?(data: Data) {
-        guard
-            let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let deepLinkJSON = root["deepLink"] as? [String: Any],
-            let item = root["item"] as? [String: Any],
-            let deepLinkData = try? JSONSerialization.data(withJSONObject: deepLinkJSON),
-            let deepLink = try? JSONDecoder().decode(DeepLink.self, from: deepLinkData)
-        else { return nil }
-
-        self.deepLink = deepLink
-        self.item = item
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        // Tolerate the usual `{data: {...}}` envelope as well as the bare one.
+        let body = (root["deepLink"] == nil ? root["data"] as? [String: Any] : nil) ?? root
+        guard let deepLinkJSON = body["deepLink"] as? [String: Any] else { return nil }
+        shareableType = deepLinkJSON["shareableType"] as? String
+        item = body["item"] as? [String: Any]
     }
 }
