@@ -45,7 +45,7 @@ struct AppSheetContainer<Content: View>: View {
     /// Material 3 default bottom-sheet top corner radius.
     private static var topRadius: CGFloat { 28 }
     /// `ColorTheme.bottomSheetBgColor`.
-    private static var fill: Color { Color(red: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255) }
+    static var fill: Color { Color(red: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255) }
 
     private var sheetShape: UnevenRoundedRectangle {
         UnevenRoundedRectangle(
@@ -97,7 +97,11 @@ extension View {
             AppSheetContainer(content: content)
                 .modifier(AppSheetDetents(detents: detents, selection: selection))
                 .presentationDragIndicator(.hidden)
-                .presentationBackground(.clear)
+                // Solid #111111, never the system material: with `.clear`,
+                // iOS 26 still drew its glass sheet around and under the
+                // panel, the "metallic" border.
+                .presentationBackground(AppSheetContainer<EmptyView>.fill)
+                .presentationCornerRadius(28)
         }
     }
 }

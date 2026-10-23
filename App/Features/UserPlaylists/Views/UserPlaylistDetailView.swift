@@ -112,6 +112,7 @@ struct UserPlaylistDetailView: View {
         .sheet(isPresented: $showAddSongs, onDismiss: { Task { await viewModel.refresh() } }) {
             if let playlist {
                 AddSongsToPlaylistView(playlistID: playlist.id)
+                    .presentationBackground(Color.black)
             }
         }
     }
