@@ -25,6 +25,13 @@ struct ShareSheetView: View {
     @State private var installedChatApps: [ChatApp] = []
     @State private var isSavingImage = false
     @State private var isPhotoAccessDialogPresented = false
+    @State private var activityURL: SharedURL?
+    @Environment(\.dismiss) private var dismiss
+
+    private struct SharedURL: Identifiable {
+        let url: URL
+        var id: String { url.absoluteString }
+    }
 
     init(target: ShareTarget, title: String, subtitle: String?, artworkURL: URL?, aspectRatio: String = "1:1") {
         self.target = target
@@ -80,6 +87,11 @@ struct ShareSheetView: View {
         // paints the sheet. A second, lighter panel here read as another
         // sheet stacked inside the first.
         .task { await viewModel.loadIfNeeded() }
+        // Done sharing (sent, copied or cancelled in the system sheet): the
+        // card has done its job, so close it rather than leave it open.
+        .sheet(item: $activityURL, onDismiss: { dismiss() }) { shared in
+            ActivityView(items: [shared.url]) { activityURL = nil }
+        }
         .task { await detectInstalledChatApps() }
         .fullScreenCover(isPresented: $isPhotoAccessDialogPresented) {
             ParityConfirmationDialog(
@@ -188,7 +200,7 @@ struct ShareSheetView: View {
                     .foregroundStyle(AccountParity.white)
             } action: {
                 UIPasteboard.general.string = url.absoluteString
-                showConfirmation(String(localized: "Link copied"))
+                closeAfterAction(String(localized: "Link copied"))
             }
             shareIcon(label: Text("Save Image")) {
                 if isSavingImage {
@@ -201,14 +213,13 @@ struct ShareSheetView: View {
             } action: {
                 Task { await saveImage() }
             }
-            ShareLink(item: url) {
-                shareIconLabel(label: Text("More")) {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: Dimens.iconSize))
-                        .foregroundStyle(AccountParity.white)
-                }
+            shareIcon(label: Text("More")) {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: Dimens.iconSize))
+                    .foregroundStyle(AccountParity.white)
+            } action: {
+                activityURL = SharedURL(url: url)
             }
-            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -297,9 +308,11 @@ struct ShareSheetView: View {
             showConfirmation(String(localized: "\(app.name) not supported"))
             return
         }
-        UIApplication.shared.open(target) { success in
-            if !success {
-                Task { @MainActor in showConfirmation(String(localized: "\(app.name) not available")) }
+        Task { @MainActor in
+            if await UIApplication.shared.open(target) {
+                dismiss()
+            } else {
+                showConfirmation(String(localized: "\(app.name) not available"))
             }
         }
     }
@@ -343,10 +356,17 @@ struct ShareSheetView: View {
         }
         do {
             try await PhotoLibrarySaver.save(uiImage)
-            showConfirmation(String(localized: "Saved to Photos"))
+            closeAfterAction(String(localized: "Saved to Photos"))
         } catch {
             showConfirmation(String(localized: "Couldn\u{2019}t save the image. Please try again."))
         }
+    }
+
+    /// A finished action closes the sheet; its confirmation moves to the
+    /// app-wide toast so it is still seen.
+    private func closeAfterAction(_ message: String) {
+        ToastCenter.shared.show(message)
+        dismiss()
     }
 
     private func showConfirmation(_ message: String) {

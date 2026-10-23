@@ -65,8 +65,11 @@ struct BibleVerseShareView: View {
             guard let item else { return }
             Task { await loadPhoto(item) }
         }
-        .sheet(item: $activityItems) { items in
-            ActivityView(items: items.values)
+        // Once the system share sheet is done (shared, copied or
+        // cancelled), the editor has done its job: close it too rather than
+        // leave it on screen behind.
+        .sheet(item: $activityItems, onDismiss: { dismiss() }) { items in
+            ActivityView(items: items.values) { activityItems = nil }
         }
         .readSheet(isPresented: $showPhotoAccess, detents: [.height(380)], cornerRadius: Dimens.spacing24) {
             VersePhotoAccessSheet(
@@ -869,9 +872,17 @@ struct ActivityItems: Identifiable {
 
 struct ActivityView: UIViewControllerRepresentable {
     let items: [Any]
+    /// Runs once the system share sheet is done, whatever the user did
+    /// (shared, copied, cancelled).
+    var onComplete: (() -> Void)? = nil
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let onComplete = onComplete
+        controller.completionWithItemsHandler = { _, _, _, _ in
+            Task { @MainActor in onComplete?() }
+        }
+        return controller
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
