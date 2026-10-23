@@ -80,6 +80,14 @@ final class FavouriteSongsViewModel {
         await loadMoreSongs()
     }
 
+    /// `FavouriteSongsChangedEvent`: a like/unlike elsewhere (the player over
+    /// this page, the song menu) re-reads page 1 so the list matches.
+    func reload() async {
+        guard hasLoadedOnce, !page.isLoading else { return }
+        page = FavouriteSongsPage()
+        await loadMoreSongs()
+    }
+
     func loadMoreSongsIfNeeded(currentItem: Song) async {
         guard let index = page.items.firstIndex(where: { $0.id == currentItem.id }) else { return }
         guard index >= page.items.count - 3 else { return }

@@ -63,6 +63,14 @@ final class LibraryViewModel {
     /// is authoritative; rows after it are kept, minus any duplicates.
     func silentRefresh() async {
         guard hasLoadedOnce, !page.isLoading else { return }
+        // The liked tiles too: these used to reload only on a filter change
+        // or pull-to-refresh, so a like elsewhere never showed up here.
+        async let countsVoid: Void = loadCounts()
+        await silentRefreshItems()
+        await countsVoid
+    }
+
+    private func silentRefreshItems() async {
         let requestedFilter = filter
         let result: Paginated<LibraryEntry>
         do {

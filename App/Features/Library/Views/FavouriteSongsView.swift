@@ -38,6 +38,9 @@ struct FavouriteSongsView: View {
         )
         .background(Color.black)
         .task { await viewModel.onAppear() }
+        .onReceive(NotificationCenter.default.publisher(for: .favouriteSongsDidChange)) { _ in
+            Task { await viewModel.reload() }
+        }
     }
 
     // MARK: - Playback

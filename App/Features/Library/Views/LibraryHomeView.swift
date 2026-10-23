@@ -19,7 +19,10 @@ struct LibraryHomeView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private var downloadCount: Int {
-        downloadEngine.tasks.values.filter { $0.state == .completed }.count
+        // Flutter's `DownloadBloc` lists a task from the moment it is
+        // enqueued (`_downloadSong` → `LoadDownloadsEvent`), not when it
+        // finishes, so the tile counts every task the Downloads page shows.
+        downloadEngine.tasks.count
     }
 
     var body: some View {
@@ -56,6 +59,9 @@ struct LibraryHomeView: View {
         // again (back from a playlist, another tab) or the app returns to the
         // foreground. No-op before the first load finishes.
         .onAppear { Task { await viewModel.silentRefresh() } }
+        .onReceive(NotificationCenter.default.publisher(for: .favouriteSongsDidChange)) { _ in
+            Task { await viewModel.silentRefresh() }
+        }
         .onDisappear { viewModel.stopCoverPoll() }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
