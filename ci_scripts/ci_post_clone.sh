@@ -6,17 +6,24 @@
 # no generator, no CocoaPods and no SDK to install. The only thing a clean clone
 # lacks is the gitignored Config/Secrets.xcconfig (Base.xcconfig pulls it in
 # last with `#include?`, so anything written there overrides the committed
-# defaults). This script writes it from the workflow's environment variables.
+# defaults). This script writes it, and the build number, for the workflow.
 #
-# Workflow environment variables (Xcode Cloud workflow -> Environment; tick
-# "Secret" on every one except BUILD_NUMBER_OFFSET):
-#   HALLELUJAH_DEVELOPMENT_TEAM  required  Apple Developer Team ID (10 chars)
-#   HALLELUJAH_API_SECRET        required for the Production scheme (backend "secure" header)
-#   HALLELUJAH_OTP_SECRET_1      required for the Production scheme
-#   HALLELUJAH_OTP_SECRET_2      required for the Production scheme
+# Two workflows, one per branch. The Archive scheme in the workflow picks the
+# environment; the script cannot change it, so it only checks the branch and
+# scheme agree:
+#   branch qa    scheme "GHallelujah Staging"     Config/Environments/Staging.xcconfig
+#                QA backend. Its secrets are fixed values already committed there,
+#                so the workflow needs no environment variables.
+#   branch prod  scheme "GHallelujah Production"  Config/Environments/Production.xcconfig
+#                Production backend. Secrets come from the workflow's environment.
+#
+# Environment variables, Production workflow only (Xcode Cloud workflow ->
+# Environment; tick "Secret" on all of them):
+#   HALLELUJAH_DEVELOPMENT_TEAM  Apple Developer Team ID (10 chars)
+#   HALLELUJAH_API_SECRET        backend "secure" header
+#   HALLELUJAH_OTP_SECRET_1
+#   HALLELUJAH_OTP_SECRET_2
 #   RAZORPAY_KEY_ID              optional
-#   BUILD_NUMBER_OFFSET          optional   added to $CI_BUILD_NUMBER; the default (in this script)
-#                                           is the last build already in App Store Connect.
 #
 # The marketing version (CFBundleShortVersionString) is not an environment
 # variable: edit MARKETING_VERSION in Config/Shared/Base.xcconfig before each
@@ -31,28 +38,43 @@ cd "$CI_PRIMARY_REPOSITORY_PATH"
 
 SECRETS=Config/Secrets.xcconfig
 
+# Apple Team ID used when a non-Production workflow does not provide one.
+QA_DEVELOPMENT_TEAM=V2LNA795Y9
+
 fail() {
   echo "error: $1" >&2
   exit 1
 }
 
-[ -n "${HALLELUJAH_DEVELOPMENT_TEAM:-}" ] || fail "HALLELUJAH_DEVELOPMENT_TEAM is not set — add your Apple Team ID as a workflow environment variable."
-
-# Release builds talk to production and are useless without these.
+IS_PRODUCTION=0
 case "${CI_XCODE_SCHEME:-}" in
-  *Production*)
-    [ -n "${HALLELUJAH_API_SECRET:-}" ] || fail "HALLELUJAH_API_SECRET is not set (required for the Production scheme)."
-    [ -n "${HALLELUJAH_OTP_SECRET_1:-}" ] || fail "HALLELUJAH_OTP_SECRET_1 is not set (required for the Production scheme)."
-    [ -n "${HALLELUJAH_OTP_SECRET_2:-}" ] || fail "HALLELUJAH_OTP_SECRET_2 is not set (required for the Production scheme)."
-    ;;
+  *Production*) IS_PRODUCTION=1 ;;
 esac
 
-# Highest build number already uploaded to App Store Connect. $CI_BUILD_NUMBER
-# starts at 1, so the first Xcode Cloud build is this + 1 and each later one
-# counts up from there. Only change this if a higher build gets uploaded outside
-# Xcode Cloud, or if the workflow is recreated (which resets $CI_BUILD_NUMBER).
-BUILD_NUMBER_OFFSET=${BUILD_NUMBER_OFFSET:-334}
-BUILD_NUMBER=$(( ${CI_BUILD_NUMBER:-1} + BUILD_NUMBER_OFFSET ))
+# Never let QA ship to the prod branch's workflow, or the reverse.
+case "${CI_BRANCH:-}" in
+  prod) [ "$IS_PRODUCTION" = 1 ] || fail "branch prod must archive the GHallelujah Production scheme (got '${CI_XCODE_SCHEME:-}')." ;;
+  qa) [ "$IS_PRODUCTION" = 0 ] || fail "branch qa must not archive the Production scheme (got '${CI_XCODE_SCHEME:-}')." ;;
+esac
+
+if [ "$IS_PRODUCTION" = 1 ]; then
+  # Release builds talk to production and are useless without these.
+  [ -n "${HALLELUJAH_DEVELOPMENT_TEAM:-}" ] || fail "HALLELUJAH_DEVELOPMENT_TEAM is not set — add your Apple Team ID as a workflow environment variable."
+  [ -n "${HALLELUJAH_API_SECRET:-}" ] || fail "HALLELUJAH_API_SECRET is not set (required for the Production scheme)."
+  [ -n "${HALLELUJAH_OTP_SECRET_1:-}" ] || fail "HALLELUJAH_OTP_SECRET_1 is not set (required for the Production scheme)."
+  [ -n "${HALLELUJAH_OTP_SECRET_2:-}" ] || fail "HALLELUJAH_OTP_SECRET_2 is not set (required for the Production scheme)."
+else
+  HALLELUJAH_DEVELOPMENT_TEAM=${HALLELUJAH_DEVELOPMENT_TEAM:-$QA_DEVELOPMENT_TEAM}
+fi
+
+# Every upload to the app must have a higher build number than the one before,
+# but the qa and prod workflows each keep their own $CI_BUILD_NUMBER counter,
+# which would collide (same bundle id and version in App Store Connect). So use
+# minutes since a fixed date instead: unique per build, always increasing, and
+# above the last build uploaded before this scheme existed (334).
+BUILD_NUMBER_FLOOR=334
+BUILD_NUMBER_EPOCH=1792713600 # 2026-10-23 00:00:00 UTC
+BUILD_NUMBER=$(( BUILD_NUMBER_FLOOR + 1 + ( $(date -u +%s) - BUILD_NUMBER_EPOCH ) / 60 ))
 
 {
   echo "// Generated by ci_scripts/ci_post_clone.sh — never committed."
@@ -66,5 +88,5 @@ BUILD_NUMBER=$(( ${CI_BUILD_NUMBER:-1} + BUILD_NUMBER_OFFSET ))
 
 MARKETING_VERSION=$(sed -n 's/^MARKETING_VERSION[[:space:]]*=[[:space:]]*//p' Config/Shared/Base.xcconfig)
 
-echo "Wrote $SECRETS (scheme: ${CI_XCODE_SCHEME:-unknown}, version ${MARKETING_VERSION:-unknown}, build $BUILD_NUMBER)"
+echo "Wrote $SECRETS (branch: ${CI_BRANCH:-unknown}, scheme: ${CI_XCODE_SCHEME:-unknown}, version ${MARKETING_VERSION:-unknown}, build $BUILD_NUMBER)"
 echo "ci_post_clone.sh completed"
