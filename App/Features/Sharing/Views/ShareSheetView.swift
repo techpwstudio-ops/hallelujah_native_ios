@@ -102,9 +102,10 @@ struct ShareSheetView: View {
 
         ScrollView {
             VStack(spacing: 0) {
+                // Every host presents this through `.appSheet`, whose
+                // container already draws the drag handle; a second one here
+                // stacked two handles at the top of the sheet.
                 Spacer().frame(height: Dimens.spacing8)
-                ParityDragHandler()
-                Spacer().frame(height: Dimens.spacing20)
 
                 ShareCardView(
                     theme: selectedTheme,
