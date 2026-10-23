@@ -504,6 +504,11 @@ final class AudioEngine {
         currentSong = logicalQueue[newIndex]
         onSongChanged?(logicalQueue[newIndex])
         currentItemDuration = nil
+        // A new item is current: an earlier item's failure no longer applies.
+        if case .failed = status {
+            status = player.timeControlStatus == .paused ? .paused : .loading
+            applyTimeControlStatus(player.timeControlStatus)
+        }
 
         let residentCount = player.items().count
         if repeatOneActive {
@@ -554,6 +559,15 @@ final class AudioEngine {
     }
 
     private func applyTimeControlStatus(_ timeControlStatus: AVPlayer.TimeControlStatus) {
+        // Audio actually coming out always wins over an earlier failure.
+        // `.failed` used to be sticky: once one item failed (typically a
+        // lookahead item while locked), the queue moved on and kept playing
+        // but `status` never left `.failed`, so Now Playing published rate 0
+        // and iOS dropped the lock-screen player as "not playing".
+        if timeControlStatus == .playing {
+            status = .playing
+            return
+        }
         guard case .failed = status else {
             switch timeControlStatus {
             case .paused: status = .paused
