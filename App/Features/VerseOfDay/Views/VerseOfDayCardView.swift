@@ -57,7 +57,11 @@ private struct VerseOfDayCardContentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VerseOfDayContentBlock(verse: verse, onVerseTap: navigateToReader)
+            VerseOfDayContentBlock(
+                verse: verse,
+                onVerseTap: navigateToReader,
+                onLongPress: { showOptionsSheet = true }
+            )
             Spacer().frame(height: 6)
             VerseOfDayMetaText(verse: verse)
             Spacer().frame(height: 14)
@@ -127,6 +131,12 @@ private struct VerseOfDayCardContentView: View {
 struct VerseOfDayContentBlock: View {
     let verse: VerseOfDay
     let onVerseTap: () -> Void
+    /// The card's options sheet. The verse fills most of the card, and a
+    /// `Button` here swallowed the touch so the card's own long-press never
+    /// fired over it — the "Hide for today" sheet was effectively unreachable.
+    /// Tap and long-press on the same view mirror Flutter's outer
+    /// `GestureDetector(onLongPress:)` beating the inner tap in the arena.
+    var onLongPress: (() -> Void)? = nil
 
     private var comma: Text {
         Text("\"")
@@ -139,18 +149,18 @@ struct VerseOfDayContentBlock: View {
                 .typography(Typography.labelSmall)
                 .foregroundStyle(ReadPalette.white)
             Spacer().frame(height: Dimens.verticalSpacing)
-            Button(action: onVerseTap) {
-                (comma
-                    + Text(" \(verse.verseText ?? "") ")
-                        .font(.custom(Typography.fontFamily, size: 16, relativeTo: .body).weight(.bold))
-                    + comma)
-                    .lineSpacing(16 * 0.5)
-                    .foregroundStyle(ReadPalette.white)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            (comma
+                + Text(" \(verse.verseText ?? "") ")
+                    .font(.custom(Typography.fontFamily, size: 16, relativeTo: .body).weight(.bold))
+                + comma)
+                .lineSpacing(16 * 0.5)
+                .foregroundStyle(ReadPalette.white)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onVerseTap)
+                .onLongPressGesture { onLongPress?() }
+                .accessibilityAddTraits(.isButton)
         }
     }
 }
