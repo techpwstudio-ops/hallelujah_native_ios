@@ -131,8 +131,10 @@ final class DeepLinkService {
                 ToastCenter.shared.show("Unable to open this link. Please try again.")
                 return
             }
-            // Flutter's `openShareable` is a no-op without an item.
-            guard let item = validation.item else {
+            // Flutter's `openShareable` is a no-op without an item. An Emet
+            // share needs none: it only opens the Emet tab.
+            let isEmetShare = validation.shareableType.flatMap(ShareableType.init(serverValue:)) == .aiMessage
+            guard let item = validation.item ?? (isEmetShare ? [:] : nil) else {
                 logger.warning("deep link \(code) validate returned no item")
                 return
             }
@@ -157,7 +159,7 @@ final class DeepLinkService {
     /// title/image/songsCount straight off `item`'s raw, unselected Prisma
     /// row and carry the header along with the route instead.
     func openShareable(shareableType rawType: String?, item: [String: Any], coordinator: AppNavigationCoordinator) {
-        guard let rawType, let type = ShareableType(rawValue: rawType) else { return }
+        guard let rawType, let type = ShareableType(serverValue: rawType) else { return }
         let id = Self.stringID(from: item["id"])
 
         switch type {
@@ -215,6 +217,11 @@ final class DeepLinkService {
                 creatorID: nil,
                 creatorName: nil
             ))
+
+        case .aiMessage:
+            // Someone else's answer lives in their own conversation, which the
+            // recipient can't open, so this is a hand-off to Emet itself.
+            coordinator.resetToRoot(selecting: .aiAssistant)
 
         case .verseOfDay, .bibleVerse:
             // `ReadService.openVerse` flips Bible-reader bloc state to

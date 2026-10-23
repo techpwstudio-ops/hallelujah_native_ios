@@ -16,4 +16,22 @@ enum ShareableType: String, Sendable {
     case creator
     case verseOfDay
     case bibleVerse
+    /// A shared Emet answer (`/ai/messages/:id/share`). Not in Flutter's
+    /// enum; the recipient lands on the Emet tab.
+    case aiMessage
+
+    /// The server's type name, with the spellings an Emet share may carry
+    /// mapped onto `aiMessage` (the exact name isn't pinned in the client).
+    init?(serverValue: String) {
+        if let known = ShareableType(rawValue: serverValue) {
+            self = known
+            return
+        }
+        switch serverValue.lowercased() {
+        case "aimessage", "ai_message", "ai", "aichat", "aiconversation", "emet":
+            self = .aiMessage
+        default:
+            return nil
+        }
+    }
 }
