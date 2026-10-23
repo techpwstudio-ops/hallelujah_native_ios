@@ -276,6 +276,9 @@ final class AudioEngine {
     func seek(to time: TimeInterval) {
         let from = currentPosition
         player.seek(to: CMTime(seconds: time, preferredTimescale: 1000))
+        // Now Playing republishes right after a lock-screen seek; with the
+        // old position still here its scrubber jumped back to it.
+        currentPosition = time
         onSeek?(from, time)
     }
 

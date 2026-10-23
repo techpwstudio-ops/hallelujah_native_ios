@@ -28,6 +28,11 @@ final class NowPlayingCoordinator {
     private let queueController: QueueController
     private let tokenProvider: any AuthTokenProviding
     private let proxyHost: String?
+    /// The current song's lock-screen artwork, kept so every republish
+    /// (each play/pause/loading change) carries it. Rebuilding the info
+    /// without it blanked the artwork until the async fetch put it back —
+    /// the flicker on every tap in Control Center / the lock screen.
+    private var artwork: (songID: String, artwork: MPMediaItemArtwork)?
 
     init(
         engine: AudioEngine,
@@ -91,14 +96,21 @@ final class NowPlayingCoordinator {
         if duration > 0 {
             info[MPMediaItemPropertyPlaybackDuration] = duration
         }
+        if let artwork, artwork.songID == song.id {
+            info[MPMediaItemPropertyArtwork] = artwork.artwork
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+            return
+        }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
 
         let publishedSongID = song.id
         Task { [weak self] in
             guard let self, let image = await self.resolveArtworkImage(for: song) else { return }
             guard self.engine.currentSong?.id == publishedSongID else { return }
+            let artwork = Self.makeArtwork(image)
+            self.artwork = (publishedSongID, artwork)
             var updated = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-            updated[MPMediaItemPropertyArtwork] = Self.makeArtwork(image)
+            updated[MPMediaItemPropertyArtwork] = artwork
             MPNowPlayingInfoCenter.default().nowPlayingInfo = updated
         }
     }
