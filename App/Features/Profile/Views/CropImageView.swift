@@ -30,7 +30,19 @@ struct CropImageView: View {
     /// `ColorTheme.pink` (0xFFCA4D53)
     private static let pink = Color(red: 0xCA / 255, green: 0x4D / 255, blue: 0x53 / 255)
 
+    /// The device's real safe-area insets, read from the window. The page
+    /// lays itself out edge to edge and pads by these explicitly: relying on
+    /// SwiftUI's safe area left the header under the status bar on device
+    /// (twice), so it no longer depends on what the presentation reports.
+    private static var windowInsets: UIEdgeInsets {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+        return (windows.first(where: \.isKeyWindow) ?? windows.first)?.safeAreaInsets ?? .zero
+    }
+
     var body: some View {
+        let insets = Self.windowInsets
         GeometryReader { proxy in
             let isLandscape = proxy.size.width > proxy.size.height
             ZStack {
@@ -66,11 +78,12 @@ struct CropImageView: View {
                 }
             }
         }
-        // The black fill sits behind the layout, not inside the ZStack: as a
-        // ZStack child that ignores the safe area it stretched the stack to
-        // full screen, which pushed the header up under the status bar where
-        // the close button and Done couldn't be tapped.
-        .background(Color.black.ignoresSafeArea())
+        .padding(.top, insets.top)
+        .padding(.bottom, insets.bottom)
+        .padding(.leading, insets.left)
+        .padding(.trailing, insets.right)
+        .background(Color.black)
+        .ignoresSafeArea()
         .preferredColorScheme(.dark)
         .task { loadImage() }
     }
