@@ -90,13 +90,29 @@ extension View {
     func appSheet<SheetContent: View>(
         isPresented: Binding<Bool>,
         detents: Set<PresentationDetent> = [.medium, .large],
+        selection: Binding<PresentationDetent>? = nil,
         @ViewBuilder content: @escaping () -> SheetContent
     ) -> some View {
         sheet(isPresented: isPresented) {
             AppSheetContainer(content: content)
-                .presentationDetents(detents)
+                .modifier(AppSheetDetents(detents: detents, selection: selection))
                 .presentationDragIndicator(.hidden)
                 .presentationBackground(.clear)
+        }
+    }
+}
+
+/// `selection` lets a sheet grow itself, e.g. a menu that swaps in the share
+/// card and needs the full height for it.
+private struct AppSheetDetents: ViewModifier {
+    let detents: Set<PresentationDetent>
+    let selection: Binding<PresentationDetent>?
+
+    func body(content: Content) -> some View {
+        if let selection {
+            content.presentationDetents(detents, selection: selection)
+        } else {
+            content.presentationDetents(detents)
         }
     }
 }

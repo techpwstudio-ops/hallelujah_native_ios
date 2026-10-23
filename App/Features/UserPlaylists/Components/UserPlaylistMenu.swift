@@ -4,6 +4,9 @@ import SwiftUI
 struct UserPlaylistMenuTarget: Identifiable, Equatable, Sendable {
     let id: String
     let title: String
+    /// The playlist's cover, for the share card until the share endpoint's
+    /// own image arrives.
+    var artworkURL: URL? = nil
 }
 
 extension View {
@@ -33,7 +36,7 @@ private struct UserPlaylistMenuPresenter: ViewModifier {
 
     @State private var pendingDelete: UserPlaylistMenuTarget?
     @State private var pendingUnfollow: UserPlaylistMenuTarget?
-    @State private var shareItem: PlaylistShareItem?
+    @State private var detent: PresentationDetent = .medium
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
 
@@ -51,16 +54,12 @@ private struct UserPlaylistMenuPresenter: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(item: $shareItem) { item in
-                PlaylistActivitySheet(url: item.url)
-                    .presentationDetents([.medium, .large])
-            }
             .libraryRemovalConfirmation(isPresented: isConfirmingUnfollow, title: pendingUnfollow?.title) {
                 guard let pending = pendingUnfollow else { return }
                 pendingUnfollow = nil
                 Task { await runFollowToggle(for: pending) }
             }
-            .appSheet(isPresented: isPresented, detents: [.medium]) {
+            .appSheet(isPresented: isPresented, detents: [.medium, .large], selection: $detent) {
                 if let target {
                     UserPlaylistMenuSheet(
                         target: target,
@@ -76,17 +75,10 @@ private struct UserPlaylistMenuPresenter: ViewModifier {
                             self.target = nil
                             toastCenter.show(text)
                         },
-                        onShare: {
-                            self.target = nil
-                            Task {
-                                let viewModel = UserPlaylistActionsViewModel(playlistID: target.id)
-                                if let url = await viewModel.makeShareURL() {
-                                    shareItem = PlaylistShareItem(url: url)
-                                } else {
-                                    toastCenter.show("Could not create a share link")
-                                }
-                            }
-                        },
+                        // The menu swaps to the share card in place
+                        // (`ShareService.sharePlaylist`'s share sheet), at
+                        // full height so the card isn't cut off.
+                        onShare: { detent = .large },
                         onVisibilityChanged: { text in
                             self.target = nil
                             if let text { toastCenter.show(text) }
@@ -122,6 +114,9 @@ private struct UserPlaylistMenuPresenter: ViewModifier {
                 }
                 Button("Cancel", role: .cancel) {}
             }
+            .onChange(of: target == nil) { _, closed in
+                if closed { detent = .medium }
+            }
     }
 }
 
@@ -147,7 +142,9 @@ extension UserPlaylistMenuPresenter {
 }
 
 private struct UserPlaylistMenuSheet: View {
+    let target: UserPlaylistMenuTarget
     @State private var viewModel: UserPlaylistMenuViewModel
+    @State private var showsShare = false
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onMessage: (String) -> Void
@@ -164,6 +161,7 @@ private struct UserPlaylistMenuSheet: View {
         onVisibilityChanged: @escaping (String?) -> Void,
         onFollowTapped: @escaping (Bool) -> Void
     ) {
+        self.target = target
         _viewModel = State(initialValue: UserPlaylistMenuViewModel(playlistID: target.id, title: target.title))
         self.onEdit = onEdit
         self.onDelete = onDelete
@@ -174,11 +172,27 @@ private struct UserPlaylistMenuSheet: View {
     }
 
     var body: some View {
+        if showsShare {
+            ShareSheetView(
+                target: .userPlaylist(id: target.id),
+                title: target.title,
+                subtitle: nil,
+                artworkURL: target.artworkURL
+            )
+        } else {
+            menu
+        }
+    }
+
+    private var menu: some View {
         VStack(alignment: .leading, spacing: 0) {
             SongMenuRow(systemImage: "text.badge.plus", title: "Add to queue") {
                 Task { onMessage(await viewModel.addToQueue()) }
             }
-            SongMenuRow(systemImage: "square.and.arrow.up", title: "Share playlist") { onShare() }
+            SongMenuRow(systemImage: "square.and.arrow.up", title: "Share playlist") {
+                showsShare = true
+                onShare()
+            }
             if viewModel.isOwner {
                 SongMenuRow(systemImage: "square.and.pencil", title: "Edit playlist") { onEdit() }
                 SongMenuRow(

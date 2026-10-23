@@ -194,8 +194,12 @@ struct LibraryHomeView: View {
         switch entry {
         case let .playlist(playlist):
             contentMenuTarget = .playlist(playlist)
-        case let .userPlaylist(id, title, _, _, _, _, _):
-            userPlaylistMenuTarget = UserPlaylistMenuTarget(id: id, title: title)
+        case let .userPlaylist(id, title, image, imageVariants, _, _, _):
+            userPlaylistMenuTarget = UserPlaylistMenuTarget(
+                id: id,
+                title: title,
+                artworkURL: ArtworkURLResolver().resolve(path: image, variant: .lg, allowedVariants: imageVariants, fallbackName: title)
+            )
         }
     }
 

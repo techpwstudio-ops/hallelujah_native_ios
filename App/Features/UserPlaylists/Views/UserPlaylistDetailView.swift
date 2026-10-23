@@ -19,7 +19,7 @@ struct UserPlaylistDetailView: View {
     @State private var eventBus: RealtimeEventBus = DependencyContainer.current.resolve()
     @State private var showAddSongs = false
     @State private var menuTarget: UserPlaylistMenuTarget?
-    @State private var shareItem: PlaylistShareItem?
+    @State private var isSharePresented = false
     @State private var showsCollapsedTitle = false
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
@@ -81,7 +81,7 @@ struct UserPlaylistDetailView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     ParityIconButton(systemName: "ellipsis", rotation: 90, tooltip: "More") {
-                        menuTarget = UserPlaylistMenuTarget(id: playlist.id, title: playlist.title)
+                        menuTarget = UserPlaylistMenuTarget(id: playlist.id, title: playlist.title, artworkURL: artworkURL(for: playlist))
                     }
                 }
             }
@@ -99,15 +99,30 @@ struct UserPlaylistDetailView: View {
             onChanged: { Task { await viewModel.refresh() } },
             onUnfollowed: { coordinator.pop() }
         )
-        .sheet(item: $shareItem) { item in
-            PlaylistActivitySheet(url: item.url)
-                .presentationDetents([.medium, .large])
+        .appSheet(isPresented: $isSharePresented, detents: [.large]) {
+            if let playlist {
+                ShareSheetView(
+                    target: .userPlaylist(id: playlist.id),
+                    title: playlist.title,
+                    subtitle: nil,
+                    artworkURL: artworkURL(for: playlist)
+                )
+            }
         }
         .sheet(isPresented: $showAddSongs, onDismiss: { Task { await viewModel.refresh() } }) {
             if let playlist {
                 AddSongsToPlaylistView(playlistID: playlist.id)
             }
         }
+    }
+
+    private func artworkURL(for playlist: UserPlaylist) -> URL? {
+        ArtworkURLResolver().resolve(
+            path: playlist.image,
+            variant: .lg,
+            allowedVariants: playlist.imageVariants,
+            fallbackName: playlist.title
+        )
     }
 
     private func scroll(playlist: UserPlaylist, page: Paginated<Song>?) -> some View {
@@ -183,13 +198,7 @@ struct UserPlaylistDetailView: View {
                     followButton(actions: actions)
                 }
                 ParityIconButton(systemName: "square.and.arrow.up", size: 22, tooltip: "Share", hitSize: 40) {
-                    Task {
-                        if let url = await viewModel.actions?.makeShareURL() {
-                            shareItem = PlaylistShareItem(url: url)
-                        } else {
-                            toastCenter.show("Could not create a share link")
-                        }
-                    }
+                    isSharePresented = true
                 }
                 Spacer(minLength: 0)
                 ParityShuffleButton(isOn: queueController.isShuffled) {

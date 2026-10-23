@@ -10,6 +10,7 @@ enum ShareTarget: Sendable, Equatable {
     case song(id: String)
     case creator(id: String)
     case companyPlaylist(id: String)
+    case userPlaylist(id: String)
 }
 
 /// Backs `ShareSheetView`. Mints the share link once on appearance and
@@ -25,6 +26,11 @@ final class ShareSheetViewModel {
     }
 
     private(set) var state: State = .loading
+    /// The card image the share endpoint returns with the link
+    /// (`DeepLink.image`, which is all Flutter's `_openSheet` ever shows).
+    /// Preferred over the caller's artwork, which can be missing (a user
+    /// playlist whose cover is server-composited, an artist with no image).
+    private(set) var cardImageURL: URL?
 
     let target: ShareTarget
     private let deepLinkService: DeepLinkService
@@ -47,16 +53,19 @@ final class ShareSheetViewModel {
 
     private func load() async {
         do {
-            let url: URL
+            let link: MintedShareLink
             switch target {
             case .song(let id):
-                url = try await deepLinkService.songShareLink(id: id)
+                link = try await deepLinkService.shareLink(.songShare(id: id))
             case .creator(let id):
-                url = try await deepLinkService.creatorShareLink(id: id)
+                link = try await deepLinkService.shareLink(.creatorShare(id: id))
             case .companyPlaylist(let id):
-                url = try await deepLinkService.companyPlaylistShareLink(id: id)
+                link = try await deepLinkService.shareLink(.companyPlaylistShare(id: id))
+            case .userPlaylist(let id):
+                link = try await deepLinkService.shareLink(.userPlaylistShare(id: id))
             }
-            state = .loaded(url)
+            cardImageURL = ArtworkURLResolver().resolve(path: link.image, variant: .lg, allowedVariants: link.imageVariants)
+            state = .loaded(link.url)
         } catch {
             logger.error("Failed to mint share link for \(target): \(error)")
             state = .failed

@@ -76,7 +76,9 @@ struct ShareSheetView: View {
                 loadedContent(baseURL: url)
             }
         }
-        .background(AccountParity.fill)
+        // No fill of its own: the hosting `.appSheet` container already
+        // paints the sheet. A second, lighter panel here read as another
+        // sheet stacked inside the first.
         .task { await viewModel.loadIfNeeded() }
         .task { await detectInstalledChatApps() }
         .fullScreenCover(isPresented: $isPhotoAccessDialogPresented) {
@@ -111,7 +113,7 @@ struct ShareSheetView: View {
                     theme: selectedTheme,
                     title: title,
                     subtitle: subtitle,
-                    artworkURL: artworkURL,
+                    artworkURL: viewModel.cardImageURL ?? artworkURL,
                     cardWidth: cardWidth,
                     isLandscape: isLandscape
                 )

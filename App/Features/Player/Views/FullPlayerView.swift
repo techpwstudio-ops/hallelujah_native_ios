@@ -77,7 +77,7 @@ struct FullPlayerView: View {
             }
         }
         .background(PlayerStyle.black.ignoresSafeArea())
-        .appSheet(isPresented: $isSharePresented) {
+        .appSheet(isPresented: $isSharePresented, detents: [.large]) {
             if let song {
                 ShareSheetView(
                     target: .song(id: song.id),

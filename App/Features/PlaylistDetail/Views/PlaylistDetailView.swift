@@ -58,7 +58,7 @@ struct PlaylistDetailView: View {
         }
         .background(HomeColors.background.ignoresSafeArea())
         .contentMenu(target: $menuTarget)
-        .appSheet(isPresented: $isShareSheetPresented) {
+        .appSheet(isPresented: $isShareSheetPresented, detents: [.large]) {
             ShareSheetView(
                 target: .companyPlaylist(id: playlist.id),
                 title: playlist.title,

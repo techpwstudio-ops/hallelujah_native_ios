@@ -11,11 +11,14 @@ struct ContentMenuSheet: View {
     @State private var isConfirmingRemoval = false
     @State private var store: LibrarySavedStore = DependencyContainer.current.resolve()
     let onOutcome: (ContentMenuOutcome) -> Void
+    /// The share card needs the full sheet height; the host grows the sheet.
+    let onShowShare: () -> Void
 
     @Environment(\.appTheme) private var theme
 
-    init(target: ContentMenuTarget, onOutcome: @escaping (ContentMenuOutcome) -> Void) {
+    init(target: ContentMenuTarget, onShowShare: @escaping () -> Void = {}, onOutcome: @escaping (ContentMenuOutcome) -> Void) {
         _viewModel = State(initialValue: ContentMenuViewModel(target: target))
+        self.onShowShare = onShowShare
         self.onOutcome = onOutcome
     }
 
@@ -50,7 +53,10 @@ struct ContentMenuSheet: View {
                 SongMenuRow(
                     systemImage: "square.and.arrow.up",
                     title: shareTitle
-                ) { showsShare = true }
+                ) {
+                    showsShare = true
+                    onShowShare()
+                }
             }
             if showsLibraryRow {
                 SongMenuRow(
@@ -107,6 +113,7 @@ private struct ContentMenuPresenter: ViewModifier {
     @Binding var target: ContentMenuTarget?
     let onDismiss: (() -> Void)?
     @Environment(\.toastCenter) private var toastCenter
+    @State private var detent: PresentationDetent = .medium
 
     private var isPresented: Binding<Bool> {
         Binding(
@@ -120,14 +127,17 @@ private struct ContentMenuPresenter: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        content.appSheet(isPresented: isPresented, detents: [.medium]) {
+        content.appSheet(isPresented: isPresented, detents: [.medium, .large], selection: $detent) {
             if let target {
-                ContentMenuSheet(target: target) { outcome in
+                ContentMenuSheet(target: target, onShowShare: { detent = .large }) { outcome in
                     if case .message(let text) = outcome { toastCenter.show(text) }
                     self.target = nil
                     onDismiss?()
                 }
             }
+        }
+        .onChange(of: target == nil) { _, closed in
+            if closed { detent = .medium }
         }
     }
 }

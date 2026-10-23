@@ -322,6 +322,12 @@ final class DeepLinkService {
     }
 
     private func fetchShareLink(_ endpoint: Endpoint) async throws -> URL {
+        try await shareLink(endpoint).url
+    }
+
+    /// The minted link plus the card image the server returns with it
+    /// (`DeepLink.image` / `imageVariants`), for the share card.
+    func shareLink(_ endpoint: Endpoint) async throws -> MintedShareLink {
         let response = try await httpClient.send(endpoint)
         guard response.statusCode == 200 else {
             throw ShareLinkError.unexpectedStatus(response.statusCode)
@@ -330,8 +336,14 @@ final class DeepLinkService {
         guard let url = URL(string: decoded.data.link) else {
             throw ShareLinkError.invalidShareURL
         }
-        return url
+        return MintedShareLink(url: url, image: decoded.data.image, imageVariants: decoded.data.imageVariants)
     }
+}
+
+struct MintedShareLink: Sendable {
+    let url: URL
+    let image: String?
+    let imageVariants: String?
 }
 
 /// `{data: {link}}` — same envelope shape as `RemoteBibleRepository`'s own
@@ -344,6 +356,8 @@ private struct ShareLinkResponseDTO: Decodable {
 
 private struct ShareLinkDataDTO: Decodable {
     let link: String
+    let image: String?
+    let imageVariants: String?
 }
 
 /// The `{deepLink, item}` envelope `handle()` expects from
