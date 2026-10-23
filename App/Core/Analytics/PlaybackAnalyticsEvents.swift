@@ -42,6 +42,14 @@ struct PlaybackSessionStartEvent: AnalyticsEvent, Decodable {
     let planID: String?
     let planName: String?
     let batteryLevel: Int?
+    /// Played from a downloaded file (`1`) or streamed (`0`); `nil` = unknown.
+    /// Backend: `PlaybackSession.isOffline`, reported to IPRS as offline plays.
+    /// Optional so start events queued by an older build still decode.
+    var isOffline: Int? = nil
+    /// 0 for the first play; each loop of the same song is a NEW session
+    /// carrying its loop index (see `PlaybackAnalyticsRecorder.recordLoopRestart`).
+    var loopPlayNumber: Int? = nil
+    var isSuspectedFraud: Bool? = nil
 
     enum CodingKeys: String, CodingKey {
         case sessionID = "session_id"
@@ -56,6 +64,9 @@ struct PlaybackSessionStartEvent: AnalyticsEvent, Decodable {
         case planID = "plan_id"
         case planName = "plan_name"
         case batteryLevel = "battery_level"
+        case isOffline = "is_offline"
+        case loopPlayNumber = "loop_play_number"
+        case isSuspectedFraud = "is_suspected_fraud"
     }
 }
 
@@ -63,6 +74,14 @@ struct PlaybackSessionEndEvent: AnalyticsEvent, Decodable {
     var eventName: String { "playback_session_end" }
 
     let sessionID: String
+    /// `song_id` / `started_at` repeated on the END row on purpose. The
+    /// production backend (before the 2026-10-23 ingest fix) discarded any
+    /// session row without both, so every iOS session end was thrown away and
+    /// no iOS session ever recorded when it ended. Carrying them makes the end
+    /// row self-sufficient against either backend. Optional so end events
+    /// queued by an older build still decode.
+    var songID: String? = nil
+    var startedAtMS: Int? = nil
     let endedAtMS: Int
     let songEndDurationMS: Int
     let loopPlayNumber: Int
@@ -70,6 +89,8 @@ struct PlaybackSessionEndEvent: AnalyticsEvent, Decodable {
 
     enum CodingKeys: String, CodingKey {
         case sessionID = "session_id"
+        case songID = "song_id"
+        case startedAtMS = "started_at"
         case endedAtMS = "ended_at"
         case songEndDurationMS = "song_end_duration_ms"
         case loopPlayNumber = "loop_play_number"

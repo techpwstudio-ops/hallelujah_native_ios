@@ -31,12 +31,32 @@ actor PlaybackAnalyticsUploader {
         self.currentUserStore = currentUserStore
     }
 
+    /// Per-request ceilings — the production backend's limits before the
+    /// 2026-10-23 ingest fix (`MAX_SESSIONS`/`MAX_EVENTS`). That server sliced
+    /// anything above them and still answered 200, and this client deletes the
+    /// whole queued batch on a 200 — so a batch carrying more than 50 session
+    /// rows (an offline listener easily builds one: up to 500 queue items per
+    /// sync) permanently lost every session past the 50th. Staying under them
+    /// is safe against both the old and the new server.
+    static let maxSessionRowsPerRequest = 50
+    static let maxEventsPerRequest = 500
+
     func upload(_ events: [QueuedAnalyticsEvent], force: Bool) async -> Bool {
         guard !events.isEmpty else { return true }
 
         let decoder = JSONDecoder()
-        var sessionPayloads: [AnyEncodable] = []
+        let encoder = JSONEncoder()
+        var sessionRows: [[String: Any]] = []
         var trackingEvents: [PlaybackTrackingEvent] = []
+
+        func appendRow(_ event: some Encodable) {
+            guard let data = try? encoder.encode(event),
+                  let row = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+                logger.warning("dropping unencodable playback session row")
+                return
+            }
+            sessionRows.append(row)
+        }
 
         for queued in events {
             switch queued.eventName {
@@ -45,13 +65,13 @@ actor PlaybackAnalyticsUploader {
                     logger.warning("dropping unreadable playback_session_start event")
                     continue
                 }
-                sessionPayloads.append(AnyEncodable(event))
+                appendRow(event)
             case "playback_session_end":
                 guard let event = try? decoder.decode(PlaybackSessionEndEvent.self, from: queued.payload) else {
                     logger.warning("dropping unreadable playback_session_end event")
                     continue
                 }
-                sessionPayloads.append(AnyEncodable(event))
+                appendRow(event)
             case "playback_event":
                 guard let event = try? decoder.decode(PlaybackTrackingEvent.self, from: queued.payload) else {
                     logger.warning("dropping unreadable playback_event event")
@@ -63,10 +83,9 @@ actor PlaybackAnalyticsUploader {
             }
         }
 
+        let sessions = Self.mergeSessionRows(sessionRows)
         let user = await currentUserStore.user
-        let payload = AnalyticsUploadPayload(
-            playbackSessions: sessionPayloads,
-            playbackEvents: trackingEvents,
+        let base = AnalyticsUploadPayload(
             userDateOfBirth: user?.dateOfBirth,
             userAge: Self.age(fromISODate: user?.dateOfBirth),
             userGender: user?.gender,
@@ -74,18 +93,75 @@ actor PlaybackAnalyticsUploader {
             force: force
         )
 
-        guard let body = try? JSONEncoder().encode(payload) else {
-            logger.warning("failed to encode analytics upload payload")
-            return false
+        // Several requests if needed; every one must succeed before the caller
+        // deletes the batch. A partial failure re-sends the whole batch next
+        // time, which the server absorbs (sessions are keyed on session_id,
+        // events on event_id).
+        let requestCount = max(
+            Self.chunkCount(sessions.count, Self.maxSessionRowsPerRequest),
+            Self.chunkCount(trackingEvents.count, Self.maxEventsPerRequest),
+            1
+        )
+        for index in 0..<requestCount {
+            let sessionSlice = Self.slice(sessions, index: index, size: Self.maxSessionRowsPerRequest)
+            let eventSlice = Self.slice(trackingEvents, index: index, size: Self.maxEventsPerRequest)
+            guard let body = Self.body(base: base, sessions: sessionSlice, events: eventSlice, encoder: encoder) else {
+                logger.warning("failed to encode analytics upload payload")
+                return false
+            }
+            do {
+                let response = try await client.send(.sendAnalyticsData, body: body)
+                guard (200..<300).contains(response.statusCode) else { return false }
+            } catch {
+                logger.warning("analytics upload failed: \(error)")
+                return false
+            }
         }
+        return true
+    }
 
-        do {
-            let response = try await client.send(.sendAnalyticsData, body: body)
-            return (200..<300).contains(response.statusCode)
-        } catch {
-            logger.warning("analytics upload failed: \(error)")
-            return false
+    /// One row per `session_id`, later rows filling in fields the earlier
+    /// ones lacked (a session's START and END rows usually travel together).
+    /// Order of first appearance is kept. Mirrors `mergeSessionRows` in
+    /// gs_nh_backend `src/services/analytics/trackIngest.js`.
+    static func mergeSessionRows(_ rows: [[String: Any]]) -> [[String: Any]] {
+        var order: [String] = []
+        var merged: [String: [String: Any]] = [:]
+        for row in rows {
+            guard let id = row["session_id"] as? String, !id.isEmpty else { continue }
+            if merged[id] == nil { order.append(id) }
+            var current = merged[id] ?? [:]
+            for (key, value) in row where !(value is NSNull) {
+                current[key] = value
+            }
+            merged[id] = current
         }
+        return order.compactMap { merged[$0] }
+    }
+
+    private static func chunkCount(_ count: Int, _ size: Int) -> Int {
+        count == 0 ? 0 : (count + size - 1) / size
+    }
+
+    private static func slice<T>(_ items: [T], index: Int, size: Int) -> [T] {
+        let start = index * size
+        guard start < items.count else { return [] }
+        return Array(items[start..<min(start + size, items.count)])
+    }
+
+    private static func body(
+        base: AnalyticsUploadPayload,
+        sessions: [[String: Any]],
+        events: [PlaybackTrackingEvent],
+        encoder: JSONEncoder
+    ) -> Data? {
+        guard let baseData = try? encoder.encode(base),
+              var object = (try? JSONSerialization.jsonObject(with: baseData)) as? [String: Any],
+              let eventsData = try? encoder.encode(events),
+              let eventsArray = try? JSONSerialization.jsonObject(with: eventsData) else { return nil }
+        object["playbackSessions"] = sessions
+        object["playbackEvents"] = eventsArray
+        return try? JSONSerialization.data(withJSONObject: object)
     }
 
     private func device() async -> PlaybackAnalyticsDeviceInfo {
@@ -122,32 +198,15 @@ actor PlaybackAnalyticsUploader {
 }
 
 /// The top-level `/analytics/track` request body (`ANALYTICS_PAYLOAD.md`'s
-/// "Top-Level Payload" table) — camelCase property names already match its
-/// documented keys exactly, so no `CodingKeys` override is needed here
-/// (unlike the snake_case per-event/per-device shapes elsewhere in T38).
+/// "Top-Level Payload" table), minus `playbackSessions`/`playbackEvents`,
+/// which `PlaybackAnalyticsUploader.body` adds per request chunk — the session
+/// rows are merged as JSON objects (START + END of one session become one row),
+/// which a typed `Encodable` array of two different shapes can't express.
+/// camelCase property names already match the documented keys exactly.
 private struct AnalyticsUploadPayload: Encodable {
-    let playbackSessions: [AnyEncodable]
-    let playbackEvents: [PlaybackTrackingEvent]
     let userDateOfBirth: String?
     let userAge: Int?
     let userGender: String?
     let device: PlaybackAnalyticsDeviceInfo
     let force: Bool
-}
-
-/// Type-erasing wrapper so `PlaybackSessionStartEvent` and
-/// `PlaybackSessionEndEvent` — two non-uniform shapes representing the same
-/// logical `playbackSessions` row at different phases (see
-/// `PlaybackAnalyticsEvents.swift`'s top-level doc comment) — can share one
-/// JSON array despite Swift requiring a homogeneous `Encodable` element type.
-private struct AnyEncodable: Encodable {
-    private let encodeClosure: (Encoder) throws -> Void
-
-    init(_ wrapped: some Encodable) {
-        encodeClosure = wrapped.encode(to:)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        try encodeClosure(encoder)
-    }
 }

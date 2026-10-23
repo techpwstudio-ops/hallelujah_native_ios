@@ -23,14 +23,10 @@ import UIKit
 ///   backend call from the SQLite/analytics pipeline this file ports — no
 ///   native `HomeRepository` method for it exists yet, and it isn't named in
 ///   T38's own roadmap text. Deferred to whichever task builds that rail.
-/// - `loop_play_number`/`is_suspected_fraud` are accumulated in memory
-///   (`loopPlayNumber`/`dailyLoopCounts` below) and sent only as part of the
-///   session's END event, rather than eagerly persisted and re-synced on
-///   every loop restart the way Dart's SQLite `UPDATE` does. Dart's eager
-///   write exists so a force-quit mid-loop doesn't lose the count; the
-///   native gap is that an abandoned (never-ended) session simply reports no
-///   loop data at all — consistent with `ANALYTICS_PAYLOAD.md`'s own
-///   `ended_at: null` = "still open" contract, not a new failure mode.
+/// - Loops: every loop of a song is its OWN session (IPRS play-count work,
+///   2026-10-23, mirrors the Flutter `ai` branch). The loop index rides on
+///   the new session's START row, so a force-quit mid-loop no longer loses
+///   it. See `recordLoopRestart` and `docs/IPRS_PLAY_COUNT_PROGRESS.md`.
 /// - Resume-on-launch (reading `last_song_id`/`last_song_position_ms` back
 ///   and restoring playback into the UI) isn't built here — see
 ///   `AudioEngine.persistPlaybackPosition`'s doc comment for why. Only the
@@ -63,6 +59,10 @@ final class PlaybackAnalyticsRecorder {
     private var audioQuality: String?
     private var loopPlayNumber = 0
     private var isSuspectedFraud = false
+    private var sessionStartedAtMS = 0
+    /// Set by a seek, cleared by the next progress poll — so a user scrubbing
+    /// back to the start is never mistaken for a repeat-one loop.
+    private var seekedSincePoll = false
     private var firedMilestones: Set<Int> = []
     private var songDurationMS = 0
     private var lastKnownPositionMS = 0
@@ -162,14 +162,21 @@ final class PlaybackAnalyticsRecorder {
 
     // MARK: - Session lifecycle (`sessionChanged`/`startSession`/`endSession`)
 
-    private func startSession(for song: Song) async {
+    private func startSession(for song: Song, loopPlayNumber loopIndex: Int = 0, suspectedFraud: Bool = false) async {
         let newSessionID = UUID().uuidString
+        let startedAtMS = Self.nowMS()
         sessionID = newSessionID
         songID = song.id
-        loopPlayNumber = 0
-        isSuspectedFraud = false
+        loopPlayNumber = loopIndex
+        isSuspectedFraud = suspectedFraud
+        sessionStartedAtMS = startedAtMS
+        seekedSincePoll = false
         firedMilestones = []
         lastKnownPositionMS = 0
+        // Offline play = served from a downloaded file. `AudioEngine` prefers
+        // the local file whenever this provider returns one, so the same lookup
+        // says which source this session plays. Read before the awaits below.
+        let isOffline: Int? = engine.localFileURLProvider.map { $0(song.id) != nil ? 1 : 0 }
 
         let playSource = queueController.queue?.source.playerType.rawValue
         creatorID = song.creator?.creatorId
@@ -190,7 +197,7 @@ final class PlaybackAnalyticsRecorder {
             primaryGenreID: primaryGenreID,
             type: contentType,
             playSource: playSource,
-            startedAtMS: Self.nowMS(),
+            startedAtMS: startedAtMS,
             songDurationMS: songDurationMS,
             audioQuality: audioQuality,
             // No native `Membership`/subscription entity exists yet (grepped
@@ -198,12 +205,22 @@ final class PlaybackAnalyticsRecorder {
             // not merely unwired, so these stay `nil` rather than guessing.
             planID: subscription?.planId,
             planName: subscription?.planName,
-            batteryLevel: Self.currentBatteryLevel()
+            batteryLevel: Self.currentBatteryLevel(),
+            isOffline: isOffline,
+            loopPlayNumber: loopIndex,
+            isSuspectedFraud: suspectedFraud
         ))
         insertTrackingEvent(type: .start, positionMS: 0)
         // `SongAnalyticsManager.startSession`: the session row now exists, so
         // CarPlay's Recents tab can refresh to include it.
         CarIntegrationNotifier.recentPlayed()
+
+        // A loop restart is the same song again: it is a new PLAY, but not a
+        // new recently-played entry or a new playlist-progress step.
+        guard loopIndex == 0 else {
+            startProgressPolling()
+            return
+        }
 
         // `syncToRecentlyPlayedSongApi`: fire-and-forget source attribution.
         let attribution = queueController.queue?.source
@@ -229,13 +246,16 @@ final class PlaybackAnalyticsRecorder {
         startProgressPolling()
     }
 
-    private func endActiveSession() {
+    private func endActiveSession(finalPositionMS: Int? = nil) {
         guard let activeSessionID = sessionID, let activeSongID = songID else { return }
         progressTask?.cancel()
         progressTask = nil
+        if let finalPositionMS { lastKnownPositionMS = finalPositionMS }
 
         analytics.track(PlaybackSessionEndEvent(
             sessionID: activeSessionID,
+            songID: activeSongID,
+            startedAtMS: sessionStartedAtMS,
             endedAtMS: Self.nowMS(),
             songEndDurationMS: lastKnownPositionMS,
             loopPlayNumber: loopPlayNumber,
@@ -280,18 +300,50 @@ final class PlaybackAnalyticsRecorder {
 
     private func recordSeek(from: TimeInterval, to: TimeInterval) {
         guard sessionID != nil else { return }
+        seekedSincePoll = true
         let type: PlaybackEventKind = to > from ? .seekForward : .seekBackward
         insertTrackingEvent(type: type, positionMS: Int(to * 1000))
     }
 
-    private func recordLoopRestart() {
-        guard sessionID != nil, let activeSongID = songID else { return }
-        loopPlayNumber += 1
+    /// The current song started again from the top: repeat-one, or a
+    /// one-song queue wrapping under repeat-all.
+    ///
+    /// Every loop is a NEW session. It used to only bump `loopPlayNumber` on
+    /// the open session, so a song looped five times reached the backend as
+    /// ONE session and was counted as one play at most — plays 2..5 were never
+    /// counted for the creator or reportable to IPRS. Now the finished pass is
+    /// ended at `finalPositionMS` and a fresh session starts carrying the loop
+    /// index. How many loops COUNT is the backend repeat cap's decision
+    /// (`maxCountedPlaysPerUserPerDay`); `maxDailyLoopsPerSong` only sets the
+    /// `is_suspected_fraud` hint.
+    private func recordLoopRestart(finalPositionMS: Int? = nil) {
+        guard sessionID != nil, let activeSongID = songID,
+              let song = engine.currentSong, song.id == activeSongID else { return }
+        // One loop can be reported twice — by `QueueController.onLoopRestart`
+        // and by the position poll. A session that has only just begun cannot
+        // have been played through, so the second report is ignored.
+        guard Self.nowMS() - sessionStartedAtMS > 5_000 else { return }
+
+        let nextLoop = loopPlayNumber + 1
         let dayKey = Self.todayKey(for: activeSongID)
         let count = (dailyLoopCounts[dayKey] ?? 0) + 1
         dailyLoopCounts[dayKey] = count
         trimLoopCounts()
-        isSuspectedFraud = count > Self.maxDailyLoopsPerSong
+
+        endActiveSession(finalPositionMS: finalPositionMS ?? (songDurationMS > 0 ? songDurationMS : nil))
+        // Same-song restart: `applyEngineChange` won't see a new song id, so
+        // the new session is started here. `songID` is restored synchronously
+        // so that an engine change landing before the Task runs (the repeat-all
+        // path re-plays the queue) still sees the same song and does not start
+        // a second session for this loop.
+        songID = activeSongID
+        Task { [weak self] in
+            await self?.startSession(
+                for: song,
+                loopPlayNumber: nextLoop,
+                suspectedFraud: count > Self.maxDailyLoopsPerSong
+            )
+        }
     }
 
     // MARK: - Progress milestones
@@ -311,6 +363,20 @@ final class PlaybackAnalyticsRecorder {
     private func checkProgressMilestones() {
         guard sessionID != nil, songDurationMS > 0 else { return }
         let positionMS = Int(engine.currentPosition * 1000)
+
+        // Repeat-one has no hook on the engine (its same-song-duplicate trick
+        // has no observable boundary — see `QueueController.onLoopRestart`),
+        // so it is detected here the way the Flutter player bloc does: the
+        // playhead went from the last 15% of the track back to the first
+        // few seconds, while playing, without a seek in between.
+        let wasNearEnd = lastKnownPositionMS >= Int(Double(songDurationMS) * 0.85)
+        let seeked = seekedSincePoll
+        seekedSincePoll = false
+        if !seeked, songDurationMS > 5_000, wasNearEnd, positionMS < 5_000, engine.status == .playing {
+            recordLoopRestart(finalPositionMS: lastKnownPositionMS)
+            return
+        }
+
         lastKnownPositionMS = positionMS
         let completionPercent = Int(Double(positionMS) / Double(songDurationMS) * 100)
         for milestone in Self.progressMilestones where completionPercent >= milestone && !firedMilestones.contains(milestone) {
