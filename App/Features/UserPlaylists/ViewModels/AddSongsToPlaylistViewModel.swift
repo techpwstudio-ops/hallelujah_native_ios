@@ -7,7 +7,7 @@ import Observation
 /// multi-tab search page (music/episodes/creators/playlists, `_filterTypes`)
 /// gated behind a flag; retrofitting that reuse onto `ContentSearchView`/
 /// `SearchViewModel` is out of scope here, so this is a separate, smaller
-/// view model that only ever searches `SearchFilter.music`.
+/// view model that searches music and episodes (Flutter's locked `UiItemType.songs` flow).
 ///
 /// Debounce shape copied from `SearchViewModel` (350ms, generation-guarded)
 /// but collapsed to one result list instead of four sections and no
@@ -94,21 +94,31 @@ final class AddSongsToPlaylistViewModel {
             if thisGeneration == generation { isSearching = false }
         }
 
+        // Flutter's add-to-playlist search is the locked `UiItemType.songs`
+        // flow: music AND episodes in one list. This used to search music
+        // only, so podcasts never showed up and couldn't be added.
         do {
-            let results = try await searchRepository.search(
-                query: query,
-                filter: .music,
-                musicPage: 1,
-                episodePage: 1,
-                creatorPage: 1,
-                playlistPage: 1,
-                userPlaylistId: playlistID
-            )
+            async let music = search(query: query, filter: .music)
+            async let episodes = search(query: query, filter: .episode)
+            let (musicResults, episodeResults) = try await (music, episodes)
             guard thisGeneration == generation else { return }
-            songs = results.music.items
+            var seen = Set<String>()
+            songs = (musicResults.music.items + episodeResults.episodes.items).filter { seen.insert($0.id).inserted }
         } catch {
             guard thisGeneration == generation else { return }
             logger.warning("song search failed: \(error)")
         }
+    }
+
+    private func search(query: String, filter: SearchFilter) async throws -> SearchResults {
+        try await searchRepository.search(
+            query: query,
+            filter: filter,
+            musicPage: 1,
+            episodePage: 1,
+            creatorPage: 1,
+            playlistPage: 1,
+            userPlaylistId: playlistID
+        )
     }
 }
