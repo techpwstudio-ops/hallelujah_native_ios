@@ -29,16 +29,32 @@ struct RootView: View {
             case nil:
                 SplashView(viewModel: launchViewModel)
             case .authentication:
-                AuthenticationView(onAuthenticated: launchViewModel.handleAuthenticationSuccess)
+                AuthenticationView(onAuthenticated: { requiresAccountSetup in
+                    Self.dismissKeyboard()
+                    launchViewModel.handleAuthenticationSuccess(requiresAccountSetup: requiresAccountSetup)
+                })
             case .accountSetup:
-                AccountSetupView(onComplete: launchViewModel.handleAccountSetupComplete)
+                AccountSetupView(onComplete: {
+                    Self.dismissKeyboard()
+                    launchViewModel.handleAccountSetupComplete()
+                })
             case .app:
                 AppShellView()
             }
         }
         .onChange(of: signOutSignal.generation) { _, _ in
+            Self.dismissKeyboard()
             launchViewModel.handleSignedOut()
         }
+    }
+
+    /// Resigns whatever text field still holds first responder before the
+    /// `switch` above swaps the whole tree. Tearing out a focused field (the
+    /// OTP screen's hidden auto-focused number field) doesn't reliably take
+    /// the keyboard with it, so without this the number pad stayed up over
+    /// Home after login.
+    private static func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
