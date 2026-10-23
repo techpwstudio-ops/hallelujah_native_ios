@@ -141,7 +141,7 @@ struct SongMetaSections: View {
             let creatorID = viewModel.mainCreatorID
             ZStack(alignment: .bottomLeading) {
                 ArtworkView(
-                    url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants),
+                    url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants, fallbackName: creator.name),
                     width: UIScreen.main.bounds.width - 2 * Dimens.screenPaddingAll,
                     height: UIScreen.main.bounds.width - 2 * Dimens.screenPaddingAll,
                     cornerRadius: Dimens.cornerRadiusMedium

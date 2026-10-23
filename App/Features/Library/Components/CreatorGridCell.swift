@@ -17,7 +17,7 @@ struct CreatorGridCell: View {
         VStack(spacing: 0) {
             ZStack(alignment: .topTrailing) {
                 ArtworkView(
-                    url: ArtworkURLResolver().resolve(path: creator.image, variant: .sm, allowedVariants: creator.imageVariants),
+                    url: ArtworkURLResolver().resolve(path: creator.image, variant: .sm, allowedVariants: creator.imageVariants, fallbackName: creator.name),
                     width: Self.avatarSize,
                     height: Self.avatarSize,
                     cornerRadius: 48

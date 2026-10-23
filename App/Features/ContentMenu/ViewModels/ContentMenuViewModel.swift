@@ -38,7 +38,7 @@ enum ContentMenuTarget: Identifiable, Equatable, Sendable {
         case .playlist(let playlist):
             ArtworkURLResolver().resolve(path: playlist.image, variant: .lg, allowedVariants: playlist.imageVariants)
         case .creator(let creator):
-            ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants)
+            ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants, fallbackName: creator.name)
         }
     }
 

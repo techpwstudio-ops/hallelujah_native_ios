@@ -12,7 +12,7 @@ struct SearchCreatorRow: View {
     static let avatarSize: CGFloat = 52
 
     private var resolvedArtwork: URL? {
-        ArtworkURLResolver().resolve(path: creator.image, variant: .sm, allowedVariants: creator.imageVariants)
+        ArtworkURLResolver().resolve(path: creator.image, variant: .sm, allowedVariants: creator.imageVariants, fallbackName: creator.name)
     }
 
     private var subtitle: String {

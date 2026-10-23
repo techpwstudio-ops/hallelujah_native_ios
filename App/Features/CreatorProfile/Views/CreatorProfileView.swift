@@ -121,7 +121,7 @@ struct CreatorProfileView: View {
                     .aspectRatio(1, contentMode: .fit)
                     .overlay {
                         ParityHeroImage(
-                            url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants),
+                            url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants, fallbackName: creator.name),
                             aspect: 1,
                             stops: []
                         )

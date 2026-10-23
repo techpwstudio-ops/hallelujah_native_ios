@@ -132,6 +132,6 @@ struct CreatorDetailsSheet: View {
     }
 
     private func artworkURL(_ variant: ImageVariant) -> URL? {
-        ArtworkURLResolver().resolve(path: viewModel.creator.image, variant: variant, allowedVariants: viewModel.creator.imageVariants)
+        ArtworkURLResolver().resolve(path: viewModel.creator.image, variant: variant, allowedVariants: viewModel.creator.imageVariants, fallbackName: viewModel.creator.name)
     }
 }
