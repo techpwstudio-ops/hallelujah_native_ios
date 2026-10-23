@@ -27,12 +27,20 @@ APP_NAME_BASE = Hallelujah
 APP_DISPLAY_NAME = $(APP_NAME_BASE)
 ORGANIZATION_NAME = Hallelujah
 
+// ── Analytics ───────────────────────────────────────────────────────────────
+// Microsoft Clarity project id, copied from the Flutter app (lib/main.dart).
+// Not a secret — it ships inside every client build — so it is committed here
+// rather than injected by CI.
+CLARITY_PROJECT_ID = xmuqz9leqv
+
 // ── Versioning ──────────────────────────────────────────────────────────────
 // This app REPLACES the Flutter app (same bundle id), so the version must be
 // above Flutter's last release (4.0.2, build 330) or the App Store / installs
-// treat it as a downgrade. CI overrides CURRENT_PROJECT_VERSION.
-MARKETING_VERSION = 4.0.3
-CURRENT_PROJECT_VERSION = 333
+// treat it as a downgrade. CI overrides CURRENT_PROJECT_VERSION only; this
+// MARKETING_VERSION is the one place to edit before each App Store release
+// (it must increase past whatever is live in App Store Connect).
+MARKETING_VERSION = 4.0.4
+CURRENT_PROJECT_VERSION = 335
 
 // ── Signing ─────────────────────────────────────────────────────────────────
 // DEVELOPMENT_TEAM is intentionally not committed. Set it in

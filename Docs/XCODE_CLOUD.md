@@ -19,15 +19,14 @@ team or backend secrets. Firebase needs no `GoogleService-Info.plist`; it is con
 
 1. Xcode -> Product -> Xcode Cloud -> Create Workflow (or App Store Connect -> Xcode Cloud). Grant
    access to the GitHub repo.
-2. **Environment** (tick *Secret* on all except the two version ones):
+2. **Environment** (tick *Secret* on all except `BUILD_NUMBER_OFFSET`):
 
    | Variable | Value |
    | --- | --- |
    | `HALLELUJAH_DEVELOPMENT_TEAM` | Apple Team ID |
    | `HALLELUJAH_API_SECRET` | production "secure" header secret |
    | `HALLELUJAH_OTP_SECRET_1` / `_2` | production OTP secrets |
-   | `RAZORPAY_KEY_ID`, `CLARITY_PROJECT_ID` | optional |
-   | `IOS_MARKETING_VERSION` | e.g. `15.0.3`, bumped per App Store release |
+   | `RAZORPAY_KEY_ID` | optional |
    | `BUILD_NUMBER_OFFSET` | optional, see below |
 
 3. **Start condition:** branch `main` (changes to files), or manual only if you prefer to release on
@@ -49,14 +48,14 @@ select that build, and submit; no new build. Use phased release as in `Docs/RELE
 
 ## Two things that will bite you
 
-- **Marketing version.** `Base.xcconfig` says `MARKETING_VERSION = 4.1.0`, but the Flutter iOS
-  listing has been on a 15.x train (last known live 15.0.2). App Store Connect rejects a version that
-  does not increase, so set `IOS_MARKETING_VERSION` above whatever is live. Check App Store Connect
-  for the real number.
+- **Marketing version.** It lives in code: `MARKETING_VERSION` in `Config/Shared/Base.xcconfig`.
+  Edit and commit it before each App Store release. App Store Connect rejects a version that does
+  not increase, so check the live number there and set it higher.
 - **Build numbers.** `CURRENT_PROJECT_VERSION` becomes `$CI_BUILD_NUMBER + BUILD_NUMBER_OFFSET`.
-  Within one version, App Store Connect needs strictly increasing build numbers. A new version train
-  can start at 1; if you reuse a version that already has builds, set `BUILD_NUMBER_OFFSET` above the
-  highest one.
+  The offset defaults to `334` in `ci_scripts/ci_post_clone.sh` (the last build already in App
+  Store Connect), so the first Xcode Cloud build is 335 and each later one counts up. Change that
+  default if a higher build is uploaded outside Xcode Cloud, or if the workflow is recreated
+  (which resets `$CI_BUILD_NUMBER` to 1). Setting `BUILD_NUMBER_OFFSET` in the workflow overrides it.
 
 ## Not handled here
 
