@@ -101,6 +101,7 @@ struct AppShellView: View {
             switch newPhase {
             case .active:
                 networkStatus.resume()
+                audioEngine.handleDidBecomeActive()
                 reviewPrompt.onForeground()
             case .background:
                 networkStatus.suspend()

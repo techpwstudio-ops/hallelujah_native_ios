@@ -69,6 +69,7 @@ final class NowPlayingCoordinator {
             _ = engine.status
             _ = engine.currentSong
             _ = engine.currentItemDuration
+            _ = engine.seekGeneration
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.publish()
@@ -118,6 +119,23 @@ final class NowPlayingCoordinator {
     /// Built in a nonisolated context: MediaPlayer invokes the request handler
     /// on its own queue, and a closure formed in a main-actor method traps the
     /// runtime isolation check there.
+    /// A remote-command handler built outside the main actor. MediaPlayer
+    /// calls these on its own queue when the app is in the background (the
+    /// lock screen, Control Center, headphones): a closure formed inside a
+    /// main-actor method is main-actor isolated under Swift 6, and calling
+    /// it off the main thread traps — the app crashed on the first lock-screen
+    /// tap after the phone had slept. `action` gets the seek target for
+    /// `changePlaybackPosition`, `nil` otherwise.
+    private nonisolated static func handler(
+        _ action: @escaping @MainActor @Sendable (TimeInterval?) -> Void
+    ) -> (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+        { event in
+            let position = (event as? MPChangePlaybackPositionCommandEvent)?.positionTime
+            Task { @MainActor in action(position) }
+            return .success
+        }
+    }
+
     private nonisolated static func makeArtwork(_ image: UIImage) -> MPMediaItemArtwork {
         MPMediaItemArtwork(boundsSize: image.size) { _ in image }
     }
@@ -185,48 +203,30 @@ final class NowPlayingCoordinator {
     private func registerRemoteCommands() {
         let center = MPRemoteCommandCenter.shared()
 
-        center.playCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.engine.resume() }
-            return .success
-        }
-        center.pauseCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.engine.pause() }
-            return .success
-        }
-        center.togglePlayPauseCommand.addTarget { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                if self.engine.status == .playing { self.engine.pause() } else { self.engine.resume() }
-            }
-            return .success
-        }
-        center.nextTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in await self?.queueController.skipToNext() }
-            return .success
-        }
-        center.previousTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in
-                // `skipToPrevious()`'s >3s-restart branch only seeks — it
-                // doesn't touch status/currentSong/currentItemDuration, the
-                // only properties `trackEngine()` observes, so it wouldn't
-                // otherwise trigger a republish. The actual-previous-track
-                // branch DOES change `currentSong` and would republish on
-                // its own; calling `publish()` unconditionally here is a
-                // harmless redundant republish in that case, not a bug.
+        center.playCommand.addTarget(handler: Self.handler { [weak self] _ in self?.engine.resume() })
+        center.pauseCommand.addTarget(handler: Self.handler { [weak self] _ in self?.engine.pause() })
+        center.togglePlayPauseCommand.addTarget(handler: Self.handler { [weak self] _ in
+            guard let self else { return }
+            if self.engine.status == .playing { self.engine.pause() } else { self.engine.resume() }
+        })
+        center.nextTrackCommand.addTarget(handler: Self.handler { [weak self] _ in
+            Task { await self?.queueController.skipToNext() }
+        })
+        center.previousTrackCommand.addTarget(handler: Self.handler { [weak self] _ in
+            // `skipToPrevious()`'s >3s-restart branch only seeks — it
+            // doesn't touch status/currentSong/currentItemDuration, so it
+            // wouldn't otherwise republish. A redundant republish after a
+            // real track change is harmless.
+            Task {
                 await self?.queueController.skipToPrevious()
                 self?.publish()
             }
-            return .success
-        }
-        center.changePlaybackPositionCommand.addTarget { [weak self] event in
-            guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
-            let position = event.positionTime
-            Task { @MainActor in
-                self?.engine.seek(to: position)
-                self?.publish()
-            }
-            return .success
-        }
+        })
+        center.changePlaybackPositionCommand.addTarget(handler: Self.handler { [weak self] position in
+            guard let position else { return }
+            self?.engine.seek(to: position)
+            self?.publish()
+        })
         center.skipForwardCommand.isEnabled = false
         center.skipBackwardCommand.isEnabled = false
     }

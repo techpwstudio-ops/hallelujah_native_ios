@@ -212,7 +212,7 @@ final class VoiceController {
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil,
             queue: nil
-        ) { [weak self] _ in
+        ) { @Sendable [weak self] _ in
             Task { @MainActor in self?.handleDidEnterBackground() }
         }
     }

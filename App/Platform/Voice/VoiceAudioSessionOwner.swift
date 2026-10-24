@@ -137,7 +137,7 @@ final class VoiceAudioSessionOwner {
             forName: AVAudioSession.interruptionNotification,
             object: session,
             queue: nil
-        ) { [weak self] notification in
+        ) { @Sendable [weak self] notification in
             let typeValue = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
             Task { @MainActor in self?.handleInterruption(typeValue: typeValue) }
         }
@@ -146,7 +146,7 @@ final class VoiceAudioSessionOwner {
             forName: AVAudioSession.routeChangeNotification,
             object: session,
             queue: nil
-        ) { [weak self] notification in
+        ) { @Sendable [weak self] notification in
             let reasonValue = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
             Task { @MainActor in self?.handleRouteChange(reasonValue: reasonValue) }
         }

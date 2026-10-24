@@ -38,6 +38,14 @@ final class AudioEngine {
     private(set) var status: Status = .idle
     private(set) var currentSong: Song?
     private(set) var currentPosition: TimeInterval = 0
+    /// Bumped on every seek, so Now Playing republishes the new position:
+    /// a seek from the in-app player otherwise left the lock screen's
+    /// scrubber where it was until the next play/pause.
+    private(set) var seekGeneration = 0
+    /// Where the last seek went, and until when time ticks that disagree with
+    /// it are ignored: the player keeps reporting the old time until the
+    /// seek lands, which made the seek bar jump back before jumping forward.
+    @ObservationIgnored private var pendingSeek: (target: TimeInterval, until: Date)?
     private(set) var currentItemDuration: TimeInterval?
 
     private let player = AVQueuePlayer()
@@ -116,6 +124,7 @@ final class AudioEngine {
     nonisolated(unsafe) private var interruptionObserver: NSObjectProtocol?
     nonisolated(unsafe) private var routeChangeObserver: NSObjectProtocol?
     nonisolated(unsafe) private var itemFailureObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var mediaResetObserver: NSObjectProtocol?
     private var currentItemObservation: NSKeyValueObservation?
     private var timeControlStatusObservation: NSKeyValueObservation?
     /// `status` of whichever item is current. A stream refused before it
@@ -143,6 +152,7 @@ final class AudioEngine {
         configureAudioSession()
         observeInterruptions()
         observeRouteChanges()
+        observeMediaServicesReset()
         observeItemFailures()
         observePlayerAdvance()
         addTimeObserver()
@@ -152,6 +162,7 @@ final class AudioEngine {
         if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
         if let routeChangeObserver { NotificationCenter.default.removeObserver(routeChangeObserver) }
         if let itemFailureObserver { NotificationCenter.default.removeObserver(itemFailureObserver) }
+        if let mediaResetObserver { NotificationCenter.default.removeObserver(mediaResetObserver) }
         if let timeObserverToken { player.removeTimeObserver(timeObserverToken) }
         keepAliveTask?.cancel()
     }
@@ -225,8 +236,8 @@ final class AudioEngine {
     /// resolves to the completion-handler overload, which AVFoundation
     /// rejects on an item that isn't `readyToPlay` yet. The plain overload
     /// just queues the seek until it is.
-    private func swapInReloadedItem(_ item: AVPlayerItem, songID: String) {
-        let wasPlaying = player.timeControlStatus != .paused
+    private func swapInReloadedItem(_ item: AVPlayerItem, songID: String, resume: Bool? = nil) {
+        let wasPlaying = resume ?? (player.timeControlStatus != .paused)
         let position = currentPosition
         reloadedItem = item
         player.removeAllItems()
@@ -279,6 +290,8 @@ final class AudioEngine {
         // Now Playing republishes right after a lock-screen seek; with the
         // old position still here its scrubber jumped back to it.
         currentPosition = time
+        pendingSeek = (time, Date().addingTimeInterval(1.5))
+        seekGeneration &+= 1
         onSeek?(from, time)
     }
 
@@ -380,7 +393,7 @@ final class AudioEngine {
             forName: AVAudioSession.interruptionNotification,
             object: AVAudioSession.sharedInstance(),
             queue: nil
-        ) { [weak self] notification in
+        ) { @Sendable [weak self] notification in
             guard let info = notification.userInfo,
                   let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt
             else { return }
@@ -408,6 +421,52 @@ final class AudioEngine {
         }
     }
 
+    // MARK: - Foreground / media services
+
+    /// The app is back on screen. A song still meant to be playing gets
+    /// its audio session re-activated: after a long sleep iOS can leave it
+    /// inactive while the player clock keeps running — the progress bar
+    /// moved and nothing was heard. Cheap and harmless when it's fine.
+    func handleDidBecomeActive() {
+        guard status == .playing || player.rate != 0 else { return }
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            logger.warning("audio session re-activation on foreground failed: \(error)")
+        }
+        if let item = player.currentItem, item.status == .failed {
+            let identifier = ObjectIdentifier(item)
+            Task { await handleItemFailure(identifier: identifier) }
+        }
+    }
+
+    /// iOS restarted its media server (it can, during a long sleep): every
+    /// player item from before is dead, so audio stops while our state still
+    /// says playing. Apple's guidance is to set the session up again and
+    /// rebuild — the current song resumes where it was.
+    private func observeMediaServicesReset() {
+        mediaResetObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification,
+            object: nil,
+            queue: nil
+        ) { @Sendable [weak self] _ in
+            Task { @MainActor in await self?.handleMediaServicesReset() }
+        }
+    }
+
+    private func handleMediaServicesReset() async {
+        logger.warning("media services were reset; rebuilding the player items")
+        configureAudioSession()
+        guard let song = currentSong,
+              logicalQueue.indices.contains(logicalIndex),
+              logicalQueue[logicalIndex].id == song.id
+        else { return }
+        let wasPlaying = status == .playing || status == .loading
+        guard let item = await makePlayerItem(for: song), currentSong?.id == song.id else { return }
+        swapInReloadedItem(item, songID: song.id, resume: wasPlaying)
+        await appendAheadItems(afterLogicalIndex: logicalIndex)
+    }
+
     // MARK: - Route changes
 
     /// Ports `becomingNoisyEventStream` (`audio_service.dart:251-253`,
@@ -420,7 +479,7 @@ final class AudioEngine {
             forName: AVAudioSession.routeChangeNotification,
             object: AVAudioSession.sharedInstance(),
             queue: nil
-        ) { [weak self] notification in
+        ) { @Sendable [weak self] notification in
             guard let info = notification.userInfo,
                   let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt
             else { return }
@@ -548,20 +607,27 @@ final class AudioEngine {
     /// repeat-off leaves playback stopped on the last song, matching this
     /// engine's existing no-op-when-nil behavior from before T33).
     private func observePlayerAdvance() {
-        currentItemObservation = player.observe(\.currentItem, options: [.new]) { [weak self] player, _ in
+        // Every handler here is `@Sendable`, i.e. not main-actor isolated:
+        // AVFoundation and AVAudioSession call them on their own threads
+        // (an auto-advance or an interruption while the phone sleeps), and
+        // under Swift 6 a main-actor closure called off the main thread
+        // traps — a crash on waking the phone. Each one only hops to the
+        // main actor.
+        currentItemObservation = player.observe(\.currentItem, options: [.new]) { @Sendable [weak self] _, _ in
             Task { @MainActor in
                 guard let self else { return }
                 self.observeCurrentItemStatus()
-                if player.currentItem == nil {
+                if self.player.currentItem == nil {
                     await self.onQueueExhausted?()
                 } else {
                     await self.topUpWindow()
                 }
             }
         }
-        timeControlStatusObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+        timeControlStatusObservation = player.observe(\.timeControlStatus, options: [.new]) { @Sendable [weak self] _, _ in
             Task { @MainActor in
-                self?.applyTimeControlStatus(player.timeControlStatus)
+                guard let self else { return }
+                self.applyTimeControlStatus(self.player.timeControlStatus)
             }
         }
     }
@@ -569,7 +635,7 @@ final class AudioEngine {
     /// `.initial` as well: a lookahead item that already failed while it
     /// waited reports it the moment it becomes current.
     private func observeCurrentItemStatus() {
-        currentItemStatusObservation = player.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+        currentItemStatusObservation = player.currentItem?.observe(\.status, options: [.initial, .new]) { @Sendable [weak self] item, _ in
             guard item.status == .failed else { return }
             let identifier = ObjectIdentifier(item)
             Task { @MainActor in
@@ -604,6 +670,10 @@ final class AudioEngine {
         timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             Task { @MainActor in
                 guard let self else { return }
+                if let pending = self.pendingSeek {
+                    if Date() < pending.until, abs(time.seconds - pending.target) > 1 { return }
+                    self.pendingSeek = nil
+                }
                 self.currentPosition = time.seconds
                 if let duration = self.player.currentItem?.duration, duration.isNumeric, duration.seconds.isFinite {
                     self.currentItemDuration = duration.seconds
@@ -660,7 +730,7 @@ final class AudioEngine {
             forName: .AVPlayerItemFailedToPlayToEndTime,
             object: nil,
             queue: nil
-        ) { [weak self] notification in
+        ) { @Sendable [weak self] notification in
             guard let failedItem = notification.object as? AVPlayerItem else { return }
             let identifier = ObjectIdentifier(failedItem)
             Task { @MainActor in

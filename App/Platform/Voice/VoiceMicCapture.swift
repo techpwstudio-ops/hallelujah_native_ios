@@ -231,7 +231,7 @@ final class AVEngineVoiceMicCapture: VoiceMicCapture {
             forName: .AVAudioEngineConfigurationChange,
             object: engine,
             queue: nil
-        ) { [weak self] _ in
+        ) { @Sendable [weak self] _ in
             Task { @MainActor in self?.handleConfigurationChange() }
         }
     }
