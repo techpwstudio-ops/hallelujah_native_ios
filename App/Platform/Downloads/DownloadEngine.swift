@@ -111,7 +111,6 @@ final class DownloadEngine {
 
         let loadedTasks = catalogStore.load()
         tasks = Dictionary(loadedTasks.map { ($0.songID, $0) }, uniquingKeysWith: { _, latest in latest })
-        failCompletedDownloadsWithoutAudio()
 
         // Same fallback `KeychainTokenStore`/`AppLogger` already use — there's
         // no bundle-identifier accessor on `AppConfiguration` to read a
@@ -134,6 +133,7 @@ final class DownloadEngine {
         // `engine` needs no lock of its own despite being read from the
         // delegate queue later (see `DownloadSessionDelegate`'s own note).
         delegate.engine = self
+        failCompletedDownloadsWithoutAudio()
 
         Task { [weak self] in
             await self?.reconcileWithExistingTasks()
