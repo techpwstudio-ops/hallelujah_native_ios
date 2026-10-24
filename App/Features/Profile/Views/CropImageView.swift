@@ -6,10 +6,12 @@ import UIKit
 /// area with a 55% black scrim, white corner brackets and a rule-of-thirds
 /// grid, and a `#111111` bottom toolbar with Reset / Rotate L / Rotate R.
 ///
-/// Interaction deviation: Flutter's `crop_image` lets the user drag the crop
-/// rectangle's handles; here the square crop frame is fixed and the picture
-/// is panned / pinch-zoomed beneath it (the native idiom for a fixed
-/// `aspectRatio`), with identical output (square PNG written to Documents).
+/// Behaves like the `crop_image` package Flutter uses: the whole photo is
+/// fitted inside the area (28pt padding), and the crop box sits on top of
+/// it — drag a corner to resize it (the aspect ratio stays fixed), drag
+/// anywhere else to move it (`alwaysMove: true`). It starts as the largest
+/// box of that ratio the photo allows. Output: the boxed pixels as a PNG
+/// in Documents (`<millis>.png`), as `_finished` writes.
 struct CropImageView: View {
     let sourceURL: URL
     var aspectRatio: CGFloat = 1
@@ -17,13 +19,21 @@ struct CropImageView: View {
 
     @State private var baseImage: UIImage?
     @State private var rotationQuarterTurns = 0
-    @State private var scale: CGFloat = 1
-    @State private var committedScale: CGFloat = 1
-    @State private var offset: CGSize = .zero
-    @State private var committedOffset: CGSize = .zero
-    @State private var frameSide: CGFloat = 0
+    /// `baseImage` turned by `rotationQuarterTurns`. Kept, not computed:
+    /// re-rotating a full-size photo on every drag frame stalls the gesture.
+    @State private var displayImage: UIImage?
+    /// The crop box in unit coordinates of `displayImage` (0...1 on each axis).
+    @State private var cropRect: CGRect = .zero
+    @State private var dragStart: CropDragStart?
     @State private var isProcessing = false
     @State private var failureMessage: String?
+
+    /// `CropImage(paddingSize: 28)`.
+    private static let imagePadding: CGFloat = 28
+    /// How close to a corner a touch must start to resize rather than move.
+    private static let cornerHitRadius: CGFloat = 36
+    /// Smallest box side on screen.
+    private static let minimumCropSide: CGFloat = 48
 
     private static let toolbarFill = Color(red: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255)
     private static let toolbarBorder = Color(red: 0x2A / 255, green: 0x2A / 255, blue: 0x2A / 255)
@@ -125,91 +135,154 @@ struct CropImageView: View {
 
     // MARK: Crop area
 
-    private var displayImage: UIImage? {
-        guard let baseImage else { return nil }
-        return Self.rotated(baseImage, quarterTurns: rotationQuarterTurns)
+
+    /// Where the fitted photo sits inside the crop area.
+    private func imageFrame(for image: UIImage, in size: CGSize) -> CGRect {
+        let available = CGSize(
+            width: max(1, size.width - Self.imagePadding * 2),
+            height: max(1, size.height - Self.imagePadding * 2)
+        )
+        guard image.size.width > 0, image.size.height > 0 else { return .zero }
+        let fit = min(available.width / image.size.width, available.height / image.size.height)
+        let fitted = CGSize(width: image.size.width * fit, height: image.size.height * fit)
+        return CGRect(
+            x: (size.width - fitted.width) / 2,
+            y: (size.height - fitted.height) / 2,
+            width: fitted.width,
+            height: fitted.height
+        )
     }
 
-    private func cropSide(in size: CGSize) -> CGFloat {
-        max(40, min(size.width, size.height) - 56)
+    private func screenRect(of unitRect: CGRect, in imageFrame: CGRect) -> CGRect {
+        CGRect(
+            x: imageFrame.minX + unitRect.minX * imageFrame.width,
+            y: imageFrame.minY + unitRect.minY * imageFrame.height,
+            width: unitRect.width * imageFrame.width,
+            height: unitRect.height * imageFrame.height
+        )
     }
 
     private var cropArea: some View {
         GeometryReader { proxy in
-            let side = cropSide(in: proxy.size)
-            let frameWidth = side
-            let frameHeight = side / max(aspectRatio, 0.01)
-            ZStack {
-                if let image = displayImage {
-                    let cover = coverScale(for: image, width: frameWidth, height: frameHeight)
+            if let image = displayImage {
+                let frame = imageFrame(for: image, in: proxy.size)
+                let box = screenRect(of: cropRect, in: frame)
+                ZStack(alignment: .topLeading) {
                     Image(uiImage: image)
                         .resizable()
-                        .frame(width: image.size.width * cover * scale, height: image.size.height * cover * scale)
-                        .offset(offset)
-                        .frame(width: proxy.size.width, height: proxy.size.height)
-                        .clipped()
-                        // `.clipped()` only clips drawing: the cover-scaled
-                        // image still hit-tested far outside this area and
-                        // swallowed every tap on the header (close / Done).
-                        .allowsHitTesting(false)
+                        .frame(width: frame.width, height: frame.height)
+                        .offset(x: frame.minX, y: frame.minY)
+                    CropScrim(cutout: box)
+                        .fill(Color.black.opacity(0.55), style: FillStyle(eoFill: true))
+                    CropGrid(width: box.width, height: box.height)
+                        .offset(x: box.minX, y: box.minY)
                 }
-                CropScrim(frameWidth: frameWidth, frameHeight: frameHeight)
-                    .fill(Color.black.opacity(0.55), style: FillStyle(eoFill: true))
-                    .allowsHitTesting(false)
-                CropGrid(width: frameWidth, height: frameHeight)
-                    .allowsHitTesting(false)
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+                .clipped()
+                .allowsHitTesting(false)
+                .overlay {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .gesture(cropDragGesture(image: image, imageFrame: frame))
+                }
             }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-            .clipped()
-            .contentShape(Rectangle())
-            .gesture(cropDragGesture(width: frameWidth, height: frameHeight))
-            .simultaneousGesture(cropZoomGesture(width: frameWidth, height: frameHeight))
-            .onAppear { frameSide = side }
-            .onChange(of: proxy.size) { _, newSize in frameSide = cropSide(in: newSize) }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
     }
 
-    private func coverScale(for image: UIImage, width: CGFloat, height: CGFloat) -> CGFloat {
-        guard image.size.width > 0, image.size.height > 0 else { return 1 }
-        return max(width / image.size.width, height / image.size.height)
-    }
-
-    private func clamp(_ proposed: CGSize, image: UIImage, width: CGFloat, height: CGFloat, scale: CGFloat) -> CGSize {
-        let cover = coverScale(for: image, width: width, height: height)
-        let maxX = max(0, (image.size.width * cover * scale - width) / 2)
-        let maxY = max(0, (image.size.height * cover * scale - height) / 2)
-        return CGSize(
-            width: min(max(proposed.width, -maxX), maxX),
-            height: min(max(proposed.height, -maxY), maxY)
+    /// The largest box of `aspectRatio` (width / height, in pixels) the
+    /// photo allows, centred — `CropController`'s full-image default after
+    /// `_adjustRatio`.
+    private static func defaultCrop(for image: UIImage, aspectRatio: CGFloat) -> CGRect {
+        let size = image.size
+        guard size.width > 0, size.height > 0 else { return CGRect(x: 0, y: 0, width: 1, height: 1) }
+        let ratio = max(aspectRatio, 0.01)
+        let width = min(size.width, size.height * ratio)
+        let height = width / ratio
+        return CGRect(
+            x: (size.width - width) / 2 / size.width,
+            y: (size.height - height) / 2 / size.height,
+            width: width / size.width,
+            height: height / size.height
         )
     }
 
-    private func cropDragGesture(width: CGFloat, height: CGFloat) -> some Gesture {
-        DragGesture()
+    private func cropDragGesture(image: UIImage, imageFrame: CGRect) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .local)
             .onChanged { value in
-                guard let image = displayImage else { return }
-                let proposed = CGSize(
-                    width: committedOffset.width + value.translation.width,
-                    height: committedOffset.height + value.translation.height
+                guard imageFrame.width > 0, imageFrame.height > 0 else { return }
+                if dragStart == nil {
+                    dragStart = CropDragStart(
+                        rect: cropRect,
+                        corner: corner(near: value.startLocation, box: screenRect(of: cropRect, in: imageFrame))
+                    )
+                }
+                guard let start = dragStart else { return }
+                let delta = CGSize(
+                    width: value.translation.width / imageFrame.width,
+                    height: value.translation.height / imageFrame.height
                 )
-                offset = clamp(proposed, image: image, width: width, height: height, scale: scale)
+                if let corner = start.corner {
+                    cropRect = resized(start.rect, corner: corner, by: delta, image: image, imageFrame: imageFrame)
+                } else {
+                    cropRect = moved(start.rect, by: delta)
+                }
             }
-            .onEnded { _ in committedOffset = offset }
+            .onEnded { _ in dragStart = nil }
     }
 
-    private func cropZoomGesture(width: CGFloat, height: CGFloat) -> some Gesture {
-        MagnifyGesture()
-            .onChanged { value in
-                guard let image = displayImage else { return }
-                scale = min(max(committedScale * value.magnification, 1), 8)
-                offset = clamp(offset, image: image, width: width, height: height, scale: scale)
-            }
-            .onEnded { _ in
-                committedScale = scale
-                committedOffset = offset
-            }
+    private func corner(near point: CGPoint, box: CGRect) -> CropCorner? {
+        let corners: [(CropCorner, CGPoint)] = [
+            (.topLeft, CGPoint(x: box.minX, y: box.minY)),
+            (.topRight, CGPoint(x: box.maxX, y: box.minY)),
+            (.bottomLeft, CGPoint(x: box.minX, y: box.maxY)),
+            (.bottomRight, CGPoint(x: box.maxX, y: box.maxY)),
+        ]
+        let nearest = corners.min { hypot($0.1.x - point.x, $0.1.y - point.y) < hypot($1.1.x - point.x, $1.1.y - point.y) }
+        guard let nearest, hypot(nearest.1.x - point.x, nearest.1.y - point.y) <= Self.cornerHitRadius else { return nil }
+        return nearest.0
+    }
+
+    private func moved(_ rect: CGRect, by delta: CGSize) -> CGRect {
+        var result = rect
+        result.origin.x = min(max(rect.minX + delta.width, 0), 1 - rect.width)
+        result.origin.y = min(max(rect.minY + delta.height, 0), 1 - rect.height)
+        return result
+    }
+
+    /// Resizes from `corner`, keeping the opposite corner fixed and the
+    /// box's pixel aspect ratio, within the photo and above a minimum size.
+    /// Worked in pixels: unit coordinates aren't square on a non-square photo.
+    private func resized(_ rect: CGRect, corner: CropCorner, by delta: CGSize, image: UIImage, imageFrame: CGRect) -> CGRect {
+        let size = image.size
+        let ratio = max(aspectRatio, 0.01)
+        let pixels = CGRect(x: rect.minX * size.width, y: rect.minY * size.height,
+                            width: rect.width * size.width, height: rect.height * size.height)
+        let movesLeft = corner == .topLeft || corner == .bottomLeft
+        let movesUp = corner == .topLeft || corner == .topRight
+        let anchor = CGPoint(x: movesLeft ? pixels.maxX : pixels.minX, y: movesUp ? pixels.maxY : pixels.minY)
+        let dragged = CGPoint(
+            x: (movesLeft ? pixels.minX : pixels.maxX) + delta.width * size.width,
+            y: (movesUp ? pixels.minY : pixels.maxY) + delta.height * size.height
+        )
+        let proposedWidth = movesLeft ? anchor.x - dragged.x : dragged.x - anchor.x
+        let proposedHeight = movesUp ? anchor.y - dragged.y : dragged.y - anchor.y
+        var width = max(proposedWidth, proposedHeight * ratio)
+
+        let maxWidth = min(
+            movesLeft ? anchor.x : size.width - anchor.x,
+            (movesUp ? anchor.y : size.height - anchor.y) * ratio
+        )
+        let pixelsPerPoint = size.width / imageFrame.width
+        let minWidth = min(Self.minimumCropSide * pixelsPerPoint * max(ratio, 1), maxWidth)
+        width = min(max(width, minWidth), maxWidth)
+        let height = width / ratio
+
+        let originX = movesLeft ? anchor.x - width : anchor.x
+        let originY = movesUp ? anchor.y - height : anchor.y
+        return CGRect(x: originX / size.width, y: originY / size.height,
+                      width: width / size.width, height: height / size.height)
     }
 
     // MARK: Toolbar
@@ -277,25 +350,31 @@ struct CropImageView: View {
         guard baseImage == nil,
               let data = try? Data(contentsOf: sourceURL),
               let image = UIImage(data: data) else { return }
-        baseImage = Self.normalized(image)
+        let normalized = Self.normalized(image)
+        baseImage = normalized
+        displayImage = normalized
+        cropRect = Self.defaultCrop(for: normalized, aspectRatio: aspectRatio)
     }
 
     private func reset() {
-        withAnimation(.easeOut(duration: 0.2)) {
-            rotationQuarterTurns = 0
-            scale = 1
-            committedScale = 1
-            offset = .zero
-            committedOffset = .zero
-        }
+        rotationQuarterTurns = 0
+        displayImage = baseImage
+        resetCrop()
     }
 
     private func rotate(by turns: Int) {
         rotationQuarterTurns = ((rotationQuarterTurns + turns) % 4 + 4) % 4
-        scale = 1
-        committedScale = 1
-        offset = .zero
-        committedOffset = .zero
+        if let baseImage {
+            displayImage = Self.rotated(baseImage, quarterTurns: rotationQuarterTurns)
+        }
+        resetCrop()
+    }
+
+    private func resetCrop() {
+        guard let image = displayImage else { return }
+        withAnimation(.easeOut(duration: 0.2)) {
+            cropRect = Self.defaultCrop(for: image, aspectRatio: aspectRatio)
+        }
     }
 
     @MainActor
@@ -305,13 +384,7 @@ struct CropImageView: View {
             return
         }
         isProcessing = true
-        let result = Self.render(
-            image: image,
-            aspectRatio: aspectRatio,
-            scale: scale,
-            offset: offset,
-            frameSide: frameSide
-        )
+        let result = Self.render(image: image, unitCrop: cropRect)
         isProcessing = false
         if let result {
             onFinish(result)
@@ -354,25 +427,23 @@ struct CropImageView: View {
         }
     }
 
-    /// Crops `image` to the frame the user framed and writes a PNG to
+    /// Crops `image` to the box the user set and writes a PNG to
     /// Documents (`<millis>.png`, as `_finished` does).
-    private static func render(image: UIImage, aspectRatio: CGFloat, scale: CGFloat, offset: CGSize, frameSide: CGFloat) -> URL? {
-        let frameWidth = frameSide
-        let frameHeight = frameSide / max(aspectRatio, 0.01)
-        guard image.size.width > 0, image.size.height > 0, frameWidth > 0 else { return nil }
-        let cover = max(frameWidth / image.size.width, frameHeight / image.size.height)
-        let displayScale = cover * scale
-        let cropWidth = frameWidth / displayScale
-        let cropHeight = frameHeight / displayScale
-        let centerX = image.size.width / 2 - offset.width / displayScale
-        let centerY = image.size.height / 2 - offset.height / displayScale
-        let originX = min(max(centerX - cropWidth / 2, 0), max(0, image.size.width - cropWidth))
-        let originY = min(max(centerY - cropHeight / 2, 0), max(0, image.size.height - cropHeight))
+    private static func render(image: UIImage, unitCrop: CGRect) -> URL? {
+        let size = image.size
+        guard size.width > 0, size.height > 0, unitCrop.width > 0, unitCrop.height > 0 else { return nil }
+        let crop = CGRect(
+            x: unitCrop.minX * size.width,
+            y: unitCrop.minY * size.height,
+            width: unitCrop.width * size.width,
+            height: unitCrop.height * size.height
+        ).integral.intersection(CGRect(origin: .zero, size: size))
+        guard crop.width >= 1, crop.height >= 1 else { return nil }
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = 1
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: cropWidth, height: cropHeight), format: format)
+        let renderer = UIGraphicsImageRenderer(size: crop.size, format: format)
         let output = renderer.image { _ in
-            image.draw(at: CGPoint(x: -originX, y: -originY))
+            image.draw(at: CGPoint(x: -crop.minX, y: -crop.minY))
         }
         guard let data = output.pngData(),
               let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
@@ -388,22 +459,27 @@ struct CropImageView: View {
 
 // MARK: - Overlay shapes
 
-/// Full rect with the crop frame cut out (even-odd fill) = the 0.55 scrim.
+/// Full rect with the crop box cut out (even-odd fill) = the 0.55 scrim.
 private struct CropScrim: Shape {
-    let frameWidth: CGFloat
-    let frameHeight: CGFloat
+    let cutout: CGRect
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
         path.addRect(rect)
-        path.addRect(CGRect(
-            x: rect.midX - frameWidth / 2,
-            y: rect.midY - frameHeight / 2,
-            width: frameWidth,
-            height: frameHeight
-        ))
+        path.addRect(cutout)
         return path
     }
+}
+
+private enum CropCorner {
+    case topLeft, topRight, bottomLeft, bottomRight
+}
+
+/// The box as it was when a drag began, and the corner being dragged
+/// (`nil` = moving the whole box).
+private struct CropDragStart {
+    let rect: CGRect
+    let corner: CropCorner?
 }
 
 /// Rule-of-thirds grid (white54, 1pt), outline, and 28pt corner brackets (white, 2.5pt).
