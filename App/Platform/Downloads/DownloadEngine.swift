@@ -85,6 +85,9 @@ final class DownloadEngine {
     private var resumeData: [String: Data] = [:]
     /// Throttle state for requirement #8 — see `persistThrottled`.
     private var lastPersistedProgressAt: [String: Date] = [:]
+    /// Songs already restarted once after the server refused the transfer
+    /// (401/403), so a refusal a fresh token doesn't fix isn't retried forever.
+    private var authRetried: Set<String> = []
 
     private static let maxConcurrentDownloads = 3
     private static let backgroundSessionIdentifierSuffix = ".downloads"
@@ -108,6 +111,7 @@ final class DownloadEngine {
 
         let loadedTasks = catalogStore.load()
         tasks = Dictionary(loadedTasks.map { ($0.songID, $0) }, uniquingKeysWith: { _, latest in latest })
+        failCompletedDownloadsWithoutAudio()
 
         // Same fallback `KeychainTokenStore`/`AppLogger` already use — there's
         // no bundle-identifier accessor on `AppConfiguration` to read a
@@ -381,6 +385,14 @@ final class DownloadEngine {
     /// header only if that resolution says to — at the moment the real
     /// `URLSessionDownloadTask` is created, not any earlier.
     private func startDownloadTask(songID: String, song: Song, quality: AudioQuality) async {
+        // Take the slot before the token `await` below: two promotion loops
+        // (two songs downloaded back to back) used to both pick this same
+        // `.queued` task across that suspension and start it twice, past the
+        // 3-transfer cap, with the second transfer orphaning the first.
+        if var task = tasks[songID] {
+            task.state = .downloading
+            tasks[songID] = task
+        }
         guard let resolved = sourceResolver.resolve(song: song, targetQuality: quality) else {
             logger.warning("no playable source for song \(songID); marking download failed")
             if var task = tasks[songID] {
@@ -407,12 +419,12 @@ final class DownloadEngine {
         let downloadTask = urlSession.downloadTask(with: request)
         startTracking(downloadTask, songID: songID, destinationFileName: destinationFileName)
 
-        // `await tokenProvider.currentAccessToken()` above is a suspension
-        // point another call (`cancel(songID:)`) could race across — if the
-        // task entry vanished out from under us while we were suspended,
-        // tear the OS task we just created back down rather than leaving an
+        // `await tokenProvider.validAccessToken()` above is a suspension
+        // point another call (`cancel`/`pause`) could race across — if the
+        // task entry vanished or was paused while we were suspended, tear
+        // the OS task we just created back down rather than leaving an
         // orphaned transfer running for a song nothing tracks anymore.
-        guard var task = tasks[songID] else {
+        guard var task = tasks[songID], task.state == .downloading else {
             sessionDelegate.forget(taskIdentifier: downloadTask.taskIdentifier)
             activeDownloadTasks[songID] = nil
             downloadTask.cancel()
@@ -433,8 +445,8 @@ final class DownloadEngine {
     /// After a relaunch the in-memory `songs` cache is empty, but resolving a
     /// fresh source URL needs the full `Song`. Re-fetch it (`saveSong` in
     /// `DownloaderBloc._load`) so a failed or paused download stays retryable.
-    private func restoreSongIfNeeded(songID: String) async {
-        guard songs[songID] == nil,
+    private func restoreSongIfNeeded(songID: String, forceRefetch: Bool = false) async {
+        guard songs[songID] == nil || forceRefetch,
               let repository = DependencyContainer.current.resolveIfRegistered((any SongRepository).self),
               let song = try? await repository.fetchSong(id: songID)
         else { return }
@@ -469,14 +481,39 @@ final class DownloadEngine {
         tasks[songID] = task
         persist()
         songs[songID] = nil
+        authRetried.remove(songID)
 
         notifyServerOfCompletedDownload(songID: songID)
         CarIntegrationNotifier.downloadsChanged()
         await startNextQueuedIfNeeded()
     }
 
-    fileprivate func handleDownloadFailed(songID: String, taskIdentifier: Int) async {
+    fileprivate func handleDownloadFailed(songID: String, taskIdentifier: Int, statusCode: Int? = nil) async {
         guard var task = tasks[songID], task.urlSessionTaskIdentifier == taskIdentifier else { return }
+        if let statusCode {
+            logger.warning("download for song \(songID) refused with HTTP \(statusCode)")
+        }
+        // A refused transfer (stale token, or an expired signed URL) gets
+        // one automatic restart with a fresh token and a freshly resolved
+        // source, instead of landing on "Downloading Failed".
+        if let statusCode, [401, 403].contains(statusCode), !authRetried.contains(songID) {
+            authRetried.insert(songID)
+            activeDownloadTasks[songID] = nil
+            _ = try? await tokenProvider.refreshIfNeeded()
+            await restoreSongIfNeeded(songID: songID, forceRefetch: true)
+            guard var queued = tasks[songID], queued.urlSessionTaskIdentifier == taskIdentifier else { return }
+            removeLocalFile(named: queued.localFileName)
+            queued.state = .queued
+            queued.bytesWritten = 0
+            queued.totalBytes = nil
+            queued.localFileName = nil
+            queued.urlSessionTaskIdentifier = nil
+            queued.updatedAt = Date()
+            tasks[songID] = queued
+            persist()
+            await startNextQueuedIfNeeded()
+            return
+        }
         activeDownloadTasks[songID] = nil
         removeLocalFile(named: task.localFileName)
         task.state = .failed
@@ -503,6 +540,31 @@ final class DownloadEngine {
 
     fileprivate func handleBackgroundSessionEventsFinished(_ completionHandler: @escaping () -> Void) {
         completionHandler()
+    }
+
+    /// A "completed" entry whose file is missing or too small to be audio
+    /// — what earlier builds saved when the server refused the transfer
+    /// (the error body was kept as the song). Turned into a retryable
+    /// failure, so those rows stop showing as downloaded but unplayable.
+    private func failCompletedDownloadsWithoutAudio() {
+        var didChange = false
+        for task in Array(tasks.values) where task.state == .completed {
+            let url = task.localFileName.map { catalogStore.downloadsDirectory.appendingPathComponent($0) }
+            let size = url.flatMap { try? FileManager.default.attributesOfItem(atPath: $0.path)[.size] as? Int64 } ?? 0
+            guard size < DownloadSessionDelegate.minimumAudioFileSize else { continue }
+            logger.warning("download for song \(task.songID) has no audio on disk (\(size) bytes); marking failed")
+            removeLocalFile(named: task.localFileName)
+            var failed = task
+            failed.state = .failed
+            failed.bytesWritten = 0
+            failed.totalBytes = nil
+            failed.localFileName = nil
+            failed.urlSessionTaskIdentifier = nil
+            failed.updatedAt = Date()
+            tasks[task.songID] = failed
+            didChange = true
+        }
+        if didChange { persist() }
     }
 
     // MARK: - Relaunch reconciliation (requirement #6)
@@ -630,6 +692,10 @@ private final class DownloadSessionDelegate: NSObject, URLSessionDownloadDelegat
     weak var engine: DownloadEngine?
     var backgroundCompletionHandler: (() -> Void)?
 
+    /// Smaller than any real song or episode (well under a second of
+    /// audio), larger than any JSON/HTML error body the server returns.
+    static let minimumAudioFileSize: Int64 = 16 * 1024
+
     private let downloadsDirectory: URL
     private let lock = NSLock()
     private var pending: [Int: PendingDownload] = [:]
@@ -666,6 +732,23 @@ private final class DownloadSessionDelegate: NSObject, URLSessionDownloadDelegat
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         let taskIdentifier = downloadTask.taskIdentifier
         guard let pendingDownload = pendingDownload(for: taskIdentifier) else { return }
+
+        // URLSession calls this for ANY response, a 401/403/404 included:
+        // the "download" is then the server's error body, and it used to be
+        // saved as the song and marked complete — a downloaded row that
+        // never plays. Only a 2xx carrying more than an error body counts.
+        let statusCode = (downloadTask.response as? HTTPURLResponse)?.statusCode ?? 200
+        let size = (try? FileManager.default.attributesOfItem(atPath: location.path)[.size] as? Int64) ?? 0
+        guard (200..<300).contains(statusCode), size >= Self.minimumAudioFileSize else {
+            forget(taskIdentifier: taskIdentifier)
+            let reportedStatus: Int? = (200..<300).contains(statusCode) ? nil : statusCode
+            Task { @MainActor [weak engine] in
+                await engine?.handleDownloadFailed(
+                    songID: pendingDownload.songID, taskIdentifier: taskIdentifier, statusCode: reportedStatus
+                )
+            }
+            return
+        }
 
         let destination = downloadsDirectory.appendingPathComponent(pendingDownload.destinationFileName)
         let fileManager = FileManager.default
