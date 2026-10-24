@@ -33,6 +33,7 @@ struct ArtworkView: View {
 
     @Environment(\.displayScale) private var displayScale
     @State private var image: UIImage?
+    @State private var loadedURL: URL?
 
     var body: some View {
         Group {
@@ -54,7 +55,10 @@ struct ArtworkView: View {
     }
 
     private func load() async {
-        image = nil
+        // Keep what's showing until something replaces it: blanking first
+        // made every reload (a page rebuilt by a skip or play tap) flash, and
+        // a fetch that then failed left it black for good.
+        if loadedURL != url { image = nil }
         guard let url else { return }
 
         // One axis only, matching `_decodeSize`'s "preserve aspect ratio"
@@ -64,13 +68,26 @@ struct ArtworkView: View {
         guard maxPixelSize.isFinite, maxPixelSize > 0 else { return }
 
         let requestedURL = url
-        let decoded = await ArtworkImageCache.shared.image(for: requestedURL, maxPixelSize: maxPixelSize)
-        // `url` may have changed while the fetch was in flight (fast scroll
-        // reusing this view's identity for a different row) — `.task(id:)`
-        // already cancels the old task, but the awaited call can still
-        // return after a new one starts; this guard drops the stale result
-        // instead of flashing the wrong artwork for a frame.
-        guard self.url == requestedURL else { return }
-        image = decoded
+        // Right after the phone wakes, the first requests often fail on a
+        // dropped connection; one failure used to leave the artwork black
+        // until the screen was rebuilt. Try again a couple of times.
+        for delay in [0, 1, 3] {
+            if delay > 0 {
+                try? await Task.sleep(for: .seconds(delay))
+            }
+            guard !Task.isCancelled else { return }
+            let decoded = await ArtworkImageCache.shared.image(for: requestedURL, maxPixelSize: maxPixelSize)
+            // `url` may have changed while the fetch was in flight (fast scroll
+            // reusing this view's identity for a different row) — `.task(id:)`
+            // already cancels the old task, but the awaited call can still
+            // return after a new one starts; this guard drops the stale result
+            // instead of flashing the wrong artwork for a frame.
+            guard self.url == requestedURL else { return }
+            if let decoded {
+                image = decoded
+                loadedURL = requestedURL
+                return
+            }
+        }
     }
 }

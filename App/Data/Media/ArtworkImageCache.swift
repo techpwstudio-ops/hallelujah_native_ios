@@ -140,7 +140,14 @@ actor ArtworkImageCache {
         headers?.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         // Offline (or the fetch failed): a downloaded song's artwork was kept
         // on disk by `keepForOffline(_:)`.
-        guard let data = (try? await session.data(for: request))?.0 ?? OfflineArtworkStore.data(for: url) else {
+        // An error status's body (a 403/404 page) isn't an image: treat it
+        // as a failure so the offline copy, or the caller's retry, gets a turn.
+        var fetched: Data?
+        if let (data, response) = try? await session.data(for: request),
+           (200..<300).contains((response as? HTTPURLResponse)?.statusCode ?? 200) {
+            fetched = data
+        }
+        guard let data = fetched ?? OfflineArtworkStore.data(for: url) else {
             return nil
         }
 
