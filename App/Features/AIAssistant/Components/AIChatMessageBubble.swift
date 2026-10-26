@@ -46,10 +46,11 @@ private struct UserBubble: View {
     let onRetry: ((String) -> Void)?
     let copy: (String?) -> Void
 
-    private static let gold = AIColors.gold
-    /// Text/icon colour on the bubble fill. `AIColors.gold` is white now, so
-    /// white text would be invisible.
-    private static let onBubble = Color.black
+    /// `_UserBubble`'s `ColorTheme.darkGold` (0xFFB8861B) fill with white
+    /// text, as in the Flutter app. Not `AIColors.gold`, which other Emet
+    /// accents now use as white.
+    private static let gold = Color(red: 0xB8 / 255, green: 0x86 / 255, blue: 0x1B / 255)
+    private static let onBubble = Color.white
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 0) {
