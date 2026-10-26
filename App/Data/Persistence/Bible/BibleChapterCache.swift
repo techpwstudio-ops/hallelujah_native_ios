@@ -7,9 +7,18 @@ import GRDB
 protocol BibleChapterCaching: Sendable {
     func chapter(languageName: String, bookNumber: Int, chapterNumber: Int) async -> BibleChapter?
     func store(_ chapter: BibleChapter) async
+    /// For the offline Bible snapshot, which carries verse text only: keeps
+    /// the notes and highlights an already-cached copy of the chapter has.
+    func storeKeepingAnnotations(_ chapter: BibleChapter) async
     func upsertLocalNote(_ note: VerseNote, bookNumber: Int, chapterNumber: Int, verseNumber: Int) async
     func deleteLocalNote(verseID: String) async
     func allLocalNotes() async -> [BibleNoteEntry]
+
+    /// Writes one verse's highlight (`nil` removes it) and/or note into the
+    /// cached chapter that holds it, so the chapter reopens (also offline)
+    /// with the latest annotations instead of the ones it was fetched with.
+    func patchHighlight(_ highlight: VerseHighlight?, verseID: String, location: BibleVerseLocation) async
+    func patchNote(_ note: VerseNote?, verseID: String, location: BibleVerseLocation) async
 
     /// T55 — drops every cached chapter of one language, e.g. "remove
     /// offline Bible" long-press. Leaves notes/highlights alone: those are
@@ -91,6 +100,25 @@ final class BibleChapterCache: BibleChapterCaching, Sendable {
         }
     }
 
+    func storeKeepingAnnotations(_ chapter: BibleChapter) async {
+        guard let cached = await self.chapter(
+            languageName: chapter.languageName,
+            bookNumber: chapter.bookNumber,
+            chapterNumber: chapter.chapterNumber
+        ) else {
+            await store(chapter)
+            return
+        }
+        await store(BibleChapter(
+            bookNumber: chapter.bookNumber,
+            chapterNumber: chapter.chapterNumber,
+            languageName: chapter.languageName,
+            verses: chapter.verses,
+            notes: chapter.notes.isEmpty ? cached.notes : chapter.notes,
+            highlights: chapter.highlights.isEmpty ? cached.highlights : chapter.highlights
+        ))
+    }
+
     func upsertLocalNote(_ note: VerseNote, bookNumber: Int, chapterNumber: Int, verseNumber: Int) async {
         try? await database.queue.write { db in
             let existing = try CachedVerseNote.filter(Column("verseID") == note.verseId).fetchOne(db)
@@ -161,6 +189,45 @@ final class BibleChapterCache: BibleChapterCaching, Sendable {
             ))
         }
         return entries
+    }
+
+    func patchHighlight(_ highlight: VerseHighlight?, verseID: String, location: BibleVerseLocation) async {
+        await patchChapter(location: location) { chapter in
+            var highlights = chapter.highlights.filter { $0.verseId != verseID }
+            if let highlight { highlights.append(highlight) }
+            return BibleChapter(
+                bookNumber: chapter.bookNumber,
+                chapterNumber: chapter.chapterNumber,
+                languageName: chapter.languageName,
+                verses: chapter.verses,
+                notes: chapter.notes,
+                highlights: highlights
+            )
+        }
+    }
+
+    func patchNote(_ note: VerseNote?, verseID: String, location: BibleVerseLocation) async {
+        await patchChapter(location: location) { chapter in
+            var notes = chapter.notes.filter { $0.verseId != verseID }
+            if let note { notes.append(note) }
+            return BibleChapter(
+                bookNumber: chapter.bookNumber,
+                chapterNumber: chapter.chapterNumber,
+                languageName: chapter.languageName,
+                verses: chapter.verses,
+                notes: notes,
+                highlights: chapter.highlights
+            )
+        }
+    }
+
+    private func patchChapter(location: BibleVerseLocation, _ transform: (BibleChapter) -> BibleChapter) async {
+        guard let cached = await chapter(
+            languageName: location.languageName,
+            bookNumber: location.bookNumber,
+            chapterNumber: location.chapterNumber
+        ) else { return }
+        await store(transform(cached))
     }
 
     func deleteChapters(languageName: String) async {

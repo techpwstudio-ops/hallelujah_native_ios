@@ -257,7 +257,7 @@ final class BibleOfflineDownloadService {
     /// `BibleOfflineRepository.fetchBookSnapshot`'s doc comment.
     private func cache(_ chapters: [BibleChapter]) async {
         for chapter in chapters {
-            await chapterCache.store(chapter)
+            await chapterCache.storeKeepingAnnotations(chapter)
         }
     }
 

@@ -30,11 +30,25 @@ protocol BibleRepository: Sendable {
 
     /// Sends the verse's complete word highlights
     /// (`highlights: [{index, color}]`); an empty list removes the highlight.
-    /// Returns the server's row, `nil` once nothing is highlighted.
-    func syncHighlight(verseId: String, words: [VerseHighlight.Word]) async throws -> VerseHighlight?
+    /// Returns the server's row, `nil` once nothing is highlighted. Without
+    /// a connection the edit is saved on the device and queued instead (see
+    /// `flushPendingAnnotations`), and the local row is returned.
+    func syncHighlight(
+        verseId: String,
+        words: [VerseHighlight.Word],
+        location: BibleVerseLocation
+    ) async throws -> VerseHighlight?
 
-    /// `content` nil or empty deletes the note server-side.
-    func syncNote(verseId: String, content: String?) async throws -> VerseNote?
+    /// `content` nil or empty deletes the note server-side. Offline, queued
+    /// like `syncHighlight`.
+    func syncNote(verseId: String, content: String?, location: BibleVerseLocation) async throws -> VerseNote?
+
+    /// Sends highlights and notes saved while offline. Safe to call any
+    /// time; does nothing when the queue is empty or still offline.
+    func flushPendingAnnotations() async
+
+    /// Sign-out: unsent edits belong to the account that made them.
+    func clearPendingAnnotations() async
 
     func shareVerse(id: String) async throws -> URL
 

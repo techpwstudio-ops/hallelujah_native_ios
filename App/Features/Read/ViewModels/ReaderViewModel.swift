@@ -91,6 +91,9 @@ final class ReaderViewModel {
 
     func loadIfNeeded() async {
         guard case .loading = state, chapterLoadTask == nil else { return }
+        // Highlights/notes saved offline in an earlier session.
+        let repository = repository
+        Task { await repository.flushPendingAnnotations() }
         do {
             let result = try await repository.fetchInit()
             books = result.books
@@ -343,7 +346,8 @@ final class ReaderViewModel {
     }
 
     /// Optimistic: the reader shows the new colours at once and reverts if the
-    /// sync fails.
+    /// server rejects it. Offline the repository keeps the edit and sends it
+    /// later, so it stays.
     private func syncHighlight(verse: BibleVerse, words: [VerseHighlight.Word]) async {
         let previous = highlightsByVerseID[verse.id]
         if words.isEmpty {
@@ -352,7 +356,7 @@ final class ReaderViewModel {
             highlightsByVerseID[verse.id] = VerseHighlight(id: previous?.id ?? verse.id, verseId: verse.id, words: words)
         }
         do {
-            let saved = try await repository.syncHighlight(verseId: verse.id, words: words)
+            let saved = try await repository.syncHighlight(verseId: verse.id, words: words, location: location(of: verse))
             if words.isEmpty {
                 highlightsByVerseID.removeValue(forKey: verse.id)
             } else if let saved {
@@ -364,9 +368,23 @@ final class ReaderViewModel {
         }
     }
 
+    private func location(of verse: BibleVerse) -> BibleVerseLocation {
+        BibleVerseLocation(
+            languageName: currentLanguage,
+            bookNumber: verse.bookNumber,
+            chapterNumber: verse.chapterNumber,
+            verseNumber: verse.verseNumber
+        )
+    }
+
+    private func location(ofVerseID verseID: String) -> BibleVerseLocation? {
+        verses.first(where: { $0.id == verseID }).map(location(of:))
+    }
+
     func saveNote(verseID: String, content: String) async {
+        guard let location = location(ofVerseID: verseID) else { return }
         do {
-            let note = try await repository.syncNote(verseId: verseID, content: content)
+            let note = try await repository.syncNote(verseId: verseID, content: content, location: location)
             if let note {
                 notesByVerseID[verseID] = note
             } else {
@@ -378,8 +396,9 @@ final class ReaderViewModel {
     }
 
     func deleteNote(verseID: String) async {
+        guard let location = location(ofVerseID: verseID) else { return }
         do {
-            _ = try await repository.syncNote(verseId: verseID, content: nil)
+            _ = try await repository.syncNote(verseId: verseID, content: nil, location: location)
             notesByVerseID.removeValue(forKey: verseID)
         } catch {
             logger.warning("delete note for verse \(verseID) failed: \(error)")

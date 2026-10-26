@@ -73,5 +73,19 @@ extension DatabaseMigrator {
                 table.column("updatedAt", .datetime).notNull()
             }
         }
+        registerMigration("createPendingBibleAnnotations") { db in
+            try db.create(table: PendingBibleAnnotation.databaseTableName) { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("kind", .text).notNull()
+                table.column("verseID", .text).notNull()
+                table.column("languageName", .text).notNull()
+                table.column("bookNumber", .integer).notNull()
+                table.column("chapterNumber", .integer).notNull()
+                table.column("verseNumber", .integer).notNull()
+                table.column("payload", .blob).notNull()
+                table.column("updatedAt", .datetime).notNull()
+                table.uniqueKey(["kind", "verseID"])
+            }
+        }
     }
 }

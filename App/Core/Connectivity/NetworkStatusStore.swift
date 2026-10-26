@@ -27,11 +27,13 @@ final class NetworkStatusStore {
 
     private let monitor: any ReachabilityMonitoring
     private let analytics: any AnalyticsTracking
+    private let bibleRepository: any BibleRepository
     private var started = false
 
     init(container: DependencyContainer = .current) {
         monitor = container.resolve()
         analytics = container.resolve()
+        bibleRepository = container.resolve()
     }
 
     /// Call once from `AppShellView.onAppear` — the native proxy for where
@@ -66,5 +68,8 @@ final class NetworkStatusStore {
         // !nowOffline`, Dart calls `PlaybackEventSyncService().syncPendingData()`.
         guard wasOffline, !isOffline else { return }
         Task { await analytics.syncIfNeeded() }
+        // Bible highlights/notes saved while offline.
+        let bible = bibleRepository
+        Task { await bible.flushPendingAnnotations() }
     }
 }

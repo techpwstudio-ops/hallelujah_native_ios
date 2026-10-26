@@ -159,6 +159,9 @@ enum AppComposition {
                 // T67 — a signed-out user must stop receiving realtime events
                 // scoped to their old session's rooms.
                 Task { @MainActor in realtimeConnectionManager.disconnect() }
+                // Bible highlights/notes still waiting to be sent were made
+                // by the signed-out account, not whoever signs in next.
+                Task { await container.resolveIfRegistered((any BibleRepository).self)?.clearPendingAnnotations() }
             }
             // The base URL changed since the last launch, or the Flutter build
             // signed out (or into another account) since this one last ran:
