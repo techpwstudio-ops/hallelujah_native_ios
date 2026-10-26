@@ -235,7 +235,8 @@ final class AudioEngine {
     /// Synchronous on purpose: from an `async` context `player.seek(to:)`
     /// resolves to the completion-handler overload, which AVFoundation
     /// rejects on an item that isn't `readyToPlay` yet. The plain overload
-    /// just queues the seek until it is.
+    /// just queues the seek until it is. Callers from an `async` context
+    /// route through `seekSynchronously(to:)` below to get this overload too.
     private func swapInReloadedItem(_ item: AVPlayerItem, songID: String, resume: Bool? = nil) {
         let wasPlaying = resume ?? (player.timeControlStatus != .paused)
         let position = currentPosition
@@ -244,10 +245,19 @@ final class AudioEngine {
         itemSongIDs.removeAll()
         player.insert(item, after: nil)
         itemSongIDs[ObjectIdentifier(item)] = songID
-        player.seek(to: CMTime(seconds: position, preferredTimescale: 1000))
+        seekSynchronously(to: position)
         if wasPlaying {
             activateSessionAndPlay()
         }
+    }
+
+    /// A non-`async` function, so a call here always resolves to the plain
+    /// `player.seek(to:)` overload — see `swapInReloadedItem` above. Exists
+    /// so `async` callers (e.g. `handleItemFailure`) can get that overload
+    /// too, instead of the completion-handler one Swift picks when the call
+    /// sits directly in an `async` context.
+    private func seekSynchronously(to position: TimeInterval) {
+        player.seek(to: CMTime(seconds: position, preferredTimescale: 1000))
     }
 
     func resume() {
@@ -821,7 +831,7 @@ final class AudioEngine {
         let position = currentPosition
         player.replaceCurrentItem(with: retryItem)
         if position > 1 {
-            player.seek(to: CMTime(seconds: position, preferredTimescale: 1000))
+            seekSynchronously(to: position)
         }
         if wasPlaying {
             activateSessionAndPlay()
