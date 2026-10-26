@@ -15,11 +15,11 @@ struct AISuggestionChip: View {
                 ZStack(alignment: .topLeading) {
                     Image(systemName: "star.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(AIColors.gold)
+                        .foregroundStyle(AIColors.darkGold)
                         .offset(x: 0, y: 0)
                     Image(systemName: "star.fill")
                         .font(.system(size: 9))
-                        .foregroundStyle(AIColors.gold)
+                        .foregroundStyle(AIColors.darkGold)
                         .offset(x: 10, y: 9)
                 }
                 .frame(width: 24, height: 18, alignment: .topLeading)

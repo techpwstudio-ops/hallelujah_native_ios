@@ -22,6 +22,10 @@ enum AIColors {
     static let darkFill = rgb(0x282828)
     /// `ColorTheme.darkGold`.
     static let gold = rgb(0xFFFFFF)
+    /// The real `ColorTheme.darkGold` (0xFFB8861B), for the places that must
+    /// stay gold as in Flutter (user bubble, suggestion stars) while `gold`
+    /// above is white.
+    static let darkGold = rgb(0xB8861B)
     /// `ColorTheme.hintColor`.
     static let hint = rgb(0x808080)
     /// `ColorTheme.errorBgColor`.

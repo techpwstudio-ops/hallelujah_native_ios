@@ -49,7 +49,7 @@ private struct UserBubble: View {
     /// `_UserBubble`'s `ColorTheme.darkGold` (0xFFB8861B) fill with white
     /// text, as in the Flutter app. Not `AIColors.gold`, which other Emet
     /// accents now use as white.
-    private static let gold = Color(red: 0xB8 / 255, green: 0x86 / 255, blue: 0x1B / 255)
+    private static let gold = AIColors.darkGold
     private static let onBubble = Color.white
 
     var body: some View {
