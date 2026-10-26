@@ -18,7 +18,9 @@ struct AIChatHomeView: View {
     @State private var pendingInitialAttachments: [AIAttachmentPayload] = []
     @State private var isPhotoPickerPresented = false
     @State private var photoSelection: PhotosPickerItem?
-    @State private var fallbackSuggestions: [String] = AIChatHomeView.pickFallbackSuggestions()
+    /// Indices into `allSuggestions`, not text: the chips are translated
+    /// when drawn, so they follow an app-language change.
+    @State private var fallbackSuggestionIndices: [Int] = AIChatHomeView.pickFallbackSuggestions()
 
     @State private var navigationStore: AIChatNavigationStore = DependencyContainer.current.resolve()
 
@@ -30,7 +32,10 @@ struct AIChatHomeView: View {
     @Environment(\.toastCenter) private var toastCenter
 
     /// Flutter `_allSuggestions`; three are picked at random each time the page opens.
-    private static let allSuggestions: [String] = [
+    /// Built per read, like Flutter's ("the chips must follow the app
+    /// language"): a `static let` translated them once, in whatever language
+    /// the app had at that moment, and kept that language for good.
+    private static var allSuggestions: [String] { [
         String(localized: "Why do I feel anxious all the time?"),
         String(localized: "How do I know God\u{2019}s plan for my life?"),
         String(localized: "How do I stop overthinking?"),
@@ -46,10 +51,10 @@ struct AIChatHomeView: View {
         String(localized: "How do I break bad habits?"),
         String(localized: "How do I find peace in a busy life?"),
         String(localized: "What does the Bible say about the situation I\u{2019}m facing?"),
-    ]
+    ] }
 
-    private static func pickFallbackSuggestions() -> [String] {
-        Array(allSuggestions.shuffled().prefix(3))
+    private static func pickFallbackSuggestions() -> [Int] {
+        Array(allSuggestions.indices.shuffled().prefix(3))
     }
 
     var body: some View {
@@ -189,7 +194,7 @@ struct AIChatHomeView: View {
 
     private var suggestionTexts: [String] {
         suggestionsViewModel.suggestions.isEmpty
-            ? fallbackSuggestions
+            ? fallbackSuggestionIndices.map { Self.allSuggestions[$0] }
             : suggestionsViewModel.suggestions.map { $0.text }
     }
 
