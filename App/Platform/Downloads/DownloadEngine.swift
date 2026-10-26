@@ -177,9 +177,18 @@ final class DownloadEngine {
 
     /// The thumbnail the Downloads list shows (`CreatorSongRow`, `.sm`), kept
     /// on disk while we're still online so it survives going offline.
+    /// Every size the app shows a song at — list rows (`.sm`), the lock
+    /// screen (`.md`), the full player (`.lg`) — so a downloaded song has its
+    /// artwork everywhere offline, not only in the Downloads list.
     static func keepArtworkForOffline(path: String?, variants: String?) {
-        guard let url = ArtworkURLResolver().resolve(path: path, variant: .sm, allowedVariants: variants) else { return }
-        Task.detached { await ArtworkImageCache.keepForOffline(url) }
+        let resolver = ArtworkURLResolver()
+        let urls = Set([ImageVariant.sm, .md, .lg].compactMap {
+            resolver.resolve(path: path, variant: $0, allowedVariants: variants)
+        })
+        guard !urls.isEmpty else { return }
+        Task.detached {
+            for url in urls { await ArtworkImageCache.keepForOffline(url) }
+        }
     }
 
     func pause(songID: String) {

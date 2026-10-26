@@ -16,6 +16,8 @@ import Foundation
 enum SessionTeardown {
     static func perform(container: DependencyContainer = .current) {
         Task { @MainActor in AppDataSync.shared.reset() }
+        // Private proxy images (Emet attachments) must not outlive the account.
+        Task.detached(priority: .utility) { ArtworkDiskCache.removeAll() }
         if let homeCache = container.resolveIfRegistered(HomeFeedCache.self) {
             Task {
                 for type in [HomeContentType.all, .music, .episode] {

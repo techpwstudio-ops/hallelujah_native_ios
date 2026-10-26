@@ -136,20 +136,25 @@ actor ArtworkImageCache {
     /// (`s3_service.dart:320-323`) — `headers` (T32) is that one exception,
     /// a plain per-request header dictionary rather than a second client.
     private static func fetchAndDownsample(url: URL, maxPixelSize: CGFloat, headers: [String: String]?) async -> UIImage? {
-        var request = URLRequest(url: url)
-        headers?.forEach { request.setValue($1, forHTTPHeaderField: $0) }
-        // Offline (or the fetch failed): a downloaded song's artwork was kept
-        // on disk by `keepForOffline(_:)`.
-        // An error status's body (a 403/404 page) isn't an image: treat it
-        // as a failure so the offline copy, or the caller's retry, gets a turn.
-        var fetched: Data?
-        if let (data, response) = try? await session.data(for: request),
-           (200..<300).contains((response as? HTTPURLResponse)?.statusCode ?? 200) {
-            fetched = data
+        // Disk first, network only on a miss — `cached_network_image`'s
+        // order. A downloaded song's artwork (`keepForOffline`) and anything
+        // seen in the last 30 days (`ArtworkDiskCache`) load with no
+        // connection at all; before, every image went to the network first
+        // and offline screens only had the Downloads list's thumbnails.
+        var data = OfflineArtworkStore.data(for: url) ?? ArtworkDiskCache.data(for: url)
+        if data == nil {
+            var request = URLRequest(url: url)
+            headers?.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+            // An error status's body (a 403/404 page) isn't an image: treat
+            // it as a failure so the caller's retry gets a turn.
+            if let (fetched, response) = try? await session.data(for: request),
+               (200..<300).contains((response as? HTTPURLResponse)?.statusCode ?? 200),
+               !fetched.isEmpty {
+                data = fetched
+                ArtworkDiskCache.save(fetched, for: url)
+            }
         }
-        guard let data = fetched ?? OfflineArtworkStore.data(for: url) else {
-            return nil
-        }
+        guard let data else { return nil }
 
         let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else { return nil }
