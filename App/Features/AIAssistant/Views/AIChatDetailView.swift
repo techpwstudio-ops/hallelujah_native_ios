@@ -104,7 +104,10 @@ struct AIChatDetailView: View {
             resolvedConversationID = conversation.id
         } catch let createError {
             logger.warning("create conversation for AIChatDetailView failed: \(createError)")
-            resolutionError = String(localized: "Couldn't start a new conversation. Please try again.")
+            resolutionError = AIErrorParser.message(
+                for: createError,
+                fallback: String(localized: "Couldn't start a new conversation. Please try again.")
+            )
         }
     }
 }

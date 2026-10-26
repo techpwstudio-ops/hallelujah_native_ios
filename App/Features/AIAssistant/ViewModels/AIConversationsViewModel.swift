@@ -45,7 +45,7 @@ final class AIConversationsViewModel {
             isLoading = false
         } catch let loadError {
             logger.warning("load conversations failed: \(loadError)")
-            error = String(localized: "Couldn't load conversations. Please try again.")
+            error = AIErrorParser.message(for: loadError, fallback: String(localized: "Couldn't load conversations. Please try again."))
             isLoading = false
         }
     }
@@ -63,7 +63,7 @@ final class AIConversationsViewModel {
             isLoading = false
         } catch let loadMoreError {
             logger.warning("load more conversations failed: \(loadMoreError)")
-            error = String(localized: "Couldn't load more conversations. Please try again.")
+            error = AIErrorParser.message(for: loadMoreError, fallback: String(localized: "Couldn't load more conversations. Please try again."))
             isLoading = false
         }
     }
@@ -79,7 +79,7 @@ final class AIConversationsViewModel {
             return conversation
         } catch let createError {
             logger.warning("create conversation failed: \(createError)")
-            error = String(localized: "Couldn't start a new conversation. Please try again.")
+            error = AIErrorParser.message(for: createError, fallback: String(localized: "Couldn't start a new conversation. Please try again."))
             return nil
         }
     }
@@ -92,7 +92,7 @@ final class AIConversationsViewModel {
             conversations.removeAll { $0.id == id }
         } catch let deleteError {
             logger.warning("delete conversation \(id) failed: \(deleteError)")
-            error = String(localized: "Couldn't delete this conversation. Please try again.")
+            error = AIErrorParser.message(for: deleteError, fallback: String(localized: "Couldn't delete this conversation. Please try again."))
         }
     }
 }

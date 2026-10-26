@@ -7,8 +7,25 @@ import Foundation
 enum AIErrorParser {
     static var genericMessage: String { String(localized: "Something went wrong. Please try again.") }
 
+    static var offlineMessage: String {
+        String(localized: "No internet connection. Please check your connection and try again.")
+    }
+
     static func parse(_ error: Error, isOnline: Bool? = nil) -> String {
         if error is CancellationError { return "" }
+
+        // `HTTPClient` (every non-streaming AI route: create conversation,
+        // history, messages, suggestions) wraps URLSession's error, so it
+        // must be unwrapped or an offline failure reads "Something went wrong".
+        if let apiError = error as? APIError, case .transport(let urlError) = apiError {
+            return parse(urlError, isOnline: isOnline)
+        }
+
+        // Whatever failed, with no connection the connection is the reason.
+        if !(isOnline ?? ReachabilityBroadcast.shared.isOnline) {
+            if let urlError = error as? URLError, urlError.code == .cancelled { return "" }
+            return offlineMessage
+        }
 
         if let urlError = error as? URLError {
             switch urlError.code {
@@ -34,6 +51,13 @@ enum AIErrorParser {
         return genericMessage
     }
 
+    /// For screens with their own wording ("Couldn't load conversations"):
+    /// the offline message when the device has no connection, else `fallback`.
+    static func message(for error: Error, fallback: String) -> String {
+        let parsed = parse(error)
+        return parsed == offlineMessage ? offlineMessage : fallback
+    }
+
     /// `_fromStatusCode` (the server's own `message` is not available on these
     /// errors, so the status-specific copy is used for every code).
     static func message(forStatus code: Int) -> String {
@@ -56,8 +80,6 @@ enum AIErrorParser {
             // A resolved monitor is never started and always reads online.
             online = ReachabilityBroadcast.shared.isOnline
         }
-        return online
-            ? String(localized: "Connection failed. Please try again.")
-            : String(localized: "No internet connection. Please check your connection and try again.")
+        return online ? String(localized: "Connection failed. Please try again.") : offlineMessage
     }
 }
