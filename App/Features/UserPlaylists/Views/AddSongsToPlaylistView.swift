@@ -2,8 +2,9 @@ import SwiftUI
 
 /// The native answer to `ContentSearchPage`'s `isSelect` mode for songs
 /// (`content_search_page.dart` + `AddToPlaylistCheckBox` +
-/// `ContinueToAddPlaylist`), presented as a full-height sheet by
-/// `UserPlaylistDetailView` and dismissing itself via `\.dismiss`.
+/// `ContinueToAddPlaylist`). Pushed like Flutter's route
+/// (`.contentSearch(isSelect: true)`), not a sheet: it's the Search page —
+/// same glass search bar with voice search, same rows — with checkboxes.
 ///
 /// Looks like that page: a 200pt `#282828 -> #1C1C1C -> black` gradient behind
 /// the 52pt `#333333` search bar (back arrow, "What do you want to listen
@@ -16,8 +17,9 @@ import SwiftUI
 struct AddSongsToPlaylistView: View {
     @State private var viewModel: AddSongsToPlaylistViewModel
     @FocusState private var isFieldFocused: Bool
+    @State private var isListening = false
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AppNavigationCoordinator.self) private var coordinator
 
     init(playlistID: String) {
         _viewModel = State(initialValue: AddSongsToPlaylistViewModel(playlistID: playlistID))
@@ -44,20 +46,22 @@ struct AddSongsToPlaylistView: View {
                 ParityContinueButton(isDisabled: viewModel.isSubmitting) {
                     Task {
                         await viewModel.submit()
-                        dismiss()
+                        coordinator.pop()
                     }
                 }
                 .padding(.trailing, 16)
                 .padding(.bottom, 32)
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear { isFieldFocused = true }
     }
 
     private var searchBar: some View {
         HStack(spacing: 0) {
             Spacer().frame(width: Dimens.paddingMedium)
-            Button { dismiss() } label: {
+            Button { coordinator.pop() } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Color.white)
@@ -73,7 +77,7 @@ struct AddSongsToPlaylistView: View {
                     get: { viewModel.searchFieldText },
                     set: { viewModel.queryChanged($0) }
                 ),
-                prompt: Text("What do you want to listen to?").foregroundColor(ParityColor.grey)
+                prompt: Text(isListening ? "Listening\u{2026}" : "What do you want to listen to?").foregroundColor(ParityColor.grey)
             )
             .typography(Typography.bodyMedium)
             .foregroundStyle(Color.white)
@@ -93,14 +97,17 @@ struct AddSongsToPlaylistView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear search")
             }
+            VoiceSearchButton(
+                onResult: { text, _ in viewModel.queryChanged(text) },
+                onListeningChanged: { listening in
+                    isListening = listening
+                    if listening { isFieldFocused = false }
+                }
+            )
             Spacer().frame(width: Dimens.spacing4)
         }
         .frame(height: Dimens.buttonHeight)
-        .background(
-            RoundedRectangle(cornerRadius: Dimens.cornerRadiusSmall + 2, style: .continuous)
-                .fill(ParityColor.searchBar)
-                .shadow(color: Color.black.opacity(0.3), radius: Dimens.spacing8 / 2, x: 0, y: 2)
-        )
+        .glassRounded(Dimens.cornerRadiusSmall + 2)
         .padding(.leading, Dimens.screenPadding)
         .padding(.trailing, Dimens.screenPadding)
         .padding(.top, Dimens.spacing8)

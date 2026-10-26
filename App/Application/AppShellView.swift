@@ -219,8 +219,14 @@ private struct AppRouteDestinationView: View {
             DownloadsView(type: type)
         case .storageSettings:
             StorageSettingsView()
-        case .contentSearch:
-            ContentSearchView()
+        case let .contentSearch(userPlaylistID, _, _, isSelect):
+            // `addToUserPlaylist` (`add_to_custom_playlist.dart`): the "+" on
+            // a user playlist pushes this same search route in select mode.
+            if isSelect, let userPlaylistID {
+                AddSongsToPlaylistView(playlistID: userPlaylistID)
+            } else {
+                ContentSearchView()
+            }
         case let .seeAllSongs(type, _, image, imageVariants, _, uniqueIDWithType, label, _, dataID):
             SeeAllSongsView(
                 type: type, image: image, imageVariants: imageVariants,

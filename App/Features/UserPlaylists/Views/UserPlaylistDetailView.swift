@@ -17,7 +17,6 @@ struct UserPlaylistDetailView: View {
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
     @State private var eventBus: RealtimeEventBus = DependencyContainer.current.resolve()
-    @State private var showAddSongs = false
     @State private var menuTarget: UserPlaylistMenuTarget?
     @State private var isSharePresented = false
     @State private var showsCollapsedTitle = false
@@ -109,11 +108,10 @@ struct UserPlaylistDetailView: View {
                 )
             }
         }
-        .sheet(isPresented: $showAddSongs, onDismiss: { Task { await viewModel.refresh() } }) {
-            if let playlist {
-                AddSongsToPlaylistView(playlistID: playlist.id)
-                    .presentationBackground(Color.black)
-            }
+        // Songs added from the search page pushed by "+".
+        .onReceive(NotificationCenter.default.publisher(for: .userPlaylistSongsDidChange)) { note in
+            guard (note.object as? String) == viewModel.playlistID else { return }
+            Task { await viewModel.refresh() }
         }
     }
 
@@ -192,7 +190,9 @@ struct UserPlaylistDetailView: View {
             HStack(spacing: 0) {
                 if viewModel.isOwner {
                     ParityIconButton(systemName: "plus.circle", size: 24, tooltip: "Add songs", hitSize: 40) {
-                        showAddSongs = true
+                        coordinator.push(.contentSearch(
+                            userPlaylistID: playlist.id, tags: [], checkedContent: [], isSelect: true
+                        ))
                     }
                 }
                 if !viewModel.isOwner, let actions = viewModel.actions {

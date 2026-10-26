@@ -13,6 +13,11 @@ import Observation
 /// but collapsed to one result list instead of four sections and no
 /// pagination — `SearchRepository.search` is always sent page 1 for every
 /// section, and this picker never needs a "load more" tail.
+extension Notification.Name {
+    /// Songs were attached to a user playlist; `object` is its id.
+    static let userPlaylistSongsDidChange = Notification.Name("Hallelujah.userPlaylistSongsDidChange")
+}
+
 @MainActor
 @Observable
 final class AddSongsToPlaylistViewModel {
@@ -82,6 +87,7 @@ final class AddSongsToPlaylistViewModel {
         defer { isSubmitting = false }
         do {
             try await userPlaylistRepository.attachSongs(playlistID: playlistID, songIDs: Array(selectedSongIDs))
+            NotificationCenter.default.post(name: .userPlaylistSongsDidChange, object: playlistID)
         } catch {
             logger.warning("attach songs to playlist \(playlistID) failed: \(error)")
         }
