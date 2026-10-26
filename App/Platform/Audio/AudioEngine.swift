@@ -251,7 +251,49 @@ final class AudioEngine {
     }
 
     func resume() {
+        // A song that failed (a stream refused after hours in the
+        // background, its one retry used up) can't be played again as it
+        // is: `play()` on a dead item does nothing, which is the "play
+        // button doesn't respond" report. Rebuild it from a fresh source,
+        // at the same position, and play.
+        if needsRebuildToPlay {
+            logger.warning("play tapped on a failed item (status \(String(describing: status))); rebuilding it")
+            Task { await rebuildCurrentItem(resume: true) }
+            return
+        }
         activateSessionAndPlay()
+    }
+
+    private var needsRebuildToPlay: Bool {
+        guard currentSong != nil, !isPlaybackHeld else { return false }
+        if case .failed = status { return true }
+        guard let item = player.currentItem else { return true }
+        return item.status == .failed
+    }
+
+    /// Builds the current song again from a fresh source (token refreshed
+    /// if needed, presigned URL re-checked) and swaps it in at the current
+    /// position. Its retry allowance starts over: this is a new attempt the
+    /// listener asked for.
+    private func rebuildCurrentItem(resume: Bool) async {
+        guard let song = currentSong,
+              logicalQueue.indices.contains(logicalIndex),
+              logicalQueue[logicalIndex].id == song.id
+        else { return }
+        retriedViaProxy.remove(song.id)
+        // Nothing left in the player (the queue ran out on this song):
+        // play it again from the top rather than seek to its very end.
+        if player.currentItem == nil { currentPosition = 0 }
+        status = .loading
+        guard let item = await makePlayerItem(for: song), currentSong?.id == song.id else {
+            status = .failed(String(localized: "Couldn't play this song"))
+            return
+        }
+        swapInReloadedItem(item, songID: song.id, resume: resume)
+        // A paused rebuild gets no `timeControlStatus` change to clear
+        // `.loading`.
+        if !resume { status = .paused }
+        await appendAheadItems(afterLogicalIndex: logicalIndex)
     }
 
     func pause() {
@@ -457,14 +499,9 @@ final class AudioEngine {
     private func handleMediaServicesReset() async {
         logger.warning("media services were reset; rebuilding the player items")
         configureAudioSession()
-        guard let song = currentSong,
-              logicalQueue.indices.contains(logicalIndex),
-              logicalQueue[logicalIndex].id == song.id
-        else { return }
+        guard currentSong != nil else { return }
         let wasPlaying = status == .playing || status == .loading
-        guard let item = await makePlayerItem(for: song), currentSong?.id == song.id else { return }
-        swapInReloadedItem(item, songID: song.id, resume: wasPlaying)
-        await appendAheadItems(afterLogicalIndex: logicalIndex)
+        await rebuildCurrentItem(resume: wasPlaying)
     }
 
     // MARK: - Route changes
@@ -756,7 +793,7 @@ final class AudioEngine {
             return
         }
         retriedViaProxy.insert(song.id)
-        logger.warning("playback item failed for song \(song.id); retrying via proxy")
+        logger.warning("playback item failed for song \(song.id) at \(Int(currentPosition))s: \(Self.failureSummary(currentItem)); retrying via proxy")
 
         // The stream was refused for the token (stale after an update or a
         // long background): get a fresh one before the retry, or the retry
@@ -779,9 +816,23 @@ final class AudioEngine {
         // `.loading` counts: a song that never started was still meant to
         // play, and leaving the retry paused is the "stuck" player.
         let wasPlaying = status == .playing || status == .loading
+        // Carry on where it broke off: a stream refused mid-song used to
+        // restart the song from the beginning.
+        let position = currentPosition
         player.replaceCurrentItem(with: retryItem)
+        if position > 1 {
+            player.seek(to: CMTime(seconds: position, preferredTimescale: 1000))
+        }
         if wasPlaying {
             activateSessionAndPlay()
         }
+    }
+
+    /// Why an item stopped, for the log: its error and the last HTTP status
+    /// AVFoundation recorded.
+    private static func failureSummary(_ item: AVPlayerItem) -> String {
+        let error = item.error.map { "\(($0 as NSError).domain) \(($0 as NSError).code)" } ?? "no error"
+        let http = item.errorLog()?.events.last.map { "HTTP \($0.errorStatusCode) \($0.errorDomain)" } ?? "no error log"
+        return "\(error), \(http)"
     }
 }

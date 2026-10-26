@@ -50,11 +50,11 @@ struct AudioSourceResolver: Sendable {
         case .low: [(.low, song.audioUrls.low)]
         }
         for (quality, url) in candidates {
-            if let url, Self.isPresignedURLValid(url) {
+            if let url, Self.isPresignedURLValid(url, outlasting: song.duration) {
                 return ResolvedSource(url: url, quality: quality, requiresAuthHeader: false)
             }
         }
-        if let original = song.audioUrls.original, Self.isPresignedURLValid(original) {
+        if let original = song.audioUrls.original, Self.isPresignedURLValid(original, outlasting: song.duration) {
             return ResolvedSource(url: original, quality: targetQuality, requiresAuthHeader: false)
         }
         return nil
@@ -63,12 +63,17 @@ struct AudioSourceResolver: Sendable {
     /// `isPresignedUrlValid` (s3_service.dart:202-213): parses CloudFront's
     /// `Expires` query param (Unix seconds); valid only if it's still more
     /// than 5 minutes away.
-    private static func isPresignedURLValid(_ url: URL) -> Bool {
+    /// `outlasting`: the song's length in seconds. AVPlayer keeps fetching
+    /// byte ranges for the whole song, so a URL that is valid now but lapses
+    /// mid-song was refused partway through — songs queued from a list
+    /// loaded a couple of hours earlier stopped mid-play. Such a URL now
+    /// goes to the proxy up front.
+    private static func isPresignedURLValid(_ url: URL, outlasting duration: Int? = nil) -> Bool {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let expiresValue = components.queryItems?.first(where: { $0.name == "Expires" })?.value,
               let expires = TimeInterval(expiresValue)
         else { return false }
-        return expires > Date().timeIntervalSince1970 + 300
+        return expires > Date().timeIntervalSince1970 + 300 + TimeInterval(max(duration ?? 0, 0))
     }
 
     // MARK: - Tier 2: authenticated proxy
