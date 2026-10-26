@@ -34,9 +34,6 @@ struct ArtworkView: View {
     @Environment(\.displayScale) private var displayScale
     @State private var image: UIImage?
     @State private var loadedURL: URL?
-    /// Every attempt for `url` failed: a still placeholder, not a shimmer
-    /// that would suggest it's still coming.
-    @State private var didFail = false
 
     var body: some View {
         Group {
@@ -46,12 +43,14 @@ struct ArtworkView: View {
                     .aspectRatio(contentMode: contentMode)
                     .frame(width: width, height: height)
                     .clipped()
-            } else if didFail || url == nil {
-                SkeletonBox(width: width, height: height, radius: 0)
             } else {
-                // Flutter's dark shimmer while loading, not a flat grey box.
-                SkeletonBox(width: width, height: height, radius: 0)
-                    .shimmer()
+                // `LoadImage`'s placeholder, loading or failed alike:
+                // `Colors.white.withOpacity(0.1)`. Translucent, so it reads as
+                // a lighter tint of whatever is behind it (the share card's
+                // colour, the black list) rather than a grey box or a shimmer.
+                Rectangle()
+                    .fill(Color.white.opacity(0.1))
+                    .frame(width: width, height: height)
             }
         }
         .frame(width: width, height: height)
@@ -68,7 +67,6 @@ struct ArtworkView: View {
         // A different URL (the next song, the share card swapping to the
         // server's card image) keeps the old picture until the new one is
         // decoded, instead of flashing an empty box in between.
-        didFail = false
         guard let url else {
             image = nil
             return
@@ -104,6 +102,5 @@ struct ArtworkView: View {
         }
         // Never leave another item's picture standing in for this one.
         if loadedURL != requestedURL { image = nil }
-        didFail = true
     }
 }
