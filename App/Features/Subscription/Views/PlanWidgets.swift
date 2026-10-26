@@ -25,7 +25,6 @@ struct PlansHero: View {
                 feature("speaker.slash.fill", "Ad-free listening", nil)
                 feature("waveform", "High-quality audio", "(Up to 320 kbps)")
                 feature("arrow.down.circle.fill", "Download for offline", nil)
-                feature("star.fill", "Early access to new features", nil)
             }
         }
     }
