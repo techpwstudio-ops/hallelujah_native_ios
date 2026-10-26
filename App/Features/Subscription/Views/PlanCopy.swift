@@ -1,7 +1,8 @@
 import Foundation
 
-/// Ports `lib/views/subscription/widgets/plan_copy.dart`: price / GST / free
-/// trial wording. Strings come from the Flutter l10n ARB (`app_localizations_en`).
+/// Ports `lib/views/subscription/widgets/plan_copy.dart`: price / free trial
+/// wording. Strings come from the Flutter l10n ARB (`app_localizations_en`).
+/// GST / tax breakdown is intentionally not shown (client requirement).
 enum PlanCopy {
     /// A plan's free period (`FreeTrial` in `subscription_plan_model.dart`).
     struct FreeTrial: Equatable {
@@ -44,7 +45,7 @@ enum PlanCopy {
         String(localized: "\(freeTrialPeriod(trial)) Free")
     }
 
-    // MARK: Currency / GST
+    // MARK: Currency
 
     static func currencySymbol(_ currency: String) -> String {
         switch currency.trimmingCharacters(in: .whitespaces).uppercased() {
@@ -56,21 +57,6 @@ enum PlanCopy {
             let code = currency.trimmingCharacters(in: .whitespaces).uppercased()
             return code.isEmpty ? "" : "\(code) "
         }
-    }
-
-    static let gstRatePercent: Double = 18
-
-    static func chargesGst(_ currency: String) -> Bool {
-        currencySymbol(currency) == "\u{20B9}"
-    }
-
-    static func gstIncluded(_ amount: Double) -> Double {
-        amount * gstRatePercent / (100 + gstRatePercent)
-    }
-
-    static func basePrice(_ amount: Double) -> Double {
-        let tax = (gstIncluded(amount) * 100).rounded() / 100
-        return amount - tax
     }
 
     private static func isoCode(_ currency: String) -> String? {

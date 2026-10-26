@@ -239,12 +239,6 @@ struct PaymentSummaryCard: View {
                 Spacer().frame(height: Dimens.spacing8)
                 summaryRow("\(period) free trial", PlanCopy.formatAmount(0, currency: currency))
             }
-            if PlanCopy.chargesGst(currency) {
-                Spacer().frame(height: Dimens.spacing8)
-                summaryRow("Base price", PlanCopy.formatAmount(PlanCopy.basePrice(chargedToday), currency: currency))
-                Spacer().frame(height: Dimens.spacing8)
-                summaryRow("Tax", PlanCopy.formatAmount(PlanCopy.gstIncluded(chargedToday), currency: currency))
-            }
             Rectangle().fill(AccountParity.white12).frame(height: 1)
                 .padding(.vertical, Dimens.spacing12)
             HStack {
