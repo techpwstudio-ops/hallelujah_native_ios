@@ -414,13 +414,29 @@ struct ReaderView: View {
                 emptyState
             }
         case .loaded:
-            if viewModel.isChapterLoading || viewModel.isAutoHealing {
+            if viewModel.verses.isEmpty, viewModel.isChapterLoading || viewModel.isAutoHealing {
                 ReadSpinner()
             } else if viewModel.verses.isEmpty {
                 emptyState
                     .onAppear { viewModel.healEmptyChapterIfNeeded() }
             } else {
-                verseList
+                // The chapter on screen stays up while the next one loads
+                // (swapping it for a full-screen spinner was the "blink"),
+                // then the new one slides in from the side it was asked for.
+                ZStack {
+                    verseList
+                        .id(viewModel.chapterKey)
+                        .transition(.push(from: viewModel.chapterTransitionEdge))
+                }
+                .animation(.easeInOut(duration: 0.3), value: viewModel.chapterKey)
+                .overlay(alignment: .top) {
+                    if viewModel.isChapterLoading {
+                        ProgressView()
+                            .tint(ReadPalette.white)
+                            .padding(.top, 8)
+                            .transition(.opacity)
+                    }
+                }
             }
         }
     }

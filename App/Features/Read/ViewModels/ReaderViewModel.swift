@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Observation
 
 /// T54 — the Bible reader tab. Ports the shape of `bible_bloc.dart`
@@ -39,6 +40,14 @@ final class ReaderViewModel {
     /// wording. The view shows it transiently, then calls
     /// `clearBoundaryMessage()`.
     private(set) var boundaryMessage: String?
+    /// Which side the next chapter slides in from: the trailing edge for
+    /// "next", the leading edge for "previous".
+    private(set) var chapterTransitionEdge: Edge = .trailing
+
+    /// Identity of what's on screen, for the chapter-change transition.
+    var chapterKey: String {
+        "\(currentBook?.bookNumber ?? 0)|\(currentChapterNumber)|\(currentLanguage)"
+    }
     /// Verse the reader should scroll to (set 300ms after a jump lands) and
     /// the verse drawn with the gold focus background (cleared after 3s) —
     /// `ReadService.scrollToIndex` + `VerseOfDayHighlightBloc`.
@@ -183,6 +192,7 @@ final class ReaderViewModel {
             boundaryMessage = String(localized: "This is last chapter")
             return
         }
+        chapterTransitionEdge = .trailing
         dispatchChapterLoad(
             bookNumber: currentBook.bookNumber,
             chapterNumber: currentChapterNumber + 1,
@@ -198,6 +208,7 @@ final class ReaderViewModel {
             boundaryMessage = String(localized: "This is first chapter")
             return
         }
+        chapterTransitionEdge = .leading
         dispatchChapterLoad(
             bookNumber: currentBook.bookNumber,
             chapterNumber: currentChapterNumber - 1,
@@ -213,6 +224,7 @@ final class ReaderViewModel {
             boundaryMessage = String(localized: "This is the last book")
             return
         }
+        chapterTransitionEdge = .trailing
         dispatchChapterLoad(
             bookNumber: nextBook.bookNumber,
             chapterNumber: 1,
@@ -228,6 +240,7 @@ final class ReaderViewModel {
             boundaryMessage = String(localized: "This is first book")
             return
         }
+        chapterTransitionEdge = .leading
         // `previousBook` in `bible_bloc.dart` lands on the previous book's last chapter.
         dispatchChapterLoad(
             bookNumber: previousBook.bookNumber,
@@ -254,6 +267,7 @@ final class ReaderViewModel {
         // `1...book.chapters`, but this keeps a stray out-of-range call
         // from requesting a chapter the current book doesn't have.
         let clamped = min(max(chapterNumber, 1), currentBook.chapters)
+        chapterTransitionEdge = clamped >= currentChapterNumber ? .trailing : .leading
         dispatchChapterLoad(
             bookNumber: currentBook.bookNumber,
             chapterNumber: clamped,
@@ -478,6 +492,10 @@ final class ReaderViewModel {
             logger.warning("load chapter \(bookNumber)/\(chapterNumber) lang \(languageName) failed: \(error)")
             if case .loading = state {
                 state = .failed
+            } else {
+                // Leaving the old chapter up without a word read as the
+                // arrows "blinking" and doing nothing.
+                boundaryMessage = String(localized: "Couldn't load this chapter. Please try again.")
             }
         }
         if generation == chapterLoadGeneration {

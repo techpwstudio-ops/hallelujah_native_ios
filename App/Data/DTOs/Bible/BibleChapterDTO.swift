@@ -5,10 +5,12 @@ import Foundation
 /// `isBookNumberChanged`/`isChapterNumberChanged` flags is exactly `"true"`
 /// — see `BibleRepository.fetchChapter`'s doc comment.
 struct BibleChapterResponseDTO: Decodable {
-    let message: String
-    let chapterNumber: Int
-    let languageName: String
-    let bookNumber: Int
+    let message: String?
+    /// `nil` when the server leaves them out — the repository falls back to
+    /// what it asked for.
+    let chapterNumber: Int?
+    let languageName: String?
+    let bookNumber: Int?
     let verses: [BibleVerseDTO]
     let notes: [VerseNoteDTO]?
     let highlights: [VerseHighlightDTO]?
@@ -17,26 +19,44 @@ struct BibleChapterResponseDTO: Decodable {
         case message, chapterNumber, languageName, bookNumber, verses, notes, highlights
     }
 
-    /// The server echoes `chapterNumber`/`bookNumber` straight from the query
-    /// string, so they can arrive as `"1"` instead of `1` — accept both.
+    /// Lenient on purpose. Chapter navigation silently stayed on the same
+    /// chapter whenever any one field of the response didn't match this
+    /// shape exactly (a numeric field sent as a string, a malformed note or
+    /// highlight on one verse): the whole chapter failed to decode and the
+    /// reader kept what was on screen. Now only the bad row is dropped. The
+    /// server echoes `chapterNumber`/`bookNumber` straight from the query
+    /// string, so they can arrive as `"1"` instead of `1`.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        message = try c.decode(String.self, forKey: .message)
-        chapterNumber = try Self.lenientInt(c, .chapterNumber)
-        languageName = try c.decode(String.self, forKey: .languageName)
-        bookNumber = try Self.lenientInt(c, .bookNumber)
-        verses = try c.decode([BibleVerseDTO].self, forKey: .verses)
-        notes = try c.decodeIfPresent([VerseNoteDTO].self, forKey: .notes)
-        highlights = try c.decodeIfPresent([VerseHighlightDTO].self, forKey: .highlights)
+        message = try? c.decodeIfPresent(String.self, forKey: .message)
+        chapterNumber = LenientInt.decode(c, .chapterNumber)
+        languageName = try? c.decodeIfPresent(String.self, forKey: .languageName)
+        bookNumber = LenientInt.decode(c, .bookNumber)
+        verses = (try? c.decodeIfPresent([Lossy<BibleVerseDTO>].self, forKey: .verses))?.compactMap(\.value) ?? []
+        notes = (try? c.decodeIfPresent([Lossy<VerseNoteDTO>].self, forKey: .notes))?.compactMap(\.value)
+        highlights = (try? c.decodeIfPresent([Lossy<VerseHighlightDTO>].self, forKey: .highlights))?.compactMap(\.value)
     }
+}
 
-    private static func lenientInt(_ c: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) throws -> Int {
+/// One element of an array that may fail to decode on its own without
+/// failing the whole array.
+private struct Lossy<T: Decodable>: Decodable {
+    let value: T?
+
+    init(from decoder: Decoder) throws {
+        value = try? T(from: decoder)
+    }
+}
+
+/// An `Int` the server may send as a number or a numeric string.
+enum LenientInt {
+    static func decode<K: CodingKey>(_ c: KeyedDecodingContainer<K>, _ key: K) -> Int? {
         if let n = try? c.decode(Int.self, forKey: key) { return n }
-        let str = try c.decode(String.self, forKey: key)
-        guard let n = Int(str.trimmingCharacters(in: .whitespaces)) else {
-            throw DecodingError.dataCorruptedError(forKey: key, in: c, debugDescription: "Not an integer: \(str)")
+        if let str = try? c.decode(String.self, forKey: key) {
+            return Int(str.trimmingCharacters(in: .whitespaces))
         }
-        return n
+        if let d = try? c.decode(Double.self, forKey: key) { return Int(d) }
+        return nil
     }
 }
 
@@ -48,8 +68,29 @@ struct BibleVerseDTO: Decodable {
     let verseNumber: Int
     let text: String
 
-    func toDomain(bookNumber: Int) -> BibleVerse {
-        BibleVerse(id: id, bookNumber: bookNumber, chapterNumber: chapterNumber, verseNumber: verseNumber, text: text)
+    private enum CodingKeys: String, CodingKey {
+        case id, chapterNumber, verseNumber, text
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        guard let verseNumber = LenientInt.decode(c, .verseNumber) else {
+            throw DecodingError.dataCorruptedError(forKey: .verseNumber, in: c, debugDescription: "missing verseNumber")
+        }
+        self.verseNumber = verseNumber
+        chapterNumber = LenientInt.decode(c, .chapterNumber) ?? 0
+        text = (try? c.decode(String.self, forKey: .text)) ?? ""
+    }
+
+    func toDomain(bookNumber: Int, fallbackChapter: Int) -> BibleVerse {
+        BibleVerse(
+            id: id,
+            bookNumber: bookNumber,
+            chapterNumber: chapterNumber > 0 ? chapterNumber : fallbackChapter,
+            verseNumber: verseNumber,
+            text: text
+        )
     }
 }
 

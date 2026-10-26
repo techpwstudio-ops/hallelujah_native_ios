@@ -146,8 +146,17 @@ final class RemoteBibleRepository: BibleRepository {
             throw BibleRepositoryError.unexpectedStatus(response.statusCode)
         }
         let decoded = try JSONDecoder().decode(BibleChapterResponseDTO.self, from: response.data)
+        // Flutter keys the chapter by what it asked for, not by the numbers
+        // the server echoes back; so does this. A mismatch is only logged.
+        let resolvedBook = bookNumber
+        let resolvedChapter = chapterNumber
+        let resolvedLanguage = decoded.languageName ?? languageName
+        if let echoedBook = decoded.bookNumber, let echoedChapter = decoded.chapterNumber,
+           echoedBook != bookNumber || echoedChapter != chapterNumber {
+            logger.warning("chapter response for \(bookNumber)/\(chapterNumber) echoed \(echoedBook)/\(echoedChapter)")
+        }
 
-        let verses = decoded.verses.map { $0.toDomain(bookNumber: decoded.bookNumber) }
+        let verses = decoded.verses.map { $0.toDomain(bookNumber: resolvedBook, fallbackChapter: resolvedChapter) }
         let noteDTOs = decoded.notes ?? []
         let notes = noteDTOs.map { $0.toDomain() }
         let highlights = (decoded.highlights ?? []).compactMap { $0.toDomain() }
@@ -162,9 +171,9 @@ final class RemoteBibleRepository: BibleRepository {
         }
 
         return BibleChapter(
-            bookNumber: decoded.bookNumber,
-            chapterNumber: decoded.chapterNumber,
-            languageName: decoded.languageName,
+            bookNumber: resolvedBook,
+            chapterNumber: resolvedChapter,
+            languageName: resolvedLanguage,
             verses: verses,
             notes: notes,
             highlights: highlights
