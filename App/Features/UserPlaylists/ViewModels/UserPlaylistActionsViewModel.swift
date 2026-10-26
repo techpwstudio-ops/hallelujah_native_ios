@@ -70,7 +70,7 @@ final class UserPlaylistActionsViewModel {
     /// visibility the user just changed.
     func setVisibility(_ value: String?) {
         guard !isBusy else { return }
-        visibility = value
+        visibility = UserPlaylistVisibilityOverrides.shared.resolve(value, for: playlistID)
     }
 
     /// Whether the signed-in user follows this playlist. Non-fatal on failure
@@ -113,6 +113,7 @@ final class UserPlaylistActionsViewModel {
     }
 
     private func apply(_ value: String?) {
+        UserPlaylistVisibilityOverrides.shared.set(value, for: playlistID)
         guard value != visibility else { return }
         visibility = value
         NotificationCenter.default.post(

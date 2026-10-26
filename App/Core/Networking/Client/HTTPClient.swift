@@ -40,6 +40,12 @@ final class HTTPClient: Sendable {
             // (max idle time waiting for data) is the closest match to receiveTimeout.
             sessionConfiguration.timeoutIntervalForRequest = 30
             sessionConfiguration.timeoutIntervalForResource = 60
+            // Dio keeps no HTTP cache; URLSession's default one can answer a
+            // GET from disk (several "write" routes are GETs, e.g. the
+            // playlist visibility/follow toggles) or hand back a page fetched
+            // before a change. Every API call goes to the server.
+            sessionConfiguration.requestCachePolicy = .reloadIgnoringLocalCacheData
+            sessionConfiguration.urlCache = nil
             self.session = URLSession(configuration: sessionConfiguration)
         }
     }

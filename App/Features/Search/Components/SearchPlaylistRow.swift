@@ -26,7 +26,8 @@ struct SearchPlaylistRow: View {
     private var subtitle: String {
         var parts: [String] = []
         if let owner = playlist.ownerName, !owner.isEmpty { parts.append(owner) }
-        if playlist.ownerType == .user, let visibility = playlist.visibility {
+        if playlist.ownerType == .user,
+           let visibility = UserPlaylistVisibilityOverrides.shared.resolve(playlist.visibility, for: playlist.id) {
             parts.append(visibility.parityCapitalized)
         }
         let joined = parts.joined(separator: parityDotSign)

@@ -37,6 +37,21 @@ struct LibraryEntryRow: View {
         .onLongPressGesture(perform: onMore)
     }
 
+    /// The row's "owner · Visibility" with the visibility the user just
+    /// picked (`UserPlaylistVisibilityOverrides`) in place of the fetched one.
+    private static func detail(_ fetched: String?, playlistID: String) -> String? {
+        let separator = " \u{00B7} "
+        var parts = (fetched ?? "").components(separatedBy: separator).filter { !$0.isEmpty }
+        let fetchedVisibility = parts.last.flatMap { last in
+            ["public", "private"].contains(last.lowercased()) ? last.lowercased() : nil
+        }
+        guard let shown = UserPlaylistVisibilityOverrides.shared.resolve(fetchedVisibility, for: playlistID),
+              shown != fetchedVisibility else { return fetched }
+        if fetchedVisibility != nil { parts.removeLast() }
+        parts.append(shown.prefix(1).uppercased() + shown.dropFirst())
+        return parts.joined(separator: separator)
+    }
+
     private var resolvedArtwork: URL? {
         switch entry {
         case let .playlist(playlist):
@@ -79,7 +94,8 @@ struct LibraryEntryRow: View {
                 if let name, !name.isEmpty { return "\(kind)\(parityDotSign)\(name)" }
                 return kind
             }
-        case let .userPlaylist(_, _, _, _, _, _, detail):
+        case let .userPlaylist(id, _, _, _, _, _, rawDetail):
+            let detail = Self.detail(rawDetail, playlistID: id)
             if let detail, !detail.isEmpty { return "\(String(localized: "Playlist"))\(parityDotSign)\(detail)" }
             return String(localized: "Playlist")
         }

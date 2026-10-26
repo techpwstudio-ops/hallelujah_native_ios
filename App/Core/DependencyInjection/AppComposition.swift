@@ -162,6 +162,7 @@ enum AppComposition {
                 // Bible highlights/notes still waiting to be sent were made
                 // by the signed-out account, not whoever signs in next.
                 Task { await container.resolveIfRegistered((any BibleRepository).self)?.clearPendingAnnotations() }
+                Task { @MainActor in UserPlaylistVisibilityOverrides.shared.clear() }
             }
             // The base URL changed since the last launch, or the Flutter build
             // signed out (or into another account) since this one last ran:

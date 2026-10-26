@@ -181,7 +181,7 @@ struct UserPlaylistDetailView: View {
             Spacer().frame(height: 8)
 
             HStack(spacing: 4) {
-                Image(systemName: playlist.visibility == "public" ? "globe" : "lock.fill")
+                Image(systemName: shownVisibility(of: playlist) == "public" ? "globe" : "lock.fill")
                     .font(.system(size: 12))
                     .foregroundStyle(ParityColor.white60)
                 Text(visibilityLine(for: playlist))
@@ -249,8 +249,12 @@ struct UserPlaylistDetailView: View {
         .accessibilityLabel(actions.isFollowing ? "Remove from library" : "Add to library")
     }
 
+    private func shownVisibility(of playlist: UserPlaylist) -> String? {
+        UserPlaylistVisibilityOverrides.shared.resolve(playlist.visibility, for: playlist.id)
+    }
+
     private func visibilityLine(for playlist: UserPlaylist) -> String {
-        let visibility = (playlist.visibility ?? "").parityCapitalized
+        let visibility = (shownVisibility(of: playlist) ?? "").parityCapitalized
         return visibility + " \u{00B7} " + parityDurationText(playlist.duration)
     }
 
