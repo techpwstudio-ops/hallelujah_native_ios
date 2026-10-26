@@ -47,6 +47,24 @@ struct UserPlaylist: Sendable, Equatable, Identifiable {
         return ownerUserID == currentUserID
     }
 
+    /// This playlist with another `visibility` ("public"/"private").
+    func replacingVisibility(with visibility: String?) -> UserPlaylist {
+        UserPlaylist(
+            id: id,
+            title: title,
+            description: description,
+            image: image,
+            imageVariants: imageVariants,
+            visibility: visibility,
+            songsCount: songsCount,
+            duration: duration,
+            ownerUserID: ownerUserID,
+            createdAt: createdAt,
+            songIDs: songIDs,
+            ownerName: ownerName
+        )
+    }
+
     /// This playlist with only the cover (`image`/`imageVariants`) taken from
     /// `fresh` — what `users.playlist.updated` patches in Dart
     /// (`realtime_event_handler.dart`); every other field stays as loaded.

@@ -16,7 +16,8 @@ extension View {
     /// after a successful delete so the host list can refresh. Also "Share
     /// playlist" for everyone, "Make Private"/"Make Public" for the owner and
     /// "Add to library"/"Remove from library" (confirmed on removal) for
-    /// everyone else. `onChanged` fires after a visibility or follow change;
+    /// everyone else. `onChanged` fires after a follow change (a visibility
+    /// change is posted as `userPlaylistVisibilityDidChange` instead);
     /// `onUnfollowed` after a successful unfollow (the detail page pops).
     func userPlaylistMenu(
         target: Binding<UserPlaylistMenuTarget?>,
@@ -79,10 +80,15 @@ private struct UserPlaylistMenuPresenter: ViewModifier {
                         // (`ShareService.sharePlaylist`'s share sheet), at
                         // full height so the card isn't cut off.
                         onShare: { detent = .large },
-                        onVisibilityChanged: { text in
+                        // The sheet closes at once; the new state shows
+                        // straight away (optimistic), the toast follows the
+                        // server's answer.
+                        onVisibilityTapped: { actions in
                             self.target = nil
-                            if let text { toastCenter.show(text) }
-                            onChanged?()
+                            Task {
+                                let text = await actions.toggleVisibility()
+                                if !text.isEmpty { toastCenter.show(text) }
+                            }
                         },
                         onFollowTapped: { isFollowing in
                             self.target = nil
@@ -149,7 +155,7 @@ private struct UserPlaylistMenuSheet: View {
     let onDelete: () -> Void
     let onMessage: (String) -> Void
     let onShare: () -> Void
-    let onVisibilityChanged: (String?) -> Void
+    let onVisibilityTapped: (UserPlaylistActionsViewModel) -> Void
     let onFollowTapped: (Bool) -> Void
 
     init(
@@ -158,7 +164,7 @@ private struct UserPlaylistMenuSheet: View {
         onDelete: @escaping () -> Void,
         onMessage: @escaping (String) -> Void,
         onShare: @escaping () -> Void,
-        onVisibilityChanged: @escaping (String?) -> Void,
+        onVisibilityTapped: @escaping (UserPlaylistActionsViewModel) -> Void,
         onFollowTapped: @escaping (Bool) -> Void
     ) {
         self.target = target
@@ -167,7 +173,7 @@ private struct UserPlaylistMenuSheet: View {
         self.onDelete = onDelete
         self.onMessage = onMessage
         self.onShare = onShare
-        self.onVisibilityChanged = onVisibilityChanged
+        self.onVisibilityTapped = onVisibilityTapped
         self.onFollowTapped = onFollowTapped
     }
 
@@ -199,7 +205,7 @@ private struct UserPlaylistMenuSheet: View {
                     systemImage: viewModel.actions.isPublic ? "globe" : "lock.fill",
                     title: LocalizedStringKey(viewModel.actions.visibilityTitle)
                 ) {
-                    Task { onVisibilityChanged(await viewModel.actions.toggleVisibility()) }
+                    onVisibilityTapped(viewModel.actions)
                 }
                 SongMenuRow(systemImage: "xmark", title: "Delete Playlist") { onDelete() }
             } else if viewModel.isLoaded {

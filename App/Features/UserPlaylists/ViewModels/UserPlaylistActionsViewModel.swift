@@ -10,6 +10,12 @@ import Observation
 /// Follow state is read from `GET /library/items/ids` (`"userPlaylist:<id>"`,
 /// the same key Dart's `LibraryItemsListRowChangedEvent` uses) because neither
 /// single-playlist endpoint sends an `isFollowed` flag.
+extension Notification.Name {
+    /// A user playlist's visibility changed (optimistically, or put back);
+    /// `object` is its id, `userInfo["visibility"]` the new value.
+    static let userPlaylistVisibilityDidChange = Notification.Name("Hallelujah.userPlaylistVisibilityDidChange")
+}
+
 @MainActor
 @Observable
 final class UserPlaylistActionsViewModel {
@@ -60,7 +66,12 @@ final class UserPlaylistActionsViewModel {
 
     static func followKey(for id: String) -> String { "userPlaylist:\(id)" }
 
-    func setVisibility(_ value: String?) { visibility = value }
+    /// A load's value. Ignored mid-toggle, so a slow fetch can't put back the
+    /// visibility the user just changed.
+    func setVisibility(_ value: String?) {
+        guard !isBusy else { return }
+        visibility = value
+    }
 
     /// Whether the signed-in user follows this playlist. Non-fatal on failure
     /// (the row then reads "Add to library", as with the saved-id sync).
@@ -74,21 +85,41 @@ final class UserPlaylistActionsViewModel {
     /// "Make Private" / "Make Public" (`custom_playlist.dart`).
     var visibilityTitle: String { isPublic ? String(localized: "Make Private") : String(localized: "Make Public") }
 
-    /// Toast text for a successful toggle; `nil` when the call failed without
-    /// a server message (Dart only logs that case).
-    func toggleVisibility() async -> String? {
+    /// Optimistic: the new visibility is shown everywhere at once (posted as
+    /// `userPlaylistVisibilityDidChange`), then confirmed with the server's
+    /// value, or put back if the call fails. Returns the toast text.
+    func toggleVisibility() async -> String {
+        guard !isBusy else { return "" }
         isBusy = true
         defer { isBusy = false }
+        let previous = visibility
+        // Unknown until the playlist loads; the server toggles either way, so
+        // only its answer can be shown then.
+        if let previous {
+            apply(previous == "public" ? "private" : "public")
+        }
         do {
             let playlist = try await repository.toggleVisibility(id: playlistID)
-            visibility = playlist.visibility
-            return Self.visibilityMessage(for: playlist.visibility)
+            if let confirmed = playlist.visibility { apply(confirmed) }
+            return Self.visibilityMessage(for: visibility)
         } catch UserPlaylistRepositoryError.rejected(let message) {
+            apply(previous)
             return message
         } catch {
             logger.warning("toggle visibility \(playlistID) failed: \(error)")
-            return nil
+            apply(previous)
+            return Self.networkErrorMessage
         }
+    }
+
+    private func apply(_ value: String?) {
+        guard value != visibility else { return }
+        visibility = value
+        NotificationCenter.default.post(
+            name: .userPlaylistVisibilityDidChange,
+            object: playlistID,
+            userInfo: value.map { ["visibility": $0] as [AnyHashable: Any] }
+        )
     }
 
     static func visibilityMessage(for visibility: String?) -> String {

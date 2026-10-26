@@ -81,6 +81,20 @@ final class UserPlaylistDetailViewModel {
         startCoverPollIfNeeded()
     }
 
+    /// A visibility toggle from any menu: patched in place, no refetch (a
+    /// refresh blanks the screen and could read back the old value).
+    func applyVisibility(_ visibility: String?) {
+        switch state {
+        case .loaded(let playlist, let songs):
+            state = .loaded(playlist: playlist.replacingVisibility(with: visibility), songs: songs)
+        case .empty(let playlist):
+            state = .empty(playlist: playlist.replacingVisibility(with: visibility))
+        case .loading, .failed:
+            break
+        }
+        actions?.setVisibility(visibility)
+    }
+
     /// Cancels the cover re-checks; the view calls this when it leaves screen.
     func stopCoverPoll() {
         coverPollTask?.cancel()

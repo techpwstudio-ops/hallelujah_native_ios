@@ -108,6 +108,10 @@ struct UserPlaylistDetailView: View {
                 )
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .userPlaylistVisibilityDidChange)) { note in
+            guard (note.object as? String) == viewModel.playlistID else { return }
+            viewModel.applyVisibility(note.userInfo?["visibility"] as? String)
+        }
         // Songs added from the search page pushed by "+".
         .onReceive(NotificationCenter.default.publisher(for: .userPlaylistSongsDidChange)) { note in
             guard (note.object as? String) == viewModel.playlistID else { return }
