@@ -119,6 +119,29 @@ struct ReadDragHandle: View {
     }
 }
 
+/// A back chevron and caption, as at the top of the chapter grid. Shown on a
+/// page that slid in inside a sheet, to slide back to the page before it.
+struct ReadSheetBackHeader: View {
+    let title: LocalizedStringKey
+    let onBack: () -> Void
+
+    var body: some View {
+        Button(action: onBack) {
+            HStack(spacing: 0) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(ReadPalette.white)
+                    .frame(width: 24, height: 24)
+                Text(title)
+                    .readText(Typography.bodyLarge, weight: .regular, color: ReadPalette.secondaryText)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// Hosts a sheet's content the way `showAppSheet` does: flat #111111 surface
 /// (`ColorTheme.bottomSheetBgColor`), no system drag indicator, and the dock
 /// hide/show bookkeeping `AppSheetContainer` does for shared sheets.

@@ -11,13 +11,17 @@ struct LanguagePickerSheet: View {
     let languages: [BibleLanguage]
     let currentLanguage: String
     let onSelect: (String) -> Void
+    /// Set when the list slid in inside the Bible menu sheet: a back button
+    /// to the menu sits under the drag handle.
+    let onBack: (() -> Void)?
 
     @State private var searchText = ""
     @State private var isOnline: Bool
     @State private var service: BibleOfflineDownloadService = DependencyContainer.current.resolve()
     @FocusState private var isSearchFocused: Bool
 
-    init(languages: [BibleLanguage], currentLanguage: String, onSelect: @escaping (String) -> Void) {
+    init(languages: [BibleLanguage], currentLanguage: String, onBack: (() -> Void)? = nil, onSelect: @escaping (String) -> Void) {
+        self.onBack = onBack
         self.languages = languages
         self.currentLanguage = currentLanguage
         self.onSelect = onSelect
@@ -43,6 +47,11 @@ struct LanguagePickerSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             ReadDragHandle()
+
+            if let onBack {
+                ReadSheetBackHeader(title: "Language", onBack: onBack)
+                    .padding(.horizontal, 12)
+            }
 
             if available.isEmpty {
                 ReadEmptyText(

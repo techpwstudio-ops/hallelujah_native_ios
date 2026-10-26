@@ -40,6 +40,9 @@ struct MyNotesView: View {
     /// The language currently being read, if known (suppresses the suffix).
     var currentLanguage: String? = nil
     let onSelect: (BibleNoteEntry) -> Void
+    /// Set when the notes slid in inside the Bible menu sheet: the caption
+    /// becomes a back button to the menu.
+    var onBack: (() -> Void)? = nil
 
     @State private var viewModel = MyNotesViewModel()
 
@@ -106,8 +109,12 @@ struct MyNotesView: View {
         VStack(alignment: .leading, spacing: 0) {
             ReadDragHandle()
 
-            Text("Notes")
-                .readText(Typography.bodyLarge, weight: .regular, color: ReadPalette.secondaryText)
+            if let onBack {
+                ReadSheetBackHeader(title: "Notes", onBack: onBack)
+            } else {
+                Text("Notes")
+                    .readText(Typography.bodyLarge, weight: .regular, color: ReadPalette.secondaryText)
+            }
 
             Spacer().frame(height: 12)
 

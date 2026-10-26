@@ -9,18 +9,27 @@ import SwiftUI
 struct VerseOfDayCommentsSheet: View {
     let verseOfDayId: String
     var showsVerseOfDay = false
+    /// Set when the comments slid in inside the Bible menu sheet: a back
+    /// button to the menu sits under the drag handle.
+    var onBack: (() -> Void)?
 
     @State private var viewModel: VerseOfDayCommentsViewModel
 
-    init(verseOfDayId: String, showsVerseOfDay: Bool = false) {
+    init(verseOfDayId: String, showsVerseOfDay: Bool = false, onBack: (() -> Void)? = nil) {
         self.verseOfDayId = verseOfDayId
         self.showsVerseOfDay = showsVerseOfDay
+        self.onBack = onBack
         _viewModel = State(initialValue: VerseOfDayCommentsViewModel(verseOfDayId: verseOfDayId))
     }
 
     var body: some View {
         VStack(spacing: 0) {
             ReadDragHandle()
+
+            if let onBack {
+                ReadSheetBackHeader(title: "Verse of the day", onBack: onBack)
+                    .padding(.horizontal, 12)
+            }
 
             if viewModel.isLoadingComments, !viewModel.hasLoadedOnce {
                 ReadSpinner()

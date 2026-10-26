@@ -27,8 +27,10 @@ struct ReaderView: View {
     @FocusState private var searchFocused: Bool
 
     @State private var showMenu = false
-    @State private var showLanguage = false
-    @State private var showNotes = false
+    /// What the menu sheet is showing. Language, Notes and Verse of the day
+    /// slide in inside the same sheet (like books -> chapters in the table of
+    /// contents) instead of closing it and opening a second sheet.
+    @State private var menuPage: MenuPage = .menu
     @State private var showTableOfContents = false
     /// The book whose chapters the table-of-contents sheet is showing; `nil`
     /// shows the book list.
@@ -45,11 +47,9 @@ struct ReaderView: View {
             screenHeight: UIScreen.main.bounds.height
         ))
     }
-    @State private var verseOfDayCommentsID: String?
     @State private var noteEditorVerse: BibleVerse?
     @State private var askEmetVerse: AskEmetSelection?
     @State private var highlightPaletteVerse: HighlightSelection?
-    @State private var pendingAfterDismiss: (() -> Void)?
 
     @State private var navigationStore: ReaderNavigationStore = DependencyContainer.current.resolve()
     @State private var offlineService: BibleOfflineDownloadService = DependencyContainer.current.resolve()
@@ -107,45 +107,22 @@ struct ReaderView: View {
             toastCenter.show(message)
             viewModel.clearBoundaryMessage()
         }
-        .readSheet(isPresented: $showMenu, onDismiss: runPendingAction, detents: [.height(300)]) {
-            menuSheet
-        }
-        .readSheet(
-            isPresented: $showLanguage,
-            onDismiss: runPendingAction,
-            detents: [.fraction(0.45), .fraction(0.85)]
-        ) {
-            LanguagePickerSheet(
-                languages: viewModel.languages,
-                currentLanguage: viewModel.currentLanguage
-            ) { language in
-                showLanguage = false
-                // `OurSession.changeReadLanguage`: persist on the account, fire-and-forget.
-                Task { await ReadLanguageSaver().save(language: language) }
-                viewModel.select(language: language)
+        .sheet(isPresented: $showMenu, onDismiss: { menuPage = .menu }) {
+            ReadSheetContainer {
+                ZStack {
+                    menuSheetPage
+                }
+                .clipped()
             }
-        }
-        .readSheet(
-            isPresented: $showNotes,
-            onDismiss: runPendingAction,
-            detents: [.fraction(0.5), .fraction(0.9)]
-        ) {
-            MyNotesView(books: viewModel.books, currentLanguage: viewModel.currentLanguage) { entry in
-                showNotes = false
-                viewModel.select(
-                    bookNumber: entry.bookNumber,
-                    chapterNumber: entry.chapterNumber,
-                    verseNumber: entry.verseNumber
-                )
-            }
+            .presentationDetents([menuDetent])
+            .presentationDragIndicator(.hidden)
+            .presentationCornerRadius(28)
+            .presentationBackground(ReadPalette.sheetBackground)
         }
         // Books and chapters share one sheet, like Flutter's table of
         // contents: picking a book swaps the grid in place (and resizes the
         // sheet) instead of closing this sheet and opening a second one.
-        .sheet(isPresented: $showTableOfContents, onDismiss: {
-            tocChapterBook = nil
-            runPendingAction()
-        }) {
+        .sheet(isPresented: $showTableOfContents, onDismiss: { tocChapterBook = nil }) {
             ReadSheetContainer {
                 ZStack {
                     if let book = tocChapterBook {
@@ -200,15 +177,6 @@ struct ReaderView: View {
                 }
             )
         }
-        .readSheet(
-            item: Binding<VerseOfDaySheetID?>(
-                get: { verseOfDayCommentsID.map { VerseOfDaySheetID(id: $0) } },
-                set: { verseOfDayCommentsID = $0?.id }
-            ),
-            detents: [.fraction(0.65), .fraction(0.95)]
-        ) { item in
-            VerseOfDayCommentsSheet(verseOfDayId: item.id, showsVerseOfDay: true)
-        }
         .fullScreenCover(item: $askEmetVerse) { verse in
             AIVerseInsightDialogView(
                 target: .fromBibleVerse(verse.verse, bookName: viewModel.currentBook?.translate(viewModel.currentLanguage), languageName: viewModel.currentLanguage),
@@ -231,14 +199,11 @@ struct ReaderView: View {
         var id: String { verse.id }
     }
 
-    private struct VerseOfDaySheetID: Identifiable {
-        let id: String
-    }
-
-    private func runPendingAction() {
-        guard let action = pendingAfterDismiss else { return }
-        pendingAfterDismiss = nil
-        action()
+    private enum MenuPage: Equatable {
+        case menu
+        case language
+        case notes
+        case verseOfDay(id: String)
     }
 
     // MARK: - Navigation store
@@ -634,6 +599,68 @@ struct ReaderView: View {
 
     // MARK: - Menu sheet (`showBookPageMainMenu`)
 
+    /// Each page's height; changing it while the sheet is up animates the
+    /// sheet to the new size, as the table of contents does.
+    private var menuDetent: PresentationDetent {
+        switch menuPage {
+        case .menu: return .height(300)
+        case .language: return .fraction(0.85)
+        case .notes: return .fraction(0.9)
+        case .verseOfDay: return .fraction(0.95)
+        }
+    }
+
+    private func showMenuPage(_ page: MenuPage) {
+        withAnimation(Self.bookPickerAnimation) { menuPage = page }
+    }
+
+    private static let menuPushTransition = AnyTransition.asymmetric(
+        insertion: .move(edge: .trailing).combined(with: .opacity),
+        removal: .move(edge: .trailing).combined(with: .opacity)
+    )
+
+    @ViewBuilder
+    private var menuSheetPage: some View {
+        switch menuPage {
+        case .menu:
+            menuSheet
+                .transition(.asymmetric(
+                    insertion: .move(edge: .leading).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+        case .language:
+            LanguagePickerSheet(
+                languages: viewModel.languages,
+                currentLanguage: viewModel.currentLanguage,
+                onBack: { showMenuPage(.menu) }
+            ) { language in
+                showMenu = false
+                // `OurSession.changeReadLanguage`: persist on the account, fire-and-forget.
+                Task { await ReadLanguageSaver().save(language: language) }
+                viewModel.select(language: language)
+            }
+            .transition(Self.menuPushTransition)
+        case .notes:
+            MyNotesView(
+                books: viewModel.books,
+                currentLanguage: viewModel.currentLanguage,
+                onSelect: { entry in
+                    showMenu = false
+                    viewModel.select(
+                        bookNumber: entry.bookNumber,
+                        chapterNumber: entry.chapterNumber,
+                        verseNumber: entry.verseNumber
+                    )
+                },
+                onBack: { showMenuPage(.menu) }
+            )
+            .transition(Self.menuPushTransition)
+        case .verseOfDay(let id):
+            VerseOfDayCommentsSheet(verseOfDayId: id, showsVerseOfDay: true, onBack: { showMenuPage(.menu) })
+                .transition(Self.menuPushTransition)
+        }
+    }
+
     private var menuSheet: some View {
         VStack(spacing: 0) {
             ReadDragHandle()
@@ -648,8 +675,7 @@ struct ReaderView: View {
                         .frame(width: 24, height: 24)
                 }
             }) {
-                showMenu = false
-                pendingAfterDismiss = { showLanguage = true }
+                showMenuPage(.language)
             }
 
             if !viewModel.currentLanguage.isEmpty {
@@ -664,13 +690,11 @@ struct ReaderView: View {
             }
 
             menuRow(icon: "note.text", title: "Notes", trailing: { EmptyView() }) {
-                showMenu = false
-                pendingAfterDismiss = { showNotes = true }
+                showMenuPage(.notes)
             }
 
             menuRow(icon: "book", title: "Verse of the day", trailing: { EmptyView() }) {
-                showMenu = false
-                pendingAfterDismiss = { openVerseOfDay() }
+                openVerseOfDay()
             }
 
             Spacer().frame(height: 16)
@@ -702,8 +726,8 @@ struct ReaderView: View {
         .buttonStyle(.plain)
     }
 
-    /// "Verse of the day" menu row: the latest verse's comments sheet with the
-    /// verse card on top, or a toast when none has ever been delivered.
+    /// "Verse of the day" menu row: the latest verse's comments, with the
+    /// verse card on top, slide in; a toast when none has ever been delivered.
     private func openVerseOfDay() {
         let container = DependencyContainer.current
         let keyValueStore: any KeyValueStoring = container.resolve()
@@ -712,7 +736,7 @@ struct ReaderView: View {
             toastCenter.show("There is no verse of day for today.")
             return
         }
-        verseOfDayCommentsID = id
+        showMenuPage(.verseOfDay(id: id))
     }
 
     // MARK: - Share
