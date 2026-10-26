@@ -34,6 +34,9 @@ struct ArtworkView: View {
     @Environment(\.displayScale) private var displayScale
     @State private var image: UIImage?
     @State private var loadedURL: URL?
+    /// Every attempt for `url` failed: a still placeholder, not a shimmer
+    /// that would suggest it's still coming.
+    @State private var didFail = false
 
     var body: some View {
         Group {
@@ -43,8 +46,12 @@ struct ArtworkView: View {
                     .aspectRatio(contentMode: contentMode)
                     .frame(width: width, height: height)
                     .clipped()
-            } else {
+            } else if didFail || url == nil {
                 SkeletonBox(width: width, height: height, radius: 0)
+            } else {
+                // Flutter's dark shimmer while loading, not a flat grey box.
+                SkeletonBox(width: width, height: height, radius: 0)
+                    .shimmer()
             }
         }
         .frame(width: width, height: height)
@@ -58,8 +65,14 @@ struct ArtworkView: View {
         // Keep what's showing until something replaces it: blanking first
         // made every reload (a page rebuilt by a skip or play tap) flash, and
         // a fetch that then failed left it black for good.
-        if loadedURL != url { image = nil }
-        guard let url else { return }
+        // A different URL (the next song, the share card swapping to the
+        // server's card image) keeps the old picture until the new one is
+        // decoded, instead of flashing an empty box in between.
+        didFail = false
+        guard let url else {
+            image = nil
+            return
+        }
 
         // One axis only, matching `_decodeSize`'s "preserve aspect ratio"
         // intent — `kCGImageSourceThumbnailMaxPixelSize` bounds the longer
@@ -89,5 +102,8 @@ struct ArtworkView: View {
                 return
             }
         }
+        // Never leave another item's picture standing in for this one.
+        if loadedURL != requestedURL { image = nil }
+        didFail = true
     }
 }
