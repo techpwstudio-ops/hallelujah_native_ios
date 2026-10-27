@@ -35,6 +35,7 @@ final class UserPlaylistActionsViewModel {
 
     private let repository: any UserPlaylistRepository
     private let libraryRepository: any LibraryRepository
+    private let overrides: UserPlaylistVisibilityOverrides
     private let shareLink: @MainActor (String) async throws -> URL
     private let onLibraryChanged: @MainActor () async -> Void
     private let logger = AppLogger(category: .content)
@@ -44,11 +45,13 @@ final class UserPlaylistActionsViewModel {
         repository: any UserPlaylistRepository,
         libraryRepository: any LibraryRepository,
         shareLink: @escaping @MainActor (String) async throws -> URL,
-        onLibraryChanged: @escaping @MainActor () async -> Void = {}
+        onLibraryChanged: @escaping @MainActor () async -> Void = {},
+        overrides: UserPlaylistVisibilityOverrides? = nil
     ) {
         self.playlistID = playlistID
         self.repository = repository
         self.libraryRepository = libraryRepository
+        self.overrides = overrides ?? .shared
         self.shareLink = shareLink
         self.onLibraryChanged = onLibraryChanged
     }
@@ -70,7 +73,7 @@ final class UserPlaylistActionsViewModel {
     /// visibility the user just changed.
     func setVisibility(_ value: String?) {
         guard !isBusy else { return }
-        visibility = UserPlaylistVisibilityOverrides.shared.resolve(value, for: playlistID)
+        visibility = overrides.resolve(value, for: playlistID)
     }
 
     /// Whether the signed-in user follows this playlist. Non-fatal on failure
@@ -82,16 +85,24 @@ final class UserPlaylistActionsViewModel {
 
     var isPublic: Bool { visibility == "public" }
 
+    /// A toggle for this playlist is waiting on the server, from this or any
+    /// other menu; the menu row is disabled meanwhile.
+    var isTogglingVisibility: Bool { overrides.isToggling(playlistID) }
+
     /// "Make Private" / "Make Public" (`custom_playlist.dart`).
     var visibilityTitle: String { isPublic ? String(localized: "Make Private") : String(localized: "Make Public") }
 
     /// Optimistic: the new visibility is shown everywhere at once (posted as
     /// `userPlaylistVisibilityDidChange`), then confirmed with the server's
-    /// value, or put back if the call fails. Returns the toast text.
+    /// value, or put back if the call fails. Returns the toast text; empty
+    /// when another toggle of this playlist is still in flight.
     func toggleVisibility() async -> String {
-        guard !isBusy else { return "" }
+        guard !isBusy, overrides.beginToggle(for: playlistID) else { return "" }
         isBusy = true
-        defer { isBusy = false }
+        defer {
+            isBusy = false
+            overrides.endToggle(for: playlistID)
+        }
         let previous = visibility
         // Unknown until the playlist loads; the server toggles either way, so
         // only its answer can be shown then.
@@ -103,17 +114,21 @@ final class UserPlaylistActionsViewModel {
             if let confirmed = playlist.visibility { apply(confirmed) }
             return Self.visibilityMessage(for: visibility)
         } catch UserPlaylistRepositoryError.rejected(let message) {
-            apply(previous)
+            apply(previous, holds: false)
             return message
         } catch {
+            // A timeout can land after the server already flipped it, so the
+            // old value is shown but not held: the next fetch has the truth.
             logger.warning("toggle visibility \(playlistID) failed: \(error)")
-            apply(previous)
+            apply(previous, holds: false)
             return Self.networkErrorMessage
         }
     }
 
-    private func apply(_ value: String?) {
-        UserPlaylistVisibilityOverrides.shared.set(value, for: playlistID)
+    /// `holds`: keep `value` over fetched ones (`UserPlaylistVisibilityOverrides`).
+    /// Only the optimistic value and the server's answer are held.
+    private func apply(_ value: String?, holds: Bool = true) {
+        overrides.set(holds ? value : nil, for: playlistID)
         guard value != visibility else { return }
         visibility = value
         NotificationCenter.default.post(

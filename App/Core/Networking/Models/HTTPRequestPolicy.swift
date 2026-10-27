@@ -49,8 +49,24 @@ enum HTTPRequestPolicy {
     /// server-side, so resending it would duplicate the resource. The one
     /// Dart call site that opts out is `AiService.createConversation`
     /// (`POST /ai/conversations`).
+    ///
+    /// Also the user-playlist visibility/follow toggles, which Dart does
+    /// retry: they are GETs that flip server state, so a resend after the
+    /// response was lost flips it straight back and the user's change is
+    /// silently undone.
     static func allowsRetry(method: HTTPMethod, path: String) -> Bool {
-        !(method == .post && barePath(path) == "/ai/conversations")
+        let bare = barePath(path)
+        if method == .post && bare == "/ai/conversations" { return false }
+        return !isUserPlaylistToggle(bare)
+    }
+
+    /// `/library/user-playlist/:id/visibility` and `/library/user-playlist/:id/follow`.
+    private static func isUserPlaylistToggle(_ bare: String) -> Bool {
+        let segments = bare.split(separator: "/")
+        return segments.count == 4
+            && segments[0] == "library"
+            && segments[1] == "user-playlist"
+            && (segments[3] == "visibility" || segments[3] == "follow")
     }
 
     // MARK: Toasts

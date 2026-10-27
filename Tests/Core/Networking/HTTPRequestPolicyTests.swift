@@ -37,11 +37,19 @@ struct HTTPRequestPolicyTests {
 
     // MARK: retry
 
-    @Test func onlyAIConversationCreationOptsOutOfRetry() {
+    @Test func nonIdempotentRequestsOptOutOfRetry() {
         #expect(!HTTPRequestPolicy.allowsRetry(method: .post, path: "/ai/conversations"))
         #expect(HTTPRequestPolicy.allowsRetry(method: .get, path: "/ai/conversations"))
         #expect(HTTPRequestPolicy.allowsRetry(method: .post, path: "/ai/conversations/9/messages"))
         #expect(HTTPRequestPolicy.allowsRetry(method: .post, path: "/library/user-playlist"))
+    }
+
+    /// GETs that flip server state: a resend after a lost response undoes the change.
+    @Test func userPlaylistTogglesAreNeverRetried() {
+        #expect(!HTTPRequestPolicy.allowsRetry(method: .get, path: "/library/user-playlist/p1/visibility"))
+        #expect(!HTTPRequestPolicy.allowsRetry(method: .get, path: "/library/user-playlist/p1/follow"))
+        #expect(HTTPRequestPolicy.allowsRetry(method: .get, path: "/library/user-playlist/p1"))
+        #expect(HTTPRequestPolicy.allowsRetry(method: .get, path: "/library/user-playlist/p1/songs?page=2"))
     }
 
     // MARK: toasts

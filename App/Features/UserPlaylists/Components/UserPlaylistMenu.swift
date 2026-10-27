@@ -207,6 +207,9 @@ private struct UserPlaylistMenuSheet: View {
                 ) {
                     onVisibilityTapped(viewModel.actions)
                 }
+                // Reopened before the last toggle's answer: wait for it.
+                .disabled(viewModel.actions.isTogglingVisibility)
+                .opacity(viewModel.actions.isTogglingVisibility ? 0.5 : 1)
                 SongMenuRow(systemImage: "xmark", title: "Delete Playlist") { onDelete() }
             } else if viewModel.isLoaded {
                 SongMenuRow(

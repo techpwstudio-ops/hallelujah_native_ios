@@ -43,7 +43,7 @@ struct LibraryEntryRow: View {
         let separator = " \u{00B7} "
         var parts = (fetched ?? "").components(separatedBy: separator).filter { !$0.isEmpty }
         let fetchedVisibility = parts.last.flatMap { last in
-            ["public", "private"].contains(last.lowercased()) ? last.lowercased() : nil
+            ["public", "private", "unlisted"].contains(last.lowercased()) ? last.lowercased() : nil
         }
         guard let shown = UserPlaylistVisibilityOverrides.shared.resolve(fetchedVisibility, for: playlistID),
               shown != fetchedVisibility else { return fetched }
