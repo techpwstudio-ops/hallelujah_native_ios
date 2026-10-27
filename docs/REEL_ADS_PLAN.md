@@ -9,7 +9,7 @@ Status: **plan, nothing built yet** · 2026-10-27 · sections 1-7 are identical 
 | Flutter app | `ghallelujah_app` | `dev` | 3rd |
 | Native iOS | `hallelujah_native_ios` | `main` | 4th |
 
-Nothing below has been run. This environment has no database, Redis, Flutter or Swift toolchain and no device, so everything in section 2 is **read from the code**, not reproduced. Where a claim is a hypothesis it says so.
+Nothing below has been reproduced on a device. This environment has Node, Postgres 16 and Redis (so backend migrations and tests can run for real against a throwaway database) but **no Flutter or Swift toolchain, no device, and no access to your dev/QA/prod data**. Everything in section 2 is therefore **read from the code**; where a claim is a hypothesis it says so.
 
 ---
 
@@ -173,7 +173,7 @@ Rollback: re-add `reel_video` to `audio_between_tracks.acceptedAssetTypes` and s
 
 | Part | Can I run it here | How it will be checked |
 |---|---|---|
-| Backend | Lint and Jest unit tests yes. Anything needing Postgres/Redis no. | New unit tests with mocked Prisma/Redis, as the existing ads tests do; `npm run lint`. Migration is read by eye and written to be idempotent; **it has not been applied to any database**. |
+| Backend | Yes: lint, Jest, and a local throwaway Postgres + Redis. | The new migration is applied on top of all 291 existing ones in a scratch database seeded with the real placement seed, run twice to prove it is idempotent, and its result queried. New code gets unit tests; the endpoints are exercised against the local Redis. **Not** applied to dev, QA or prod, and no real traffic or real caps data. |
 | Admin | `tsc`, lint, vitest yes. | Type-check, unit tests for the new pure helpers. No browser run against a live API. |
 | Flutter | **No** — no SDK. | Code written to the existing patterns; tests updated; **you run `flutter analyze` and `flutter test`**. |
 | Native iOS | **No** — no Swift. | Same; **you build in Xcode**. |
