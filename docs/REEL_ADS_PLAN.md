@@ -13,6 +13,19 @@ Nothing below has been reproduced on a device. This environment has Node, Postgr
 
 ---
 
+## 0. Status — 2026-10-27
+
+| Part | State | Where |
+|---|---|---|
+| Backend | **Done and pushed.** Placement split + migration, legacy alias, `asset_type_not_accepted`, per-format counters, `shown` / `servedNotShown`, `GET /admin/ads/caps`, `GET /admin/ads/viewer`, the per-listener trail, `POST /api/ads/track/not-shown`. 991 ads tests pass; also exercised against a real local Postgres + Redis (62 checks). Not deployed, and not run against any real dev/QA/prod data. | `gs_nh_backend` `dev` `915aba98` |
+| Admin | **Partly done and pushed.** Done: *Caps in force* column, every accepted format shown, break-position select, Delivery shows served / shown / never-shown, per-format split and the kept no-fill examples. **Not done:** the *Readiness* tab and the *Listener lookup* page (their API calls and hooks are in; the screens are not), and no Pacing or Intro/Ad/Gap controls (dropped from this pass). | `gh_admin` `dev-official` `ef9f858` |
+| Flutter | **Not started.** The reel screen redesign, the video sizing, the per-format placement and the not-shown report are all still to do. Old builds keep getting reels through the server alias. | `ghallelujah_app` `dev` |
+| Native iOS | **Not started.** Worse than "unchanged": once the backend is deployed the audio slot takes audio only, and native asks it with no format, so **native stops being offered reels** until step N1 is done. Its `squareImageUrl` guard and 6-song pacing are also still in. | `hallelujah_native_ios` `main` |
+
+Nothing in the two apps has been compiled or run, and the cropping cause on Flutter is still a hypothesis (§2.3).
+
+---
+
 ## 1. What was asked
 
 1. Reel (video) ads are served from the placement `audio_between_tracks`, the same one audio ads use. That name is misleading; ads should have names that say what they are.
