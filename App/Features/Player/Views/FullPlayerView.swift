@@ -60,12 +60,7 @@ struct FullPlayerView: View {
         }
     }
 
-    private var subtitle: String {
-        [song?.primaryArtists, song?.featuredArtists]
-            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " • ")
-    }
+    private var subtitle: String { song?.artistLine ?? "" }
 
     var body: some View {
         Group {

@@ -26,7 +26,7 @@ struct AIChatHomeView: View {
 
     private let repository: any AIChatRepository = DependencyContainer.current.resolve()
     private let uploadRepository: any UploadRepository = DependencyContainer.current.resolve()
-    private let logger = AppLogger(category: .content)
+    private let logger = AppLogger(category: .aiChat)
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter

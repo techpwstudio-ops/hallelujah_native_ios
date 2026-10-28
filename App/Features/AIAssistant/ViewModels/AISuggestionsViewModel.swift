@@ -12,7 +12,7 @@ final class AISuggestionsViewModel {
     private(set) var isLoading = false
 
     private let repository: any AIChatRepository
-    private let logger = AppLogger(category: .content)
+    private let logger = AppLogger(category: .aiChat)
 
     init(container: DependencyContainer = .current) {
         repository = container.resolve()

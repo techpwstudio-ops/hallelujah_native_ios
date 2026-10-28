@@ -23,14 +23,10 @@ final class AttemptCounter: @unchecked Sendable {
     }
 }
 
-/// `.serialized`: every test in this file drives the same static
-/// `MockURLProtocol.requestHandler`, so they can't run concurrently with
-/// each other without clobbering it.
-@Suite(.serialized)
 struct HTTPClientTests {
     @Test func retriesTransportFailuresThenSucceeds() async throws {
         let counter = AttemptCounter()
-        MockURLProtocol.requestHandler = { request in
+        let session = MockURLProtocol.makeSession { request in
             if counter.increment() < 3 {
                 throw URLError(.timedOut)
             }
@@ -38,7 +34,7 @@ struct HTTPClientTests {
             return (response, Data("{}".utf8))
         }
 
-        let client = HTTPClient(configuration: .staging, session: MockURLProtocol.makeSession())
+        let client = HTTPClient(configuration: .staging, session: session)
         let response = try await client.send(.geoCountry)
 
         #expect(response.statusCode == 200)
@@ -47,13 +43,13 @@ struct HTTPClientTests {
 
     @Test func doesNotRetryOnHTTPErrorStatus() async throws {
         let counter = AttemptCounter()
-        MockURLProtocol.requestHandler = { request in
+        let session = MockURLProtocol.makeSession { request in
             counter.increment()
             let response = HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!
             return (response, Data())
         }
 
-        let client = HTTPClient(configuration: .staging, session: MockURLProtocol.makeSession())
+        let client = HTTPClient(configuration: .staging, session: session)
         let response = try await client.send(.geoCountry)
 
         #expect(response.statusCode == 500) // surfaced as a normal response, not thrown
@@ -71,7 +67,7 @@ struct HTTPClientTests {
 
         let originalCallCount = AttemptCounter()
         let refreshCallCount = AttemptCounter()
-        MockURLProtocol.requestHandler = { request in
+        let mockSession = MockURLProtocol.makeSession { request in
             if request.url?.path.hasSuffix("/auth/token/refresh") == true {
                 refreshCallCount.increment()
                 let json = #"{"token":"new-access","refreshToken":"new-refresh","accessTokenExpiry":"2099-01-01T00:00:00Z","refreshTokenExpiry":"2099-01-01T00:00:00Z"}"#
@@ -83,7 +79,6 @@ struct HTTPClientTests {
             return (response, Data())
         }
 
-        let mockSession = MockURLProtocol.makeSession()
         let refreshClient = HTTPClient(configuration: .staging, session: mockSession)
         let session = Session(tokenStore: tokenStore, refreshClient: refreshClient)
         let authenticatedClient = HTTPClient(configuration: .staging, authProvider: session, session: mockSession)
@@ -105,14 +100,14 @@ struct HTTPClientTests {
         ))
 
         let refreshCallCount = AttemptCounter()
-        MockURLProtocol.requestHandler = { request in
+        let mockSession = MockURLProtocol.makeSession { request in
             refreshCallCount.increment()
             let json = #"{"token":"new-access","refreshToken":"new-refresh","accessTokenExpiry":"2099-01-01T00:00:00Z","refreshTokenExpiry":"2099-01-01T00:00:00Z"}"#
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (response, Data(json.utf8))
         }
 
-        let refreshClient = HTTPClient(configuration: .staging, session: MockURLProtocol.makeSession())
+        let refreshClient = HTTPClient(configuration: .staging, session: mockSession)
         let session = Session(tokenStore: tokenStore, refreshClient: refreshClient)
 
         async let first = session.refreshIfNeeded()
@@ -132,12 +127,12 @@ struct HTTPClientTests {
             refreshTokenExpiry: .distantFuture
         ))
 
-        MockURLProtocol.requestHandler = { request in
+        let mockSession = MockURLProtocol.makeSession { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
             return (response, Data())
         }
 
-        let refreshClient = HTTPClient(configuration: .staging, session: MockURLProtocol.makeSession())
+        let refreshClient = HTTPClient(configuration: .staging, session: mockSession)
         let session = Session(tokenStore: tokenStore, refreshClient: refreshClient)
 
         await #expect(throws: (any Error).self) {

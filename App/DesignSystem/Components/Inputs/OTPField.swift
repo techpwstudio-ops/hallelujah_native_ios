@@ -19,14 +19,15 @@ import SwiftUI
 /// focused border does NOT map to a brand color: Dart's `focusedPinTheme`
 /// uses a one-off literal blue (`Color.fromRGBO(114, 178, 238, 1)`) distinct
 /// from every other focus treatment in the app (`AppTextField`'s focused
-/// border is a plain translucent white) — rather than hardcode that literal
-/// outside the token system, `statusInfo` is the token this app already has
-/// for exactly that blue-accent role.
+/// border is a plain translucent white). The auth screens pass that literal
+/// as `focusedBorderColor` (`AuthColors.focusedBorder`); `statusInfo` is only
+/// the fallback for any caller that doesn't.
 struct OTPField: View {
     @Binding var code: String
     var length: Int = 6
     var hasError: Bool = false
     var enabled: Bool = true
+    var focusedBorderColor: Color? = nil
     var onCompleted: ((String) -> Void)? = nil
 
     @Environment(\.appTheme) private var theme
@@ -96,7 +97,7 @@ struct OTPField: View {
 
     private func borderColor(isCurrent: Bool) -> Color {
         if hasError { return theme.color(.statusError) }
-        if isCurrent { return theme.color(.statusInfo) }
+        if isCurrent { return focusedBorderColor ?? theme.color(.statusInfo) }
         return .clear
     }
 

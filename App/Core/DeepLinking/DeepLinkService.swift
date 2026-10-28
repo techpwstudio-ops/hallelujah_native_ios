@@ -53,15 +53,11 @@ final class DeepLinkService {
     /// ever mounts once `RootView` has resolved to `LaunchDestination.app`,
     /// which itself only happens for a signed-in session (T15).
     ///
-    /// TODO(T21-24 audit finding): unlike Dart, which re-checks
-    /// `OurSession.instance.user != null` on *every* dispatch (cache-flush
-    /// and live-stream alike), `pendingURL` here is flushed unconditionally
-    /// with no re-verification and no expiry. `AuthenticationView` (T21) now
-    /// gives `RootView` a real sign-in to sign OUT of, but sign-out itself
-    /// isn't wired until T26 — so a link buffered while signed out still
-    /// can't yet fire after a later, possibly different, sign-in within one
-    /// process lifetime. Revisit once T26 lands sign-out, so a stale buffered
-    /// link can't silently fire post-switch.
+    /// Dart re-checks `OurSession.instance.user != null` on every dispatch and
+    /// drops the link when signed out. Natively that check is
+    /// `discardPendingLink()`, called from the session's `onLogout` closure
+    /// in `AppComposition`: a link buffered before a sign-out can't fire for
+    /// whoever signs in next.
     func attach(coordinator: AppNavigationCoordinator) {
         self.coordinator = coordinator
         guard let url = pendingURL else { return }
@@ -69,11 +65,15 @@ final class DeepLinkService {
         dispatch(url, coordinator: coordinator)
     }
 
-    /// Called from `AppShellView.onDisappear`. Nothing currently tears the
-    /// shell down mid-session (sign-out isn't wired until T20-24), but this
-    /// costs nothing now and is correct the day something does.
+    /// Called from `AppShellView.onDisappear`.
     func detach() {
         coordinator = nil
+    }
+
+    /// Drops a link buffered while there was nowhere to route it. Called when
+    /// the session ends.
+    func discardPendingLink() {
+        pendingURL = nil
     }
 
     /// `HallelujahApp`'s `.onOpenURL` calls this for every delivery — cold

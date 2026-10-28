@@ -26,7 +26,7 @@ final class VerseInsightViewModel {
 
     private let repository: any AIChatRepository
     private let container: DependencyContainer
-    private let logger = AppLogger(category: .content)
+    private let logger = AppLogger(category: .aiChat)
 
     init(container: DependencyContainer = .current) {
         self.container = container

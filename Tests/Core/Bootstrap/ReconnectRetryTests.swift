@@ -86,9 +86,12 @@ struct ReconnectRetryTests {
         try await Task.sleep(for: .milliseconds(150))
         #expect(attempts.count == 1) // one timed retry, then nothing
 
+        // A reconnect retries at once (2nd attempt, fails) and restarts the
+        // backoff, so one more timed retry follows (3rd, succeeds and stops).
         continuation.yield(true)
-        try await Task.sleep(for: .milliseconds(100))
-        #expect(attempts.count == 2)
+        try await Task.sleep(for: .milliseconds(150))
+        #expect(attempts.count == 3)
+        #expect(!retry.isArmed)
         retry.cancel()
     }
 }

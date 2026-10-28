@@ -158,4 +158,25 @@ enum HomeFormat {
         if absolute >= 1_000 { return format(Double(value) / 1_000, "K") }
         return String(value)
     }
+
+    /// `l10n.mediaSongCount(count, formatNumber(count))` — `=1{1 Song} other{{formatted} Songs}`.
+    static func songCountText(_ count: Int?) -> String {
+        let count = count ?? 0
+        return count == 1 ? String(localized: "1 Song") : String(localized: "\(compactNumber(count)) Songs")
+    }
+
+    /// `l10n.mediaPodcastCount(count, formatNumber(count))` — `=1{1 Podcast} other{{formatted} Podcasts}`.
+    static func podcastCountText(_ count: Int?) -> String {
+        let count = count ?? 0
+        return count == 1 ? String(localized: "1 Podcast") : String(localized: "\(compactNumber(count)) Podcasts")
+    }
+
+    /// `l10n.creatorFollowerCount(count)` — `=1{1 Follower} other{{count} Followers}`.
+    /// The plain count, not `compactNumber`: Dart doesn't abbreviate it — and
+    /// interpolates it as `'$count'`, so no grouping separator (an `Int`
+    /// argument would print "1,500").
+    static func followerCountText(_ count: Int?) -> String {
+        let count = count ?? 0
+        return count == 1 ? String(localized: "1 Follower") : String(localized: "\(String(count)) Followers")
+    }
 }

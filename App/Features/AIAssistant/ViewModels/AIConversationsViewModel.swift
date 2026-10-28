@@ -9,20 +9,15 @@ final class AIConversationsViewModel {
     private(set) var conversations: [AIConversation] = []
     private(set) var isLoading = false
     private(set) var hasMore = false
-    /// See `AIChatViewModel.nextCursor`'s doc comment / `AIChatDTOs.swift`'s
-    /// `AICursorPageDTO.toPaginated(_:)`: `AIChatRepository`'s
-    /// `Paginated<AIConversation>` return type has no cursor field, so this
-    /// stays `nil` after every fetch under the current Data layer.
-    /// `loadMore()` still threads it through `getConversations(cursor:)` as
-    /// specified, deduping by id on append so re-fetching the same page
-    /// can't insert duplicate `Identifiable` rows.
+    /// The wire's `nextCursor` (`Paginated.nextCursor`), threaded back through
+    /// `getConversations(cursor:page:)` by `loadMore()`. Appends dedupe by id.
     private(set) var nextCursor: String?
     /// Conversations are page-number paginated (`AiConversationsState.page`).
     private var currentPage = 1
     private(set) var error: String?
 
     private let repository: any AIChatRepository
-    private let logger = AppLogger(category: .content)
+    private let logger = AppLogger(category: .aiChat)
 
     init(container: DependencyContainer = .current) {
         repository = container.resolve()

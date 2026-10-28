@@ -105,7 +105,7 @@ struct PlaylistDetailView: View {
                     .typography(Self.headlineSmall)
                     .foregroundStyle(Color.white)
                     .multilineTextAlignment(.leading)
-                Text("\(HomeFormat.compactNumber(playlist.songsCount)) \(isMusic ? "Songs" : "Podcasts")")
+                Text(isMusic ? HomeFormat.songCountText(playlist.songsCount) : HomeFormat.podcastCountText(playlist.songsCount))
                     .typography(Typography.bodyMedium)
                     .foregroundStyle(HomeColors.white70)
             }

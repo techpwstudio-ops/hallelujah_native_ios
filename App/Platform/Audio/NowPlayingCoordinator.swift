@@ -166,10 +166,7 @@ final class NowPlayingCoordinator {
     /// Dart's own comment that an empty artist line reads better on the lock
     /// screen than a placeholder when the metadata genuinely isn't available.
     private static func artistLine(for song: Song) -> String {
-        let parts = [song.primaryArtists, song.featuredArtists]
-            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        let joined = parts.joined(separator: " • ")
+        let joined = song.artistLine
         if !joined.isEmpty { return joined }
         if let name = song.creator?.name?.trimmingCharacters(in: .whitespaces), !name.isEmpty {
             return name

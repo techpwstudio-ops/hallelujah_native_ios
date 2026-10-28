@@ -27,15 +27,9 @@ final class AIChatViewModel {
     private(set) var isSending = false
     private(set) var isStreaming = false
     private(set) var hasMore = false
-    /// See `AIChatDTOs.swift`'s `AICursorPageDTO.toPaginated(_:)` doc
-    /// comment: `AIChatRepository`'s return type is `Paginated<T>`, which
-    /// has no cursor field, so a real wire `nextCursor` can never actually
-    /// reach this property under the current Data layer — it stays `nil`
-    /// after every fetch. `loadMore()` still threads it through
-    /// `getMessages(conversationID:cursor:)` as specified, and dedupes by
-    /// message id when appending so that re-fetching the same page (the
-    /// practical effect of always passing `cursor: nil`) can't insert
-    /// duplicate `Identifiable` rows into the transcript.
+    /// The wire's `nextCursor` (`Paginated.nextCursor`), threaded back through
+    /// `getMessages(conversationID:cursor:)` by `loadMore()`. Appends dedupe by
+    /// message id so a repeated page can't insert duplicate `Identifiable` rows.
     private(set) var nextCursor: String?
     private(set) var error: String?
 
@@ -43,7 +37,7 @@ final class AIChatViewModel {
 
     private let repository: any AIChatRepository
     private let streamingClient: AIChatStreamingClient
-    private let logger = AppLogger(category: .content)
+    private let logger = AppLogger(category: .aiChat)
 
     /// The in-flight `sendStream(payload:)` task, held so `cancelStream()`
     /// has something to cancel — `AIChatStreamingClient` exposes an

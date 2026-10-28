@@ -13,6 +13,10 @@ final class RemoteAuthRepository: AuthRepository {
     private let appCheck: any AppCheckProviding
     private let configuration: AppConfiguration
     private let realtimeConnectionManager: RealtimeConnectionManager
+    /// Ends the playback analytics session and flushes the queued events. Runs
+    /// first in `logout(reason:)`, while the token is still valid — see the
+    /// closure in `AppComposition`.
+    private let prepareForSignOut: @Sendable () async -> Void
     private let logger = AppLogger(category: .authentication)
 
     init(
@@ -22,8 +26,10 @@ final class RemoteAuthRepository: AuthRepository {
         membershipStore: MembershipStore,
         appCheck: any AppCheckProviding,
         configuration: AppConfiguration,
-        realtimeConnectionManager: RealtimeConnectionManager
+        realtimeConnectionManager: RealtimeConnectionManager,
+        prepareForSignOut: @escaping @Sendable () async -> Void
     ) {
+        self.prepareForSignOut = prepareForSignOut
         self.client = client
         self.session = session
         self.currentUserStore = currentUserStore
@@ -247,7 +253,14 @@ final class RemoteAuthRepository: AuthRepository {
     /// the server-side logout (`GET /user/logout?delete=<reason>`) are both
     /// fire-and-forget — errors are logged, never surfaced or allowed to block
     /// the local teardown.
+    ///
+    /// The analytics flush comes before both calls: the logout endpoint may
+    /// revoke the token, and `session.logout()` clears it, and an upload sent
+    /// after either is unauthenticated. Only this path can flush — when the
+    /// server has already refused the session (refresh refused, 403/404) or the
+    /// account is deleted, the queue waits for the next sign-in, as in Dart.
     func logout(reason: String) async {
+        await prepareForSignOut()
         let userID = await currentUserStore.user?.id
         let deviceID = DeviceIdentityStore.shared.deviceID
         let client = client

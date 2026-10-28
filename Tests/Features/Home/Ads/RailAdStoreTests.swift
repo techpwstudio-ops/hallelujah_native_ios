@@ -7,13 +7,13 @@ struct RailAdStoreTests {
     private func creative(_ id: String, campaign: String? = nil, token: String? = nil, company: Bool = false) -> AdCreative {
         var json: [String: Any] = [
             "adId": id,
-            "campaignId": campaign ?? "c-\(id)",
             "placement": "image_square",
             "assetType": "image_square",
             "assetUrl": "https://example.com/\(id).png",
             "impressionToken": token ?? "t-\(id)",
         ]
-        if company { json["kind"] = "company" }
+        // A company promo has no campaign, so `campaignKey` falls back to `company:<adId>`.
+        if company { json["kind"] = "company" } else { json["campaignId"] = campaign ?? "c-\(id)" }
         return AdCreative.fromJSON(json)!
     }
 

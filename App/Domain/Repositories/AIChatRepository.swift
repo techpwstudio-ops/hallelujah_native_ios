@@ -9,9 +9,7 @@ import Foundation
 /// features) out of a `Repository` protocol entirely.
 protocol AIChatRepository: Sendable {
     /// `GET /ai/conversations?cursor=`. `cursor` is `nil` for the first
-    /// page. See `AIChatDTOs.swift`'s `AICursorPageDTO.toPaginated(_:)` for
-    /// why the returned `Paginated<AIConversation>` can't carry the wire's
-    /// own `nextCursor` back out.
+    /// page; the next one comes back as `Paginated.nextCursor`.
     func getConversations(cursor: String?, page: Int) async throws -> Paginated<AIConversation>
 
     /// `POST /ai/conversations` — creates and returns a fresh conversation.
@@ -22,8 +20,8 @@ protocol AIChatRepository: Sendable {
     /// `DELETE /ai/conversations/:id`.
     func deleteConversation(id: String) async throws
 
-    /// `GET /ai/conversations/:id/messages?cursor=`. Same cursor/`Paginated<T>`
-    /// caveat as `getConversations(cursor:)`.
+    /// `GET /ai/conversations/:id/messages?cursor=`. Cursor handling as in
+    /// `getConversations(cursor:page:)`.
     func getMessages(conversationID: String, cursor: String?) async throws -> Paginated<AIMessage>
 
     /// `POST /ai/conversations/:id/messages` — the non-streaming send path

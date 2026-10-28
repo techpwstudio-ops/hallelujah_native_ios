@@ -31,7 +31,7 @@ struct SiriPlayServiceTests {
         #expect(SiriPlayService.bestMatch(in: results()) == nil)
     }
 
-    @Test func activityTypeMatchesTheInfoPlistEntry() {
+    @Test @MainActor func activityTypeMatchesTheInfoPlistEntry() {
         #expect(SiriPlayService.activityType == "INPlayMediaIntent")
     }
 }

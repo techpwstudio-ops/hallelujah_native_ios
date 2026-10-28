@@ -10,11 +10,10 @@ import SwiftUI
 /// component's own doc comment for why its `surfaceInput`/`statusInfo`/
 /// `statusError` token choices were made with this exact screen in mind.
 ///
-/// One deliberate behavior gap from Dart's `PopScope`: the interactive
-/// swipe-back gesture isn't specially intercepted (no direct SwiftUI
-/// equivalent that's safe to hand-write without a way to see it run) — only
-/// the toolbar back button routes through the "are you sure" confirmation,
-/// matching `PopScope`'s `onPopInvokedWithResult`. The edit affordance does
+/// Dart's `PopScope(canPop: false)` disables the iOS swipe-back gesture
+/// outright, and `.navigationBarBackButtonHidden(true)` does the same here —
+/// only the toolbar back button routes through the "are you sure"
+/// confirmation, matching `PopScope`'s `onPopInvokedWithResult`. The edit affordance does
 /// NOT: Dart's own edit `InkWell` dispatches `EditPhoneAuthEvent` and pops
 /// immediately, with no confirmation at all — confirmed by re-reading
 /// `otp_screen.dart`'s edit `onTap`, which has no `showConfirmationDialog`
@@ -85,6 +84,7 @@ struct OTPView: View {
                         code: $code,
                         length: Self.otpLength,
                         hasError: viewModel.state.isError,
+                        focusedBorderColor: AuthColors.focusedBorder,
                         onCompleted: { completedCode in
                             Task { await viewModel.verifyOTP(code: completedCode) }
                         }

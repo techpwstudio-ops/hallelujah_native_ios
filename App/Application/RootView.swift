@@ -47,6 +47,10 @@ struct RootView: View {
             Self.dismissKeyboard()
             launchViewModel.handleSignedOut()
         }
+        // The one app-root toast layer: sign-in, account setup and the splash
+        // sit outside `AppShellView`'s own overlay, so without this their
+        // toasts (and `HTTPClient`'s "No internet connection") never render.
+        .toastOverlay()
     }
 
     /// Resigns whatever text field still holds first responder before the

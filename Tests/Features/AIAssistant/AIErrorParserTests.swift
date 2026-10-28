@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Hallelujah
 
+@MainActor
 struct AIErrorParserTests {
     @Test func cancellationIsSilent() {
         #expect(AIErrorParser.parse(CancellationError()) == "")

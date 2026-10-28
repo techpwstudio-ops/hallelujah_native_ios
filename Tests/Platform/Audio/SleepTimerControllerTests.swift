@@ -5,7 +5,7 @@ import Testing
 /// tested without an `AudioEngine`; the start/fire path needs a live engine
 /// and is covered by the UI/manual pass in `Docs/QA.md`.
 struct SleepTimerControllerTests {
-    @Test func offeredDurationsMatchTheFlutterSheet() {
+    @Test @MainActor func offeredDurationsMatchTheFlutterSheet() {
         #expect(SleepTimerController.options == [5, 10, 15, 30, 45, 60])
     }
 

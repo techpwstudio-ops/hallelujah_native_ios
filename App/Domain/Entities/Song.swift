@@ -129,6 +129,16 @@ struct Song: Sendable, Equatable, Identifiable {
 }
 
 extension Song {
+    /// `primaryArtists` and `featuredArtists` joined by Dart's `dotSign`
+    /// (`" • "`, `lib/constants/strings.dart:22`); empty when neither is set.
+    /// The mini player, full player and lock screen all show this line.
+    var artistLine: String {
+        [primaryArtists, featuredArtists]
+            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " • ")
+    }
+
     /// A copy with just `isFavorited` flipped. `Song` is otherwise fully
     /// immutable — `RemoteFavouriteRepository`'s toggle endpoint doesn't
     /// return a song-shaped payload to re-decode (T44; confirmed directly

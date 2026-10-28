@@ -102,12 +102,7 @@ struct MiniPlayerDockView: View {
     private var song: Song? { engine.currentSong }
     private var isPlaying: Bool { engine.status == .playing }
 
-    private var subtitle: String {
-        let parts = [song?.primaryArtists, song?.featuredArtists]
-            .compactMap { $0?.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        return parts.joined(separator: " • ")
-    }
+    private var subtitle: String { song?.artistLine ?? "" }
 
     private var progressFraction: Double {
         guard let duration = engine.currentItemDuration, duration > 0 else { return 0 }

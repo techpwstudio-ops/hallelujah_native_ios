@@ -283,6 +283,16 @@ final class PlaybackAnalyticsRecorder {
         songDurationMS = 0
     }
 
+    /// `OurSession.logout()` ends the analytics session before it force-syncs,
+    /// so the session row is written before everything is flushed. Sign-out has
+    /// to do the same *before* the token goes: the player is only stopped
+    /// afterwards (`QueueController.clear()` in `AppComposition`'s `onLogout`),
+    /// and the end event that produces would otherwise upload under whichever
+    /// account signs in next.
+    func endSessionForSignOut() {
+        endActiveSession(finalPositionMS: Int(engine.currentPosition * 1000))
+    }
+
     // MARK: - Pause / resume / seek / loop
 
     private func recordPause() {

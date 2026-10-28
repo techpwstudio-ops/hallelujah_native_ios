@@ -9,7 +9,10 @@ private final class CountingAppCheckSource: AppCheckTokenSource, @unchecked Send
 
     init(_ tokens: [String?]) { queue = tokens }
 
-    func currentToken() async -> String? {
+    func currentToken() async -> String? { next() }
+
+    /// Synchronous so the lock isn't taken from an async context.
+    private func next() -> String? {
         lock.lock()
         defer { lock.unlock() }
         fetches += 1

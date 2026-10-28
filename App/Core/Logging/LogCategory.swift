@@ -20,4 +20,5 @@ enum LogCategory: String {
     case carPlay
     case tips
     case ads
+    case aiChat
 }

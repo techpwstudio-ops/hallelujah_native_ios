@@ -163,6 +163,14 @@ enum AppComposition {
                 // by the signed-out account, not whoever signs in next.
                 Task { await container.resolveIfRegistered((any BibleRepository).self)?.clearPendingAnnotations() }
                 Task { @MainActor in UserPlaylistVisibilityOverrides.shared.clear() }
+                // `PlaylistProgressService.instance.clear()` on logout: the next
+                // account's home feed must not show how far this one got.
+                // Resolved lazily, like `QueueController` above — the store is
+                // constructed further below this closure.
+                Task { @MainActor in container.resolveIfRegistered(PlaylistProgressStore.self)?.clear() }
+                // A share link buffered before this sign-out must not fire
+                // for whoever signs in next (Dart drops links when signed out).
+                Task { @MainActor in DeepLinkService.shared.discardPendingLink() }
             }
             // The base URL changed since the last launch, or the Flutter build
             // signed out (or into another account) since this one last ran:
@@ -177,6 +185,16 @@ enum AppComposition {
         // (`HallelujahAppCheckProviderFactory`, `FirebaseBootstrap.configure()`
         // above) — `FirebaseAppCheckProvider` just wraps the SDK call T20 needs.
         container.register((any AppCheckProviding).self) { FirebaseAppCheckProvider() }
+        // `OurSession.logout()` ends the playback analytics session and
+        // force-flushes the queue. Here that has to run while the token is still
+        // valid, so `RemoteAuthRepository.logout` calls it before anything else.
+        // Both are resolved lazily — they are constructed further below.
+        let prepareAnalyticsForSignOut: @Sendable () async -> Void = {
+            await MainActor.run {
+                container.resolveIfRegistered(PlaybackAnalyticsRecorder.self)?.endSessionForSignOut()
+            }
+            await container.resolveIfRegistered((any AnalyticsTracking).self)?.flush()
+        }
         container.register((any AuthRepository).self) {
             RemoteAuthRepository(
                 client: HTTPClient(configuration: configuration, authProvider: session),
@@ -185,7 +203,8 @@ enum AppComposition {
                 membershipStore: membershipStore,
                 appCheck: FirebaseAppCheckProvider(),
                 configuration: configuration,
-                realtimeConnectionManager: realtimeConnectionManager
+                realtimeConnectionManager: realtimeConnectionManager,
+                prepareForSignOut: prepareAnalyticsForSignOut
             )
         }
 

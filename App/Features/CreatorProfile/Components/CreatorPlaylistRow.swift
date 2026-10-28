@@ -3,7 +3,8 @@ import SwiftUI
 /// Ports `PlaylistListItem` (`lib/widgets/song/playlist_list_item.dart`): a
 /// 12/8-padded tile with a 56pt thumbnail (radius 4, `sm`), 14pt gap, title
 /// `titleSmall` capitalised ("Untitled Playlist" fallback), 4pt gap, subtitle
-/// `bodySmall` white70 — `"<creator> • <n> Songs|Podcasts"`. Tapping opens the
+/// `bodySmall` white70 — `"<creator> • <n> Songs|Podcasts"` (`n` abbreviated,
+/// "1 Song" when singular, as `Formater.formatNumber` + `mediaSongCount`). Tapping opens the
 /// album / season (`PlaylistSongPage`). `contentType` (the tab this row is
 /// under) picks the noun, as `playlist.type` is the same wire value.
 struct CreatorPlaylistRow: View {
@@ -22,8 +23,9 @@ struct CreatorPlaylistRow: View {
     }
 
     private var subtitle: String {
-        let count = playlist.songsCount ?? 0
-        let countText = contentType == .episode ? String(localized: "\(count) Podcasts") : String(localized: "\(count) Songs")
+        let countText = contentType == .episode
+            ? HomeFormat.podcastCountText(playlist.songsCount)
+            : HomeFormat.songCountText(playlist.songsCount)
         var parts: [String] = []
         if case let .creator(_, name) = playlist.owner, let name, !name.isEmpty { parts.append(name) }
         parts.append(countText)

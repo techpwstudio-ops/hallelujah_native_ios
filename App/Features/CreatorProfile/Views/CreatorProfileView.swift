@@ -199,7 +199,7 @@ struct CreatorProfileView: View {
                     .lineLimit(2)
                 Spacer().frame(height: 8)
                 HStack(spacing: 8) {
-                    Text("\(creator.followersCount ?? 0) Followers")
+                    Text(HomeFormat.followerCountText(creator.followersCount))
                         .typography(Typography.bodyMedium)
                         .foregroundStyle(ParityColor.white70)
                     followButton(creator: creator)

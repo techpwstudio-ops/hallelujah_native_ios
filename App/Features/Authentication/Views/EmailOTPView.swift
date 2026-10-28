@@ -92,6 +92,7 @@ struct EmailOTPView: View {
                         code: $code,
                         length: Self.otpLength,
                         hasError: viewModel.state.isError,
+                        focusedBorderColor: AuthColors.focusedBorder,
                         onCompleted: { completedCode in
                             Task { await viewModel.verifyOTP(code: completedCode) }
                         }

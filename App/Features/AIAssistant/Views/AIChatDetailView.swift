@@ -22,7 +22,7 @@ struct AIChatDetailView: View {
     @State private var resolutionError: String?
 
     private let repository: any AIChatRepository = DependencyContainer.current.resolve()
-    private let logger = AppLogger(category: .content)
+    private let logger = AppLogger(category: .aiChat)
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
 

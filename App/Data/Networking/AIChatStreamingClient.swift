@@ -32,7 +32,7 @@ final class AIChatStreamingClient: Sendable {
     private let configuration: AppConfiguration
     private let authProvider: any AuthTokenProviding
     private let session: URLSession
-    private let logger = AppLogger(category: .content)
+    private let logger = AppLogger(category: .aiChat)
 
     init(configuration: AppConfiguration, authProvider: any AuthTokenProviding, session: URLSession? = nil) {
         self.configuration = configuration
