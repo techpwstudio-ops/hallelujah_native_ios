@@ -72,6 +72,21 @@ struct LibraryHomeView: View {
             Task { await viewModel.refresh() }
         }
         .toolbar {
+            createToolbarItem
+        }
+    }
+
+    /// On iOS 26 the system wraps a toolbar button in its own glass capsule, and
+    /// `createButton` draws one too, which read as two stacked glass buttons. The
+    /// shared background is switched off so only the button's own capsule shows.
+    @ToolbarContentBuilder
+    private var createToolbarItem: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .primaryAction) {
+                createButton
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
             ToolbarItem(placement: .primaryAction) {
                 createButton
             }

@@ -220,9 +220,16 @@ final class SubscriptionPlansViewModel {
 
     // MARK: - Purchase / restore
 
+    /// Both run under `GlobalLoader` (Dart's `Loader.instance`) from the tap
+    /// until they settle: the order, StoreKit's product lookup, the payment
+    /// sheet opening and the backend verification can each take seconds,
+    /// and `AppStore.sync()` may first ask the user to sign in. Apple's sheet
+    /// covers the loader while it is up.
     func purchaseSelectedPlan() async {
         guard let selectedPlan else { return }
         errorMessage = nil
+        GlobalLoader.shared.show()
+        defer { GlobalLoader.shared.hide() }
         do {
             if let membership = try await purchaseManager.purchase(plan: selectedPlan) {
                 self.membership = membership
@@ -234,6 +241,8 @@ final class SubscriptionPlansViewModel {
 
     func restoreTapped() async {
         errorMessage = nil
+        GlobalLoader.shared.show()
+        defer { GlobalLoader.shared.hide() }
         do {
             if let membership = try await purchaseManager.restorePurchases() {
                 self.membership = membership

@@ -1,28 +1,40 @@
-# Reel ads — plan
+# Reel ads — plan and what was built
 
-Status: **plan, nothing built yet** · 2026-10-27 · sections 1-7 are identical in all four repos so they cannot drift; section 8 is specific to the repo you are reading.
+Status: **built and pushed to `somesh` in all four repos; not deployed anywhere; not run on a physical device** · updated 2026-10-28 · sections 0-7 are identical in all four repos so they cannot drift; section 8 is what was built in the repo you are reading.
 
-| Project | Repo | Branch | Order |
-|---|---|---|---|
-| Backend | `gs_nh_backend` | `dev` | 1st |
-| Admin panel | `gh_admin` | `dev-official` | 2nd |
-| Flutter app | `ghallelujah_app` | `dev` | 3rd |
-| Native iOS | `hallelujah_native_ios` | `main` | 4th |
+| Project | GitHub repo (`techpwstudio-ops`) | Local folder | Branch | Reel ads commits | Deploy |
+|---|---|---|---|---|---|
+| Backend | `gs_nh_backend` | `gs_nh_backend` | `somesh` | `915aba9` (also on `dev`), `afe4a0c` | 1st |
+| Admin panel | `gh_admin` | `gh_admin` | `somesh` | `ef9f858` (also on `dev-official`), `e7c0225` (shared with unrelated AI-management work) | 2nd |
+| Flutter app | `ghallelujah_app` | `ghallelujah` | `somesh` | `140ef284` | 3rd |
+| Native iOS | `hallelujah_native_ios` | `g-hallelujah-ios` | `somesh` | `e6913df` | 4th |
 
-Nothing below has been reproduced on a device. This environment has Node, Postgres 16 and Redis (so backend migrations and tests can run for real against a throwaway database) but **no Flutter or Swift toolchain, no device, and no access to your dev/QA/prod data**. Everything in section 2 is therefore **read from the code**; where a claim is a hypothesis it says so.
+Section 2 describes the code **as it was before this work**, read from the code; each **Now:** note says what changed. Sections 3-5 describe what shipped. Nothing has been reproduced on a device or against real dev/QA/prod data; where a claim is a hypothesis it says so.
 
 ---
 
-## 0. Status — 2026-10-27
+## 0. Status — 2026-10-28
 
-| Part | State | Where |
+| Part | State |
+|---|---|
+| Backend | **Built, pushed, not deployed.** Placement split and migration `20261027120000_ads_reel_between_tracks`, legacy alias, `asset_type_not_accepted`, per-format counters, `shown` / `servedNotShown`, `GET /admin/ads/caps`, `GET /admin/ads/viewer`, the per-listener trail, `POST /api/ads/track/not-shown` with its own rate-limit bucket. Not run against real data. The trail's extra Redis write on the serve path has **not been measured**. |
+| Admin | **Built, pushed, not deployed.** *Caps in force* column, every accepted format shown (read-only chips), break-position select, Delivery with served / shown / served-never-shown, per-format split, not-shown reasons, the kept no-fill examples, a *Readiness* tab and a *Listener Lookup* page. No Pacing or Intro/Ad/Gap inputs. Not opened in a browser against a live API. |
+| Flutter | **Built, pushed, not run on a device.** Per-format placements, reel screen redesign, video sized so nothing is cut, reel impression counted on the picture, all 7 not-shown reasons, a 10 s start watchdog, no song counting on the device. |
+| Native iOS | **Built, pushed, not run on a device.** Same as Flutter except: 6 of 7 not-shown reasons (no `expired_before_show`), and no break bank or preload (a break is asked for at the song change). The `squareImageUrl` guard and the 6-song pacing are gone. |
+
+The apps must not ship before the backend (§5). The Flutter cropping cause is still a hypothesis (§2.3).
+
+### 0.1 What differs from this plan
+
+| Plan said | What shipped | Status |
 |---|---|---|
-| Backend | **Done and pushed.** Placement split + migration, legacy alias, `asset_type_not_accepted`, per-format counters, `shown` / `servedNotShown`, `GET /admin/ads/caps`, `GET /admin/ads/viewer`, the per-listener trail, `POST /api/ads/track/not-shown`. 991 ads tests pass; also exercised against a real local Postgres + Redis (62 checks). Not deployed, and not run against any real dev/QA/prod data. | `gs_nh_backend` `dev` `915aba98` |
-| Admin | **Partly done and pushed.** Done: *Caps in force* column, every accepted format shown, break-position select, Delivery shows served / shown / never-shown, per-format split and the kept no-fill examples. **Not done:** the *Readiness* tab and the *Listener lookup* page (their API calls and hooks are in; the screens are not), and no Pacing or Intro/Ad/Gap controls (dropped from this pass). | `gh_admin` `dev-official` `ef9f858` |
-| Flutter | **Not started.** The reel screen redesign, the video sizing, the per-format placement and the not-shown report are all still to do. Old builds keep getting reels through the server alias. | `ghallelujah_app` `dev` |
-| Native iOS | **Not started.** Worse than "unchanged": once the backend is deployed the audio slot takes audio only, and native asks it with no format, so **native stops being offered reels** until step N1 is done. Its `squareImageUrl` guard and 6-song pacing are also still in. | `hallelujah_native_ios` `main` |
-
-Nothing in the two apps has been compiled or run, and the cropping cause on Flutter is still a hypothesis (§2.3).
+| §4.6: a full-width white CTA pill with a `›` chevron; the Skip chip below the screen; the heart at the right edge, mid-video | The CTA is a white pill sized to its label, centred, no chevron; the Skip chip is in the top row, left of ⋮; the heart is bottom-right, directly above the CTA (both apps) | Yours to confirm (§7) |
+| §4.6: "the impression fires when the video is on screen, as it does now" | That was true of Flutter only; iOS counted at `play()`. Both now count a reel once the painted video has been on screen 0.5 s; iOS also requires the app to be in the foreground, Flutter's trigger does not check that | Yours to confirm (§7) |
+| D5: "the admin hides Pacing for the two break placements" | Wrong premise: the admin has **no Pacing input for any placement**. `pacingEveryN` is reachable only through `PATCH /admin/ads/placements/:key` | Corrected in §3 |
+| §5 rollback: two admin-panel edits | Three steps, and the first and third are not panel edits | Corrected in §5 |
+| §4.4: `servedNotShown = fill − shown`; the trail written per serve | `max(0, fill − shown)`, because a serve just before IST midnight can be confirmed just after it; the trail is also written on a confirmed impression (`shown`) and on a not-shown report | Corrected in §4.4 |
+| §4.5: rate-limited "like the other track endpoints" | Its own bucket, `track:not-shown`; over the limit it answers 204, never 429. Deduped once per token | Corrected in §4.5 |
+| Not in the plan | Skip pressed before the ad is ready: no impression and no not-shown report (both apps). `fill` is counted once the response payload exists, not at selection: a signing failure used to count a fill and an error (backend bug fix, D162) | Shipped |
 
 ---
 
@@ -34,14 +46,14 @@ Nothing in the two apps has been compiled or run, and the cropping cause on Flut
 
 ---
 
-## 2. What the code does today
+## 2. What the code did before this work
 
 ### 2.1 Naming
 
-- `AdsPlacement` key `audio_between_tracks` accepts `["audio_ad", "reel_video"]` (`prisma/seed/ads.js`). The seed comment says it was one placement "rather than splitting into two".
-- A separate placement `feed_reel` ("Reel feed — video ad", disabled, "M2") exists for an in-feed reels list the apps do not have yet. So "reel" already names two different things; this plan keeps `feed_reel` untouched.
-- Creatives are not bound to a placement (D32), so a placement's accepted types are the whole definition of what it can show. Flutter asks the shared placement for a format by name (`assetType=audio_ad|reel_video`, taking turns). Native does that only in preview mode; in normal use it sends no `assetType` and takes whatever the server picks.
-- No client compares `ad.placement` to a string, so the key can change without breaking parsing.
+- `AdsPlacement` key `audio_between_tracks` accepted `["audio_ad", "reel_video"]` (`prisma/seed/ads.js`); the seed comment said it was one placement "rather than splitting into two". **Now:** it accepts `["audio_ad"]`, and reels are on `reel_between_tracks` (§4.1).
+- A separate placement `feed_reel` ("Reel feed — video ad", disabled, "M2") exists for an in-feed reels list the apps do not have yet. So "reel" already names two different things; `feed_reel` is untouched.
+- Creatives are not bound to a placement (D32), so a placement's accepted types are the whole definition of what it can show. Flutter asked the shared placement for a format by name (`assetType=audio_ad|reel_video`, taking turns); native did that only in preview mode. **Now:** both apps name the format on every break ask, each format on its own placement, taking turns, and try the other format when the first has nothing.
+- No client compares `ad.placement` to a string, so the key could change without breaking parsing.
 
 ### 2.2 Why an ad may not show — candidates, none confirmed for the tester's case
 
@@ -49,9 +61,9 @@ Server (a 204 with a reason; the reasons are counted, see 2.4):
 
 | # | Cause | Where |
 |---|---|---|
-| S1 | Platform floor is **1 impression / 30 min and 3 / day, per campaign, per listener**. A placement replaces a tier only if it sets one. The admin's "Cap / Person / Day" sets the *daily* tier only, so the 30-minute rule stays unless "Short Window" is also filled in. One test campaign therefore shows at most one ad per 30 min per device however high the daily cap is. | `frequency.service.js` `resolveFrequencyRules`, D135 |
+| S1 | Platform floor is **1 impression / 30 min and 3 / day, per campaign, per listener**. A placement replaces a tier only if it sets one. The admin's "Cap / Person / Day" sets the *daily* tier only, so the 30-minute rule stays unless "Short Window" is also filled in. One test campaign therefore shows at most one ad per 30 min per device however high the daily cap is. **Now:** the admin's *Caps in force* column shows this, from `GET /admin/ads/caps`. | `frequency.service.js` `resolveFrequencyRules`, D135 |
 | S2 | Caps count **confirmed impressions**, keyed on the listener: user id when signed in, else the `device-id` header, else IP. | `serving.controller.js` `resolveViewer` |
-| S3 | A signed-in listener with an active premium subscription (owner or family member) is never served: `ad_free_viewer`. A tester account with a plan looks exactly like "ads broken". | `adFree.service.js` |
+| S3 | A signed-in listener with an active premium subscription (owner or family member) is never served: `ad_free_viewer`. A tester account with a plan looks exactly like "ads broken". **Now:** the Listener Lookup says so. | `adFree.service.js` |
 | S4 | Creative needs a primary asset and `active`; campaign must be live, approved, funded, in budget and inside its dates; targeting by country / platform / city (geo comes from IP, so local and private IPs match nothing). | `serving.service.js`, `adsDiagnostics.service.js` |
 | S5 | Candidate set is cached 60 s per placement. | `serving.service.js` |
 
@@ -59,118 +71,100 @@ Client (the server never sees a request, so there is no 204 to count):
 
 | # | Cause | Where |
 |---|---|---|
-| C1 | **Native drops a served ad unless `squareImageUrl` is present.** A reel-only campaign (no square image creative in the same campaign) is served, spend is reserved, and the app silently discards it. Flutter `dev` already removed that guard. | `AdPacingController.swift` `maybeStartAdBreak` |
-| C2 | **Native asks only after `pacingEveryN ?? 6` songs.** The seed sets 6 on `audio_between_tracks`. Flutter `dev` has no device-side count for breaks (asks every song, server decides). So the two apps behave differently on the same dashboard setting, and the admin has no Pacing field to see or change it. | `AdPacingController.swift`; `audio_break_planner.dart` |
-| C3 | `breakPosition` (`pre_roll`/`post_roll`) is read by Flutter, not by native at all. Not editable in the admin panel either. | `break_position.dart`; no native match |
-| C4 | After any 204 both apps stay quiet for `Retry-After` (60 s) per placement+format. | `ad_serve_gate.dart`, `AdServeGate.swift` |
-| C5 | A signed-in subscriber is blocked on the device before any request (`hasActiveSubscription`). | `ads_repository.dart` `_blockedReason` |
-| C6 | Flutter's per-open preview ask only exists in builds with `AppConfig.adsPreviewMode`. A tester on a build without it waits for a real song boundary. | `audio_player_screen.dart` |
+| C1 | **Native dropped a served ad unless `squareImageUrl` was present.** A reel-only campaign was served, spend reserved, and the app silently discarded it. Flutter had already removed that guard. **Now:** removed in native too. | `AdPacingController.swift` `maybeStartAdBreak` |
+| C2 | **Native asked only after `pacingEveryN ?? 6` songs**; Flutter had no device-side count for breaks. **Now:** neither app counts songs (D5). Every song change asks; the per-format 60 s no-fill backoff (C4) bounds the asking. | `AdPacingController.swift`; `bloc.dart` |
+| C3 | `breakPosition` (`pre_roll`/`post_roll`) is read by Flutter, not by native. **Now:** editable in the admin (a select on the two break placements); native still does not read it. | `break_position.dart`; no native match |
+| C4 | After any 204 both apps stay quiet for `Retry-After` (60 s) per placement+format. Unchanged. | `ad_serve_gate.dart`, `AdServeGate.swift` |
+| C5 | A signed-in subscriber is blocked on the device before any request (`hasActiveSubscription`). Unchanged. | `ads_repository.dart` `_blockedReason` |
+| C6 | Flutter's per-open preview ask only exists in builds with `AppConfig.adsPreviewMode`. **Now:** unchanged; native has a guarded `forcePreviewAdBreak` that nothing calls (left alone). | `audio_player_screen.dart` |
 
 ### 2.3 Cropping
 
-- **Native: definitely cropped.** `AdVideoSurface` sets `videoGravity = .resizeAspectFill`. A 9:16 video on a 19.5:9 phone is scaled to the full screen height, so about 18 % of its width (9 % each side) is cut off. The comment even says "cover-fit".
-- **Flutter: not cropped by the fit.** `_AdBreakVideo` already uses `FittedBox(BoxFit.contain)`. What covers the video is the overlay: a 92 %-black scrim plus a five-row control panel (advertiser row, scrubber, transport, footer, CTA) stacked over the bottom of it, and a 65 % scrim over the top. That is probably what the tester sees as cropping. **This is a hypothesis** — it needs the tester's screenshot or screen recording to confirm. The redesign removes the overlay either way.
-- Sizing rule (both apps): `width = screen width`, `height = width / videoAspectRatio`, centred vertically on black. If that height exceeds the available height (iPad, landscape, very short screens) fall back to *fit* so nothing is cut. The backend validates `reel_video` at 9:16 ± 0.02, so on any phone taller than 16:9 the width rule applies exactly.
+- **Native: was definitely cropped.** `AdVideoSurface` set `videoGravity = .resizeAspectFill`, so a 9:16 video on a 19.5:9 phone lost about 18 % of its width. **Now:** the reel is drawn with `.resizeAspect` in a frame of the video's own shape (`reelVideoSize`), so nothing is cut.
+- **Flutter: not cropped by the fit.** `_AdBreakVideo` already used `FittedBox(BoxFit.contain)`. What covered the video was the overlay: a 92 %-black scrim plus a five-row control panel over the bottom, and a 65 % scrim over the top. That is probably what the tester saw as cropping. **This is still a hypothesis** — it needs the tester's screenshot or screen recording. **Now:** the overlay is gone as part of the planned redesign; nothing else was changed on the strength of the hypothesis.
+- Sizing rule (both apps, **now** `reelVideoSize`): `width = available width`, `height = width / videoAspectRatio`, centred on black. If that height exceeds the available height (iPad, landscape, very short screens) it scales down to fit, so nothing is cut. A spinner shows until the player reports the video's shape; no shape is guessed. The backend validates `reel_video` at 9:16 ± 0.02.
 
-### 2.4 What the admin panel has and lacks
+### 2.4 What the admin panel had and lacked
 
-Backend already has, admin panel does not use or only partly uses:
-
-- `GET /admin/ads/delivery` — per placement per day: requests, fills, no-fills, **reason counts**, and `samples[]` (recent no-fill examples with candidate counts and the cap window that blocked). The panel (`AdsDelivery.tsx`) shows the reason counts and **ignores `samples`**.
-- `GET /admin/ads/diagnostics` — readiness audit ("why has this placement never served": enabled → priced → creatives → live → eligible). **Not called anywhere in the panel.**
-- `PATCH /admin/ads/placements/:key` accepts `pacingEveryN`, `breakPosition`, `introSeconds`, `displaySeconds`, `gapSeconds`, `minListenSeconds`, `minListenPercent`, `acceptedAssetTypes`. The panel's placement table edits only price, daily cap, short window, on/off (`PlacementPatch` lists `pacingEveryN` but no input renders it).
-
-Missing everywhere:
-
-- **Counters are per placement, not per format.** On the shared placement an audio miss and a reel miss are one number.
-- **Nothing per listener.** "Why did *my* phone get nothing" cannot be answered; frequency state is Redis-only and only visible by reading keys.
-- **No effective-caps view.** The three sources (platform, placement, campaign) combine by tier and the panel shows none of the result.
-- **Served-but-never-shown** (the app received an ad and dropped it) is invisible.
+- `GET /admin/ads/delivery` returned **reason counts** and `samples[]` (recent no-fill examples); the panel showed the counts and dropped `samples`. **Now:** the samples are rendered.
+- `GET /admin/ads/diagnostics` (the readiness audit) was not called anywhere in the panel. **Now:** it drives the *Readiness* tab on Delivery.
+- `PATCH /admin/ads/placements/:key` accepts `pacingEveryN`, `breakPosition`, `introSeconds`, `displaySeconds`, `gapSeconds`, `minListenSeconds`, `minListenPercent`, `acceptedAssetTypes`. The placement table edited price, daily cap, short window and on/off. **Now:** it also edits `breakPosition` on the two break placements and shows accepted formats as read-only chips. There is still no input for Pacing, Intro/Ad/Gap, the listen gate or accepted formats; those are API-only.
+- Missing everywhere before this work, all **now** added (§4.4): per-format counters; anything per listener; an effective-caps view; and served-but-never-shown.
 
 ---
 
-## 3. Decisions — defaults chosen so work can proceed; veto before the backend ships
+## 3. Decisions — the defaults that shipped; D1, D5 and D6 are still yours to confirm
 
-| # | Decision | Default | Alternative |
+| # | Decision | Shipped | Alternative |
 |---|---|---|---|
 | D1 | Name of the reel placement | `reel_between_tracks`, label "Reel ad between tracks (9:16 video)" | `video_between_tracks` |
-| D2 | Asset-type key `reel_video` | **Keep.** It names a *shape* (9:16), is stored on every creative and sent on the wire; renaming buys nothing and breaks old builds. | — |
+| D2 | Asset-type key `reel_video` | **Kept.** It names a *shape* (9:16), is stored on every creative and sent on the wire; renaming buys nothing and breaks old builds. | — |
 | D3 | `audio_between_tracks` | Narrowed to `["audio_ad"]` | keep both accepted forever |
-| D4 | Old builds that ask `audio_between_tracks` + `assetType=reel_video` | Server **aliases** them to `reel_between_tracks` (env `ADS_LEGACY_REEL_ALIAS`, default on), so video ads keep working until old builds retire | no alias: old builds lose reels |
-| D5 | Pacing for breaks | **Do not count songs on the device** (matches Flutter `dev`). Native is brought in line. The admin hides Pacing for the two break placements instead of showing a field no app honours. | honour `pacingEveryN` in both apps |
-| D6 | Reel screen actions | Like (heart), the existing ⋮ menu, Skip (when the creative is skippable), CTA pill, a small "Sponsored" tag. **No** comment or share: ads have neither. | add them later |
-| D7 | Not-shown reports | Token-bound `POST /api/ads/track/not-shown`, closed reason list | skip it; use device logs only |
+| D4 | Old builds that ask `audio_between_tracks` + `assetType=reel_video` | Server **aliases** exactly that pair to `reel_between_tracks`, whether or not that slot is enabled. On by default; off only when `ADS_LEGACY_REEL_ALIAS` is the string `false` (an env change needs an API restart). | no alias: old builds lose reels |
+| D5 | Pacing for breaks | **No song counting on the device**, in both apps. The admin panel has no Pacing input for any placement, so there was nothing to hide; `pacingEveryN` can be set only through the PATCH API, the migration leaves it null on the break slots, and no app reads it for breaks. | honour `pacingEveryN` in both apps |
+| D6 | Reel screen actions | Like (heart), the existing ⋮ menu, Skip (when the creative is skippable), CTA pill (when the ad has a destination), a small "Sponsored" tag. **No** comment or share: ads have neither. | add them later |
+| D7 | Not-shown reports | Token-bound `POST /api/ads/track/not-shown`, closed reason list (§4.5) | device logs only |
 
-Two of these are product calls I would rather you make than me: D5 (it changes what the dashboard's Pacing means for native) and D6 (the screenshot has comment and share icons; there is nothing for them to do on an ad). D6 also keeps the "Sponsored" tag because D155 requires every ad to be tagged.
+D1, D5 and D6 are product calls, as are the layout and impression-timing changes in §0.1; all are in §7. D6 keeps the "Sponsored" tag because D155 requires every ad to be tagged.
 
 ---
 
-## 4. Shared contract
+## 4. Shared contract, as shipped
 
 ### 4.1 Placement split
 
-New placement row `reel_between_tracks`: surfaces `["app"]` (the web has no video renderer and already sends `assetType=audio_ad`), accepted types `["reel_video"]`. A migration copies from `audio_between_tracks`: `enabled`, `defaultFrequencyCapPerUserPerDay`, `frequencyRules`, `breakPosition`, `minListen*`, and **the open rate card** (a placement with no card is `placement_unpriced` — it would silently serve nothing). `pacingEveryN` is left null (D5). It also needs `AdsRateCard`'s own columns (`billingEventKey`, `pricingModel`, a fresh `effectiveFrom`) and must respect that table's per-placement no-overlap constraint. The migration then sets `audio_between_tracks.acceptedAssetTypes = ["audio_ad"]` and adds `reel_between_tracks` to `adsCompanyAds.placementKeys` wherever `audio_between_tracks` is present, so company reel promos keep filling. Idempotent: re-running changes nothing.
+New placement row `reel_between_tracks`: surfaces `["app"]` (the web has no video renderer and already sends `assetType=audio_ad`), accepted types `["reel_video"]`. Migration `20261027120000_ads_reel_between_tracks` copies from `audio_between_tracks`: `enabled`, `defaultFrequencyCapPerUserPerDay`, `frequencyRules`, `breakPosition`, `minListen*`, and **the open rate card** (a placement with no card is `placement_unpriced` — it would silently serve nothing), respecting `AdsRateCard`'s per-placement no-overlap constraint. `pacingEveryN` is left null (D5). It then sets `audio_between_tracks.acceptedAssetTypes = ["audio_ad"]` and adds `reel_between_tracks` to `adsCompanyAds.placementKeys` wherever `audio_between_tracks` is present, so company reel promos keep filling. Idempotent; a malformed `adsCompanyAds` row is skipped with a notice instead of aborting the migration.
 
 ### 4.2 Legacy alias (D4)
 
-In the serve controller, `placement=audio_between_tracks` **and** `assetType=reel_video` is rewritten to `reel_between_tracks` before selection. Counters, samples and the response `placement` field then carry the new key. Nothing else is aliased: an old build that asks `audio_between_tracks` with no `assetType` gets audio only.
+`placementAlias.js` `resolvePlacementKey`, called while the serve request is read, rewrites exactly `placement=audio_between_tracks` **and** `assetType=reel_video` to `reel_between_tracks` before selection — for paid and company ads alike, and without checking whether `reel_between_tracks` is enabled. Counters, samples, the trail and the response `placement` field then carry the new key. Nothing else is aliased: an old build that asks `audio_between_tracks` with no `assetType` gets audio only. Off only when `ADS_LEGACY_REEL_ALIAS` is exactly `false`.
 
 ### 4.3 No-fill vocabulary
 
-- New reason `asset_type_not_accepted`: the asked-for `assetType` is not one the placement accepts (today this is folded into `no_candidates`, which reads as "nothing booked").
-- Samples, the viewer trace and a new per-format counter carry `assetType`, so audio and reel misses are separate even on one placement.
+- New reason `asset_type_not_accepted`: the asked-for `assetType` is not one the placement accepts (before, this was folded into `no_candidates`, which reads as "nothing booked").
+- Samples, the trail and the per-format counters carry `assetType`, so audio and reel misses are separate.
 
 ### 4.4 Admin endpoints (all `ads.view`, read-only)
 
 | Endpoint | Answers |
 |---|---|
-| `GET /admin/ads/caps?placement=&campaignId=` | The **effective** caps: each rule with its source (platform / placement / campaign), the tier it replaces, and the collapsed result. Built from `resolveFrequencyRules` + `collapseRules`, so it cannot drift from serving. |
-| `GET /admin/ads/viewer?userId=\|email=\|deviceId=&placement=` | For one listener: how they are identified (`u:` / `d:`), ad-free status and why, **per candidate campaign** the count in each window against the cap and when the next impression is allowed, mutes, and the last 25 serve decisions. |
-| `GET /admin/ads/delivery` (extended) | Adds `shown` (confirmed impressions), `servedNotShown`, `byAssetType`, and reason counts per format. Existing fields unchanged. |
-| `GET /admin/ads/diagnostics` | Exists. The panel starts using it. |
+| `GET /admin/ads/caps?placement=&campaignId=` | The **effective** caps: each rule with its source (platform / placement / campaign), the platform rules a placement displaced, and the collapsed result. Built from the same resolver serving uses, so it cannot drift. |
+| `GET /admin/ads/viewer?userId=\|email=\|deviceId=&placement=` | Exactly one of the three identifiers. How the listener is identified (`u:` / `d:`), ad-free status and why, with `placement` every candidate campaign's count per window against the cap and when the next impression is allowed, mutes, and the last 25 trail entries. |
+| `GET /admin/ads/delivery` (extended) | Adds `shown` (confirmed impressions), `servedNotShown = max(0, fill − shown)`, per-format counts, not-shown reasons, and passes `samples` through. Existing fields unchanged. |
+| `GET /admin/ads/diagnostics` | Existed; the panel's *Readiness* tab now uses it. |
 
-**Viewer trace.** The serve path writes one entry per request to a per-listener Redis list (`ads:trace:<viewerHash>`, newest 25, 24 h TTL, fire-and-forget in one pipeline, never awaited on the response path, errors swallowed). Entry: time, placement, assetType, outcome, reason, the cap window that blocked, candidate count. The key uses the same `hashViewer()` the frequency keys use; no raw id is stored. `ADS_VIEWER_TRACE=false` turns it off.
+**Trail.** A per-listener Redis list `ads:trace:<viewerHash>`, newest 25, 24 h TTL refreshed on write, keyed on the same `hashViewer()` the frequency keys use (no raw id stored). Written on every serve outcome (fill, no-fill, company fill, error), on a confirmed impression (`shown`) and on a not-shown report: one pipelined `LPUSH`/`LTRIM`/`EXPIRE`, never awaited, cannot throw. Entry: time, kind, placement, assetType, outcome, reason, and a bounded meta (the blocking cap window, candidate count). `ADS_VIEWER_TRACE=false` turns it off, read per call. **Its cost on the serve path is unmeasured; measure on QA before production.**
 
 ### 4.5 `POST /api/ads/track/not-shown` (D7)
 
-Body `{ token, reason }`. The token is the signed impression token of an ad the server *did* serve, so a report can only be about a real serve, from the listener it was served to, and cannot be forged for someone else. `reason` is a closed list: `unplayable_format`, `asset_missing`, `preload_failed`, `video_init_failed`, `muted_campaign`, `superseded`, `expired_before_show`; anything else is dropped. Always answers 204. Counted per placement and format, written to the viewer trace. Rate-limited like the other track endpoints. Impression billing is untouched: a report never creates or cancels an event.
+Body `{ token, reason }`, behind `adsAppCheck` then its own rate limit. The token is the signed impression token of an ad the server *did* serve, so a report can only concern a real serve to the caller. Paid tokens only: a company ad's token gets the same 204 and is recorded nowhere, so the apps do not send it. `reason` is a closed list: `unplayable_format`, `asset_missing`, `preload_failed`, `video_init_failed`, `muted_campaign`, `superseded`, `expired_before_show`; anything else is dropped. Once per token (`SET ads:notshown:<nonce> NX`, TTL = the impression token's, default 600 s). Rate limit: bucket `track:not-shown` (`ads:rl:track:not-shown:<ip>`, same limit and window as the other track calls); over it the report is dropped with a 204, never a 429. Always 204. Counted per placement and format and written to the trail. Never touches billing.
 
-What this cannot see: a request the app never made (C2, C4, C5). Those show up as low `requests` on the placement, not as a reason.
+The apps keep one verdict per token: a token confirmed as shown is never reported as not shown, and the other way round (the server has no check between the two). Flutter sends all seven reasons; iOS sends six — it has no break bank, so it never holds an ad long enough for `expired_before_show`. What this cannot see: a request the app never made (C4, C5). That shows up as low `requests` on the placement, not as a reason.
 
-### 4.6 Reel screen layout (both apps)
+### 4.6 Reel screen layout (both apps, as shipped)
 
 Black background, nothing else behind the video.
 
 ```
 ┌────────────────────────────┐
-│ Sponsored              ⋮   │  ← safe-area top, small tag left, ⋮ right
-│                            │
+│ Sponsored     Skip (n)  ⋮  │  ← safe-area top: tag left; Skip chip (only if skippable) and ⋮ right
 │ ┌────────────────────────┐ │
-│ │                        │ │
-│ │   video, full width    │ │  ← width = screen width, height = width / aspect
-│ │   centred vertically   │ │
-│ │                        │ │     ♡   ← like (existing AdReaction.like),
-│ │                        │ │          right edge, over the video
+│ │   video, full width    │ │  ← width = screen width, height = width / aspect,
+│ │   centred vertically   │ │     scaled down to fit if that is too tall
 │ └────────────────────────┘ │
-│                            │
-│  [  Learn More   ›  ]      │  ← white pill, full width, above bottom inset
-└────────────────────────────┘
-            Skip › (n)           ← only if the creative is skippable, existing chip
+│                         ♡  │  ← like (AdReaction.like), bottom-right, above the CTA
+│       [ Learn More ]       │  ← white pill sized to its label, centred, no chevron;
+└────────────────────────────┘     shown only when the ad has a destination
 ```
 
-- No scrubber, no time labels, no transport, no advertiser/headline rows, no "Your music will continue" line.
-- Tap on the video pauses / resumes (replaces the visible play-pause).
-- CTA label is the creative's `ctaLabel`, falling back to the existing localised "More info" string; it opens through the existing `openAdAction`.
-- The impression fires when the video is actually on screen, as it does now.
-- Audio ads keep the current audio layout unchanged.
+- No scrubber, no time labels, no transport, no advertiser/headline rows, no "Your music will continue" line. Tap on the video pauses / resumes; a play glyph shows while paused. A spinner shows until the first frame's shape is known.
+- CTA label is the creative's `ctaLabel`, falling back to the localised "More info"; it opens through the existing ad-action path. ⋮ "Close ad" respects the creative's skip lock. Impression: a reel counts once its painted video has been on screen 0.5 s (iOS also requires the app in the foreground). Audio ads keep the audio layout and their impression timing.
 
 ---
 
 ## 5. Order of work and rollout
 
-1. **Backend** → migration + alias + reasons + endpoints + trace + not-shown. Deploy first; it is additive. Old apps keep working (alias).
-2. **Admin** → needs the backend endpoints.
-3. **Flutter**, then 4. **Native** → both ask `reel_between_tracks`, so **they must not ship before the backend**: against an older backend that placement is unknown and every reel ask would be a `placement_unknown_or_disabled` no-fill. They send the legacy key only if you ask for that fallback; I would not add it.
+Deploy **backend → admin → Flutter → iOS**. The backend goes first and is additive: old apps keep working through the alias. The admin needs its endpoints. Both apps ask `reel_between_tracks`, so **they must not ship before the backend**: against an older backend that placement is unknown and every reel ask is a `placement_unknown_or_disabled` no-fill. Neither app falls back to the legacy key.
 
 | App build | Backend | Result |
 |---|---|---|
@@ -178,50 +172,64 @@ Black background, nothing else behind the video.
 | new | new | Intended. |
 | new | old | Reels never serve. Don't ship in this order. |
 
-Rollback: re-add `reel_video` to `audio_between_tracks.acceptedAssetTypes` and set `reel_between_tracks.enabled=false`. Both are admin-panel edits.
+**Rollback — three steps; the first two alone leave every old build asking a disabled slot:**
+
+1. Re-add `reel_video` to the audio slot with an API call (the panel shows accepted formats read-only): `PATCH /admin/ads/placements/audio_between_tracks` with `{"acceptedAssetTypes":["audio_ad","reel_video"]}`.
+2. Set `reel_between_tracks.enabled=false` — the panel's on/off toggle, or the same PATCH with `{"enabled":false}`.
+3. Set `ADS_LEGACY_REEL_ALIAS=false` in the API's environment and **restart the API**.
+
+New builds ask `reel_between_tracks` by name and stay without reels until the split is redone. There is no down migration; these steps restore the old behaviour without one.
 
 ---
 
-## 6. Verification
+## 6. Verification — what was run and what was not (this rewrite itself re-ran no test suite)
 
-| Part | Can I run it here | How it will be checked |
+| Part | Run | Not run |
 |---|---|---|
-| Backend | Yes: lint, Jest, and a local throwaway Postgres + Redis. | The new migration is applied on top of all 291 existing ones in a scratch database seeded with the real placement seed, run twice to prove it is idempotent, and its result queried. New code gets unit tests; the endpoints are exercised against the local Redis. **Not** applied to dev, QA or prod, and no real traffic or real caps data. |
-| Admin | `tsc`, lint, vitest yes. | Type-check, unit tests for the new pure helpers. No browser run against a live API. |
-| Flutter | **No** — no SDK. | Code written to the existing patterns; tests updated; **you run `flutter analyze` and `flutter test`**. |
-| Native iOS | **No** — no Swift. | Same; **you build in Xcode**. |
-
-On a real device, the thing to check first for the cropping is a screenshot of the reel on the current build next to the new one.
+| Backend | At `915aba9`: 991 ads tests (Jest) passed; 62 checks against a real local Postgres 16 + Redis through the real routers; the migration applied twice to a seeded database and through `prisma migrate deploy` to an empty one; lint clean on every changed file. `afe4a0c` (rate-limit bucket, dedupe, docs) added tests; no pass count is recorded for it. Full-repo `npm run lint`: 178 pre-existing errors in 80 files, none in touched files. `swagger:check`: ~499 pre-existing warnings. | The full API process (needs Firebase credentials); anything on dev, QA or prod; the trail's write cost. |
+| Admin | At `ef9f858`: `tsc` clean, 282 vitest tests passed (33 new), lint errors unchanged (pre-existing). `e7c0225` (Readiness, Listener Lookup) added tests; no pass count is recorded for it. | A browser against a live API. |
+| Flutter | `flutter analyze`: 2 issues, both pre-existing. `flutter test`: the only failures are 3 pre-existing files (`test/auth_unified_otp_test.dart`, `test/views/plans_widgets_test.dart`, `test/widget_test.dart`). | A device; any backend with this work deployed. |
+| Native iOS | The test target compiles at the tip (it did not at the commit before this work); 438 tests in 77 suites passed. | A device; any backend with this work deployed. |
 
 ---
 
 ## 7. Open questions for you
 
-1. D1: is `reel_between_tracks` the name you want?
-2. D5: should native stop counting songs (matches Flutter `dev`), or should both apps honour `pacingEveryN`?
-3. D6: like only, or do you want the other icons from the screenshot anyway?
-4. Can you send the tester's screenshot of the cropped reel on Flutter? Without it the Flutter half of the cropping stays a hypothesis.
-5. Which user / device did the failed test use? The viewer lookup in 4.4 will answer "why", but only once it is deployed and the test is repeated.
+1. D1: keep `reel_between_tracks` as the name? Renaming now means another migration and new app builds.
+2. D5: keep "no song counting on the device" in both apps, or should both honour `pacingEveryN`?
+3. D6: keep like, ⋮, Skip, CTA and "Sponsored", with no comment or share?
+4. Layout (§0.1): accept the content-sized centred CTA without a chevron, Skip in the top row beside ⋮, and the heart bottom-right above the CTA — or move them back to the plan's places?
+5. Impression timing (§0.1): accept "a reel counts after 0.5 s on screen" in both apps? On iOS it replaces counting at `play()`, so iOS will count fewer reel impressions than before for the same plays.
+6. Can you send the tester's screenshot of the cropped reel on Flutter? Without it the Flutter half of the cropping stays a hypothesis.
+7. Which user / device did the failed test use? The Listener Lookup will answer "why", but only once the backend is deployed and the test is repeated.
 
 ---
 
-## 8. Native iOS work — `hallelujah_native_ios`, branch `main`
+## 8. Native iOS app — `hallelujah_native_ios` (folder `g-hallelujah-ios`), branch `somesh`, as built
 
-Last, after Flutter, so it can follow the Flutter behaviour the previous steps settled. No Swift toolchain here: **nothing is compiled**; you build and run in Xcode (Swift 6, strict concurrency, `any` required for existentials — written to that).
+Commit: `e6913df`. `c69fc4b` is not part of reel ads. Ship last, after the backend (§5): against an older backend every reel ask is a no-fill.
 
-| # | Step | Files |
-|---|---|---|
-| N1 | **Placement per format**, and **ask for both formats in turn**. Today production asks with no `assetType`, so after the split native would only ever be offered audio. Port Flutter's `serveBreak` / `isPlayableAdBreak` (`audio_ad`, `reel_video` with a playable URL). | `App/Platform/Ads/AdPacingController.swift`, new small helper beside it |
-| N2 | **Drop the `squareImageUrl` guard** (C1): a break needs a playable soundtrack or video, not a picture — exactly Flutter `dev`'s rule. This is a likely cause of "served, never shown" today. | `AdPacingController.swift` |
-| N3 | **Stop counting songs on the device** (D5, C2): ask at each song change like Flutter `dev`; the server's caps decide. Remove `tracksSinceLastAdBreak` and the default-6. Keep the in-flight guard. | `AdPacingController.swift` |
-| N4 | **Reel screen** (4.6): new `ReelAdBreak` replaces `VideoAdBreak`. `AdVideoSurface` changes from `.resizeAspectFill` to `.resizeAspect` inside a frame computed by a pure `reelVideoSize(available:aspectRatio:)`; the scrim and `AdBreakControlPanel` are no longer drawn over the video. ⋮ via the existing `AdOptionsButton`, like via the existing thumb, Skip via the existing chip (`TimelineView`), CTA pill via `pacing.openAction`, "Sponsored" tag, tap to pause via `togglePause()`. Audio layout untouched. The video's natural aspect ratio comes from the `AVPlayerItem` presentation size. | `App/Features/Player/Views/AdBreakView.swift` |
-| N5 | **Not-shown reports** (4.5) through `AdsRepository`, called when `playAdCreative` cannot build a URL or the item fails (`AVPlayerItem.status == .failed`). Endpoint with the other ads endpoints. | `App/Data/Repositories/AdsRepository.swift`, `AdPacingController.swift` |
-| N6 | `breakPosition` is not read by native at all (C3). Out of scope here: native already breaks at a song change, which is the pre-roll behaviour. Said so rather than half-implemented; add it if you want parity. | — |
-| N7 | Strings: reuse the existing localised "Skip" and "More Info" entries and the existing `AdSponsoredBadge` view; I will check `Localizable.xcstrings` before adding anything. | — |
-| N8 | Tests (Swift Testing, `#expect`): `reelVideoSize` cases, placement-per-format, rotation order, "playable break" rule. | `Tests/` |
+| # | Planned | As built | Files |
+|---|---|---|---|
+| N1 | Placement per format, both formats in turn (port Flutter's `serveBreak`) | As planned, in a pure `AdBreakFill`: each format on its own placement, taking turns, the other format tried when the first has nothing. | `App/Platform/Ads/AdBreakFill.swift`, `App/Data/Repositories/AdsRepository.swift` |
+| N2 | Drop the `squareImageUrl` guard | Done: a break needs a playable soundtrack or video, not a picture. | `App/Platform/Ads/AdPacingController.swift` |
+| N3 | Stop counting songs; keep the in-flight guard | Done: every song change asks (D5). It does not ask while one song is on repeat, except in preview (`isLoopingOneSong`). `pacingEveryN` is still read for the player card and rail ads (`PlayerAdController`, `RailAdStore`), not for breaks. | `AdPacingController.swift`, `App/Platform/Audio/AudioEngine.swift`, `App/Platform/Audio/QueueController.swift` |
+| N4 | Reel screen (§4.6): `.resizeAspect` in a `reelVideoSize` frame, scrim and control panel removed | Built, with the layout changes in §0.1. A plain `AVPlayerLayer` view with an explicit frame. The impression counts once the painted video has been on screen 0.5 s **while `scenePhase == .active`**; it used to count at `play()`. The rules live in a pure `AdBreakState`. | `App/Features/Player/Views/AdBreakView.swift`, `App/Platform/Ads/ReelVideoSize.swift`, `App/Platform/Ads/AdBreakState.swift`, `App/Features/Player/Ads/AdBreakMiniBanner.swift` |
+| N5 | Not-shown reports through `AdsRepository` | 6 of the 7 reasons. `expired_before_show` exists in the enum but nothing emits it: iOS has no break bank, so it never holds a served ad long enough. Same one-verdict-per-token rule as Flutter. | `AdsRepository.swift`, `AdPacingController.swift` |
+| N6 | `breakPosition` not read (out of scope) | Unchanged: still not read. A break happens at the song change. | — |
+| N7 | Reuse existing strings; check `Localizable.xcstrings` first | Added Play / Pause (the paused-reel control). The same file also carries the re-keyed plurals that `HomeMetrics` uses from `c69fc4b`. | `App/Resources/Localizable.xcstrings` |
+| N8 | Tests | `AdBreakFillTests`, `AdBreakStateTests`, `AdNotShownTests`, `AdPacingControllerTests`, `ReelVideoSizeTests`, `AdsWireSupport`, `AppConfigurationTests`. Results in §6. | `Tests/Platform/Ads/`, `Tests/Core/Configuration/` |
 
-**Risks**
+**Pre-existing differences from Flutter, left alone**
 
-- This file's own header says the guard and the 6-song default were ported *as they were in Dart at the time*. Flutter has since moved; N2/N3 are catching native up, and they change observable cadence — more breaks than before. That is the intent, and it is the part to watch in testing.
-- `AVPlayerViewController` sizing inside SwiftUI is easy to get subtly wrong without running it. I will use a plain `AVPlayerLayer`-backed view with an explicit frame so the sizing rule is the only thing that decides the geometry.
-- `FullPlayerView` renders `AdBreakView` inline; the new reel screen must still hide the player chrome the way the current one does.
+- The `adsEnabled` gate.
+- `forcePreviewAdBreak` exists but nothing calls it.
+- Lock-screen / remote commands, the sleep timer and logout do not end an ad break.
+- No break bank or preload: a break is asked for at the song change.
+- Stale `.dev` / `.staging` comments in `Development.xcconfig`, `Staging.xcconfig` and `progress.md` Q7. The bundle id is `com.hallelujah.user` in every environment.
+
+**Risks still open**
+
+- Counting at "0.5 s on screen while active" instead of at `play()` lowers iOS reel impressions for the same plays. That is the impression-timing question in §7.
+- Breaks now come at every song change (no 6-song default), so listeners see more breaks than before; the server's caps decide how many. This is intended, but it is a visible change.
+- Sizing and the hidden player chrome in `FullPlayerView` are built from code reading only; nothing has run on a device.
