@@ -171,6 +171,7 @@ enum AppComposition {
                 // A share link buffered before this sign-out must not fire
                 // for whoever signs in next (Dart drops links when signed out).
                 Task { @MainActor in DeepLinkService.shared.discardPendingLink() }
+                Task { @MainActor in CreatorFollowStore.shared.clear() }
             }
             // The base URL changed since the last launch, or the Flutter build
             // signed out (or into another account) since this one last ran:

@@ -76,7 +76,6 @@ enum ContentMenuOutcome: Equatable {
 final class ContentMenuViewModel {
     let target: ContentMenuTarget
     private(set) var isBusy = false
-    private(set) var isFollowing: Bool
 
     private let playlists: any PlaylistRepository
     private let creators: any CreatorRepository
@@ -92,11 +91,12 @@ final class ContentMenuViewModel {
         playlists = container.resolve()
         creators = container.resolve()
         queueController = container.resolve()
-        if case .creator(let creator) = target {
-            isFollowing = creator.isFollowing == true
-        } else {
-            isFollowing = false
-        }
+    }
+
+    /// Shared with every other follow button (`CreatorFollowStore`).
+    var isFollowing: Bool {
+        guard case .creator(let creator) = target else { return false }
+        return CreatorFollowStore.shared.isFollowing(creator.creatorId, fallback: creator.isFollowing)
     }
 
     var canQueue: Bool { target.queueSource.playerType.isQueueable }
@@ -121,7 +121,6 @@ final class ContentMenuViewModel {
             } else {
                 try await creators.follow(creatorId: id)
             }
-            isFollowing.toggle()
             return .message(isFollowing ? String(localized: "Added to library") : String(localized: "Removed from library"))
         } catch {
             logger.warning("follow toggle failed: \(error)")

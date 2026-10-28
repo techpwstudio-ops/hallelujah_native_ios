@@ -62,6 +62,10 @@ struct LibraryHomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: .favouriteSongsDidChange)) { _ in
             Task { await viewModel.silentRefresh() }
         }
+        // The followed-artists count tile.
+        .onReceive(NotificationCenter.default.publisher(for: .creatorFollowDidChange)) { _ in
+            Task { await viewModel.silentRefresh() }
+        }
         .onDisappear { viewModel.stopCoverPoll() }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }

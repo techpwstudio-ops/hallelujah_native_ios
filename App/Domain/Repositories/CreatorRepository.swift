@@ -18,11 +18,16 @@ protocol CreatorRepository: Sendable {
 
     /// `attachCreators`/`detachCreator` (`lib/blocs/favourite/bloc.dart`) —
     /// both send the whole request as `ids: [creatorId]` even for a
-    /// single-creator toggle, and both return the updated `Creator` row(s).
+    /// single-creator toggle. Throws only when the server refuses; returns
+    /// the creator's row when the response happens to include it. Each
+    /// success is recorded in `CreatorFollowStore`, which every follow
+    /// button reads, so all screens agree.
     @discardableResult
-    func follow(creatorId: String) async throws -> Creator
+    func follow(creatorId: String) async throws -> Creator?
     @discardableResult
-    func unfollow(creatorId: String) async throws -> Creator
+    func unfollow(creatorId: String) async throws -> Creator?
+    /// `detachCreator(ids)` for several at once (the artists grid's "Done").
+    func unfollow(creatorIds: [String]) async throws
 
     /// `CreatorsBloc._load` (`getCreatorsApi`) — every creator, for the
     /// "Choose artists you like." grid.
@@ -30,6 +35,8 @@ protocol CreatorRepository: Sendable {
 
     /// `FavouriteBloc.attachCreators(ids, sync: true)` — `detach: true` makes
     /// the server replace the followed set with exactly `ids` (the grid's
-    /// "Done" button); `detach: false` only adds.
+    /// "Done" button); `detach: false` only adds. The grid sends only what
+    /// changed (`detach: false` + `unfollow(creatorIds:)`), since its view of
+    /// the followed set can be partial.
     func setFollowedCreators(ids: [String], replacingExisting: Bool) async throws
 }

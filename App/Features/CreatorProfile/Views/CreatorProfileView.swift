@@ -27,6 +27,7 @@ struct CreatorProfileView: View {
     @State private var heroMinY: CGFloat = 0
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
+    @Environment(\.toastCenter) private var toastCenter
 
     init(creatorId: String) {
         _viewModel = State(initialValue: CreatorProfileViewModel(creatorId: creatorId))
@@ -70,6 +71,11 @@ struct CreatorProfileView: View {
             }
         }
         .task { await viewModel.onAppear() }
+        .onChange(of: viewModel.followError) { _, message in
+            guard let message else { return }
+            toastCenter.show(message)
+            viewModel.clearFollowError()
+        }
         .contentMenu(target: $menuTarget) {
             // The menu can follow/unfollow; refresh so the header chip agrees.
             Task { await viewModel.loadCreator() }
@@ -199,7 +205,7 @@ struct CreatorProfileView: View {
                     .lineLimit(2)
                 Spacer().frame(height: 8)
                 HStack(spacing: 8) {
-                    Text(HomeFormat.followerCountText(creator.followersCount))
+                    Text(HomeFormat.followerCountText(viewModel.followersCount))
                         .typography(Typography.bodyMedium)
                         .foregroundStyle(ParityColor.white70)
                     followButton(creator: creator)
@@ -225,16 +231,17 @@ struct CreatorProfileView: View {
         Button {
             Task { await viewModel.toggleFollow() }
         } label: {
-            Text(creator.isFollowing == true ? "Following" : "Follow")
+            Text(viewModel.isFollowing ? "Following" : "Follow")
                 .font(.custom(Typography.fontFamily, size: 14).weight(.semibold))
-                .foregroundStyle(creator.isFollowing == true ? Color.white : Color.black)
+                .foregroundStyle(viewModel.isFollowing ? Color.white : Color.black)
                 .padding(.horizontal, 24)
                 .frame(height: 36)
-                .glassCapsule(creator.isFollowing == true ? .regular : .tinted(.brandPrimary), interactive: true)
+                .glassCapsule(viewModel.isFollowing ? .regular : .tinted(.brandPrimary), interactive: true)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .disabled(viewModel.isTogglingFollow)
+        // Not `.disabled` while the request runs: that greyed the button
+        // out; a second tap is ignored by the view model instead.
     }
 
     // MARK: - Tabs
