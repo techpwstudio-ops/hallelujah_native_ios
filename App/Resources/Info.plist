@@ -87,6 +87,22 @@
 		<true/>
 		<key>UISceneConfigurations</key>
 		<dict>
+			<!-- Installed over the Flutter build (same bundle id): iOS restores
+			     the phone scene session that build left behind, and that session
+			     only remembers its configuration NAME (flutter). Unresolved, the
+			     restored scene gets no delegate, SwiftUI never creates a window
+			     and the app stays black. Pointing the name at the scene delegate
+			     SwiftUI assigns to every window scene lets WindowGroup attach as
+			     usual. Keep the name in step with the Flutter host Info.plist. -->
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>SwiftUI.AppSceneDelegate</string>
+				</dict>
+			</array>
 			<key>CPTemplateApplicationSceneSessionRoleApplication</key>
 			<array>
 				<dict>
