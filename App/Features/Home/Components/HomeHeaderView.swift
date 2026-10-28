@@ -182,6 +182,9 @@ struct HomeSongTypeBar: View {
             }
         }
         .padding(.horizontal, Dimens.screenPaddingAll * 1.5)
+        // Native-only tablet/Mac adaptation (no Flutter counterpart): the
+        // three buttons share a centred column instead of the whole window.
+        .readableContentWidth()
         .frame(height: 44)
         .frame(maxWidth: .infinity)
         .background(

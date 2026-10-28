@@ -48,8 +48,12 @@ struct GenreSongsView: View {
                         )
                     }
                 )
+                // Native-only tablet/Mac adaptation: the hero stays full
+                // bleed, the title row and songs sit in a readable column.
                 titleRow
+                    .readableContentWidth()
                 songList
+                    .readableContentWidth()
                 Color.clear.frame(height: 16)
             }
         }

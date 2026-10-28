@@ -59,7 +59,9 @@ struct HomeTrendingCarouselView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let viewport = max(proxy.size.width, 1)
+            // Native-only tablet/Mac adaptation (no Flutter counterpart): one
+            // page of drag stays a phone's width on a wide window.
+            let viewport = max(AdaptiveLayout.proportionalWidth(proxy.size.width), 1)
             HomeTrendingStack(
                 page: page,
                 count: ordered.count,

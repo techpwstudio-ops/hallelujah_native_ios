@@ -158,6 +158,9 @@ struct ReadSheetContainer<Content: View>: View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(ReadPalette.sheetBackground.ignoresSafeArea())
+            // Native-only tablet/Mac adaptation, as in `AppSheetContainer`: on
+            // iPad and Mac a sheet is a centred card, narrower than the window.
+            .measuresSheetLayoutWidth()
             .preferredColorScheme(.dark)
             .onAppear { coordinator?.sheetPresented() }
             .onDisappear { coordinator?.sheetDismissed() }

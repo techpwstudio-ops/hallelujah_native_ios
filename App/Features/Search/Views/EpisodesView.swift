@@ -12,6 +12,7 @@ struct EpisodesView: View {
     @State private var viewModel = EpisodesViewModel()
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
+    @Environment(\.layoutWidth) private var layoutWidth
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,7 +54,7 @@ struct EpisodesView: View {
             }
         } else {
             LazyVGrid(
-                columns: [GridItem(.flexible(), spacing: 0), GridItem(.flexible(), spacing: 0)],
+                columns: GenreGridCard.gridColumns(in: layoutWidth),
                 spacing: 16
             ) {
                 ForEach(genres) { genre in

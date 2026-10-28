@@ -63,6 +63,9 @@ struct SupportBottomBar<Content: View>: View {
         .padding(.top, 12)
         .padding(.trailing, 16)
         .padding(.bottom, 20)
+        // Native-only tablet/Mac adaptation (no Flutter counterpart): buttons
+        // line up with the page's readable column; the bar itself stays full width.
+        .readableContentWidth()
         .frame(maxWidth: .infinity)
         .background(AccountParity.black)
         .overlay(alignment: .top) {

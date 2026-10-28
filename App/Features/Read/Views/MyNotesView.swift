@@ -109,11 +109,15 @@ struct MyNotesView: View {
         VStack(alignment: .leading, spacing: 0) {
             ReadDragHandle()
 
+            // Native-only tablet/Mac adaptation: the header lines up with the
+            // note column below.
             if let onBack {
                 ReadSheetBackHeader(title: "Notes", onBack: onBack)
+                    .readableContentWidth(alignment: .leading)
             } else {
                 Text("Notes")
                     .readText(Typography.bodyLarge, weight: .regular, color: ReadPalette.secondaryText)
+                    .readableContentWidth(alignment: .leading)
             }
 
             Spacer().frame(height: 12)
@@ -158,6 +162,8 @@ struct MyNotesView: View {
                     }
                 }
                 .padding(.horizontal, 8)
+                // Native-only tablet/Mac adaptation: a readable column in a wide sheet.
+                .readableContentWidth()
             }
         }
     }

@@ -11,6 +11,20 @@ struct FAQView: View {
 /// (wifi_off, Retry) / "No FAQs available" states.
 struct FAQContentView: View {
     @State private var viewModel = FAQViewModel()
+    @Environment(\.layoutWidth) private var layoutWidth
+    /// Height of the failed state's scroll view — see `failedTopSpacing`.
+    @State private var failedContainerHeight: CGFloat = 0
+
+    /// 30% of the screen above the failed state. On a phone `UIScreen` is the
+    /// window and stays the source (D12). Native-only tablet/Mac adaptation:
+    /// on a wider window (iPad multitasking, a Mac) it is the whole display,
+    /// so the page's own height stands in once it has been measured.
+    private var failedTopSpacing: CGFloat {
+        guard AdaptiveLayout.isWide(layoutWidth), failedContainerHeight > 0 else {
+            return UIScreen.main.bounds.height * 0.3
+        }
+        return failedContainerHeight * 0.3
+    }
 
     var body: some View {
         content
@@ -27,7 +41,7 @@ struct FAQContentView: View {
         case .failed:
             ScrollView {
                 VStack(spacing: 0) {
-                    Spacer().frame(height: UIScreen.main.bounds.height * 0.3)
+                    Spacer().frame(height: failedTopSpacing)
                     Image(systemName: "wifi.slash")
                         .font(.system(size: 40))
                         .foregroundStyle(AccountParity.white)
@@ -50,6 +64,7 @@ struct FAQContentView: View {
                 .frame(maxWidth: .infinity)
             }
             .refreshable { await viewModel.refresh() }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { failedContainerHeight = $0 }
         case .empty:
             ScrollView {
                 VStack(spacing: 0) {
@@ -68,6 +83,8 @@ struct FAQContentView: View {
                         FAQRow(faq: faq)
                     }
                 }
+                // Native-only tablet/Mac adaptation (no Flutter counterpart).
+                .readableContentWidth()
             }
             .refreshable { await viewModel.refresh() }
         }

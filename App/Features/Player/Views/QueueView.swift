@@ -36,6 +36,9 @@ struct QueueView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Tablet/Mac: the pushed queue is a centred column, so the current
+        // row's highlight spans the column rather than the whole window.
+        .readableContentWidth()
         .background(isSheet ? Color.clear : PlayerStyle.black)
         .modifier(QueueNavigationChrome(isSheet: isSheet))
     }

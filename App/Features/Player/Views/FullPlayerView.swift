@@ -41,6 +41,9 @@ struct FullPlayerView: View {
     /// offering for this store, or a failed request) hides the tip button.
     @State private var offerings: [Offering] = []
     @State private var isTipSheetPresented = false
+    /// The player's own size: picks the stacked or side-by-side layout and
+    /// sizes the artwork on a tablet, foldable or Mac window.
+    @State private var playerSize: CGSize = .zero
 
     private var song: Song? { engine.currentSong }
 
@@ -134,48 +137,14 @@ struct FullPlayerView: View {
     }
 
     private var playerContent: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // The ad takeover goes over the cover and nothing else: the
-                // title, progress bar and controls below it never change for an ad.
-                PlayerAdOverlay(
-                    controller: playerAd,
-                    onOpen: { ad in adPacing.openAction(for: ad, coordinator: coordinator) },
-                    isUncovered: isPlayerUncovered
-                ) {
-                    PlayerArtworkPager(queueController: queueController)
-                }
-
-                VStack(spacing: 0) {
-                    headline
-                    PlayerSeekBar(
-                        position: engine.currentPosition,
-                        duration: engine.currentItemDuration ?? TimeInterval(song?.duration ?? 0),
-                        barHeight: PlayerStyle.seekBarHeight
-                    ) { target in
-                        engine.seek(to: target)
-                    }
-                    .padding(.top, 16)
-                    PlayerTransportControls(engine: engine, queueController: queueController)
-                        .padding(.top, 20)
-                    SleepTimerBadge(controller: sleepTimer)
-                        .padding(.top, 24)
-                    queueAndShareRow
-                        .padding(.top, sleepTimer.isActive ? 0 : 24)
-                    metaSection
-                        .padding(.top, 24)
-                }
-                .padding(.top, 20)
-                .padding(.horizontal, PlayerStyle.pageSidePadding)
-                .padding(.bottom, 8)
+        ZStack {
+            if AdaptiveLayout.isSideBySide(playerSize) {
+                sideBySideContent
+            } else {
+                stackedContent
             }
-            // Pin the content to the scroll view's width. Something inside
-            // (the paging artwork) proposed a wider ideal width, which pushed
-            // the whole column ~24pt past the screen and swallowed the 20pt
-            // side padding.
-            .containerRelativeFrame(.horizontal)
         }
-        .scrollBounceBehavior(.always)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { playerSize = $0 }
         .background(PlayerStyle.black.ignoresSafeArea())
         // `AdCompanionBanner`, bottom-aligned over the body.
         .overlay(alignment: .bottom) {
@@ -198,6 +167,119 @@ struct FullPlayerView: View {
         .toolbarBackground(PlayerStyle.black, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+    }
+
+    /// The phone layout: artwork edge to edge, then the controls and the
+    /// song's details in one scrolling column. On a wider window (tablet in
+    /// portrait, narrow Mac window, unfolded foldable) the same column is
+    /// held to `mediaColumnWidth`, centred, with the artwork also kept short
+    /// enough for the transport controls to stay on screen.
+    private var stackedContent: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                artwork
+                    .frame(maxWidth: stackedArtworkMaxWidth)
+
+                VStack(spacing: 0) {
+                    nowPlayingControls
+                    metaSection
+                        .padding(.top, 24)
+                }
+                .padding(.top, 20)
+                .padding(.horizontal, PlayerStyle.pageSidePadding)
+                .padding(.bottom, 8)
+            }
+            .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
+            // Pin the content to the scroll view's width. Something inside
+            // (the paging artwork) proposed a wider ideal width, which pushed
+            // the whole column ~24pt past the screen and swallowed the 20pt
+            // side padding.
+            .containerRelativeFrame(.horizontal)
+        }
+        .scrollBounceBehavior(.always)
+    }
+
+    /// Native-only tablet/Mac layout (Flutter has none): a landscape window
+    /// wide enough for two columns keeps the artwork and transport on the
+    /// left, always in view, and scrolls the lyrics, credits and "More like
+    /// this" on the right.
+    private var sideBySideContent: some View {
+        let leftWidth = min(playerSize.width * 0.45, AdaptiveLayout.mediaColumnWidth)
+        let artworkSide = max(
+            Self.minimumSideBySideArtwork,
+            min(leftWidth - PlayerStyle.pageSidePadding * 2, playerSize.height - Self.controlsReservedHeight)
+        )
+        return HStack(alignment: .top, spacing: 0) {
+            ScrollView {
+                VStack(spacing: 0) {
+                    artwork
+                        .frame(width: artworkSide)
+                        .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous))
+                    nowPlayingControls
+                        .padding(.top, 20)
+                }
+                .padding(.horizontal, PlayerStyle.pageSidePadding)
+                .padding(.vertical, 20)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(width: leftWidth)
+
+            ScrollView {
+                metaSection
+                    .padding(.horizontal, PlayerStyle.pageSidePadding)
+                    .padding(.vertical, 20)
+                    .readableContentWidth()
+            }
+            .scrollBounceBehavior(.always)
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// Height kept free under the artwork for the headline, seek bar,
+    /// transport and queue/share row, so they stay on screen when a short
+    /// window shrinks the artwork.
+    private static let controlsReservedHeight: CGFloat = 320
+    private static let minimumSideBySideArtwork: CGFloat = 200
+
+    /// `nil` on a phone (edge to edge, as Flutter); on a wider window the
+    /// artwork never takes more than 55% of the player's height.
+    private var stackedArtworkMaxWidth: CGFloat? {
+        guard AdaptiveLayout.isWide(playerSize.width) else { return nil }
+        return max(Self.minimumSideBySideArtwork, playerSize.height * 0.55)
+    }
+
+    /// The ad takeover goes over the cover and nothing else: the title,
+    /// progress bar and controls below it never change for an ad.
+    private var artwork: some View {
+        PlayerAdOverlay(
+            controller: playerAd,
+            onOpen: { ad in adPacing.openAction(for: ad, coordinator: coordinator) },
+            isUncovered: isPlayerUncovered
+        ) {
+            PlayerArtworkPager(queueController: queueController)
+        }
+    }
+
+    /// Headline through the queue/share row: everything that sits directly
+    /// under the artwork.
+    private var nowPlayingControls: some View {
+        VStack(spacing: 0) {
+            headline
+            PlayerSeekBar(
+                position: engine.currentPosition,
+                duration: engine.currentItemDuration ?? TimeInterval(song?.duration ?? 0),
+                barHeight: PlayerStyle.seekBarHeight
+            ) { target in
+                engine.seek(to: target)
+            }
+            .padding(.top, 16)
+            PlayerTransportControls(engine: engine, queueController: queueController)
+                .padding(.top, 20)
+            SleepTimerBadge(controller: sleepTimer)
+                .padding(.top, 24)
+            queueAndShareRow
+                .padding(.top, sleepTimer.isActive ? 0 : 24)
+        }
     }
 
     /// `_SongHeadline`: title (`titleMedium` w700) and artists

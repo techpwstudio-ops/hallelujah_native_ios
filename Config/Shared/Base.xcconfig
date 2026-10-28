@@ -10,8 +10,15 @@ SDKROOT = iphoneos
 SUPPORTED_PLATFORMS = iphoneos iphonesimulator
 IPHONEOS_DEPLOYMENT_TARGET = 17.0
 TARGETED_DEVICE_FAMILY = 1,2
+// Mac runs the iPad build itself ("Designed for iPad", Apple silicon) rather
+// than a Catalyst port: one binary, and CarPlay/Siri/App Check/IAP unchanged.
+// The layout is width-driven (`AdaptiveLayout`), so a resizable Mac window is
+// just another window width. Mac App Store availability is still switched on
+// in App Store Connect (Pricing and Availability → iPhone and iPad Apps on
+// Apple Silicon Macs); this setting adds the "My Mac (Designed for iPad)" run
+// destination.
 SUPPORTS_MACCATALYST = NO
-SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO
+SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES
 
 // ── Swift ───────────────────────────────────────────────────────────────────
 SWIFT_VERSION = 6.0

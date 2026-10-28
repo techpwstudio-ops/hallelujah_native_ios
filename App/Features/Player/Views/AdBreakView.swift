@@ -54,6 +54,8 @@ private struct AudioAdBreak: View {
             AdBreakArtwork(ad: ad)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             AdBreakControlPanel(pacing: pacing, ad: ad, coordinator: coordinator)
+                // Tablet/Mac: the transport stays a player-width column.
+                .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
         }
     }
 }

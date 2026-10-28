@@ -31,6 +31,10 @@ struct MiniPlayerInsetView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        // A pill, not a bar: on a tablet or Mac window it stays pill-sized and
+        // centred instead of stretching edge to edge. Wider than any phone's
+        // dock, so a phone never hits it.
+        .frame(maxWidth: AdaptiveLayout.dockMaxWidth)
         .padding(.horizontal, Spacing.lg)
         // One gap everywhere in the dock: ad strip <-> pill (the VStack
         // spacing above) and pill <-> tab bar are both `Spacing.sm`.

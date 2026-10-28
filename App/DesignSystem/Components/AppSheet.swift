@@ -76,6 +76,8 @@ struct AppSheetContainer<Content: View>: View {
                 .fill(Self.fill)
                 .ignoresSafeArea(edges: .bottom)
         }
+        // On iPad and Mac a sheet is a centred card, narrower than the window.
+        .measuresSheetLayoutWidth()
         .onAppear { coordinator?.sheetPresented() }
         .onDisappear { coordinator?.sheetDismissed() }
     }

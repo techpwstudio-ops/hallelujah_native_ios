@@ -18,6 +18,7 @@ struct GenreSearchView: View {
     @State private var isListening = false
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
+    @Environment(\.layoutWidth) private var layoutWidth
 
     private var query: String { viewModel.searchFieldText }
 
@@ -32,7 +33,10 @@ struct GenreSearchView: View {
                     if query.isEmpty {
                         genresSection
                     } else {
+                        // Native-only tablet/Mac adaptation: result rows in a
+                        // readable column; the genre grid keeps the full width.
                         resultsSection
+                            .readableContentWidth()
                     }
                     Color.clear.frame(height: 16)
                 }
@@ -95,7 +99,7 @@ struct GenreSearchView: View {
             .padding(.horizontal, Dimens.screenPaddingAll)
             .padding(.vertical, Dimens.spacing8)
         LazyVGrid(
-            columns: [GridItem(.flexible(), spacing: 0), GridItem(.flexible(), spacing: 0)],
+            columns: GenreGridCard.gridColumns(in: layoutWidth),
             spacing: 16
         ) {
             ForEach(browse.allGenres.filter { $0.type == "music" && $0.image != "" }) { genre in

@@ -14,6 +14,7 @@ struct BrowseView: View {
 
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.appTheme) private var theme
+    @Environment(\.layoutWidth) private var layoutWidth
 
     var body: some View {
         VStack(spacing: 0) {
@@ -71,7 +72,7 @@ struct BrowseView: View {
             .frame(maxWidth: .infinity, minHeight: 200)
         } else {
             LazyVGrid(
-                columns: [GridItem(.flexible(), spacing: 0), GridItem(.flexible(), spacing: 0)],
+                columns: GenreGridCard.gridColumns(in: layoutWidth),
                 spacing: 16
             ) {
                 ForEach(genres) { genre in
@@ -98,6 +99,19 @@ struct BrowseView: View {
 struct GenreGridCard: View {
     let genre: Genre
     let action: () -> Void
+
+    /// Native-only tablet/Mac adaptation (no Flutter counterpart): about one
+    /// cell of the two-column phone grid; a wider window gains a column per
+    /// this much width instead of stretching the cards. Shared by every grid
+    /// of these cards (Search, Search Music, Podcasts).
+    static let gridMinItemWidth: CGFloat = 190
+
+    /// `CategoryUI`'s grid columns: two on a phone (`crossAxisCount: 2`, no
+    /// column spacing), more on a wider window.
+    static func gridColumns(in width: CGFloat) -> [GridItem] {
+        let count = AdaptiveLayout.columns(phone: 2, minItemWidth: gridMinItemWidth, in: width)
+        return Array(repeating: GridItem(.flexible(), spacing: 0), count: count)
+    }
 
     var body: some View {
         Button(action: action) {

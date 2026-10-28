@@ -9,12 +9,18 @@ import SwiftUI
 /// screen's own "reachable from" wiring isn't its Done criterion.
 struct SectionDetailView: View {
     @State private var viewModel: SectionDetailViewModel
+    @Environment(\.layoutWidth) private var layoutWidth
 
     init(uiId: String, title: String, contentType: HomeContentType) {
         _viewModel = State(initialValue: SectionDetailViewModel(uiId: uiId, title: title, contentType: contentType))
     }
 
-    private static let gridColumns = [GridItem(.flexible(), spacing: Spacing.md), GridItem(.flexible())]
+    /// Two columns on a phone. Native-only tablet/Mac adaptation (no Flutter
+    /// counterpart): a wider window adds columns so cells stay phone-sized.
+    private var gridColumns: [GridItem] {
+        let count = HomeMetrics.gridColumns(in: layoutWidth)
+        return Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: count - 1) + [GridItem(.flexible())]
+    }
 
     var body: some View {
         ScrollView {
@@ -59,8 +65,10 @@ struct SectionDetailView: View {
                         .onAppear { loadMoreIfNeeded(index: index, count: page.items.count) }
                 }
             }
+            // Native-only tablet/Mac adaptation: rows keep to a readable column.
+            .readableContentWidth()
         case .creators(let page):
-            LazyVGrid(columns: Self.gridColumns, spacing: Spacing.md) {
+            LazyVGrid(columns: gridColumns, spacing: Spacing.md) {
                 ForEach(Array(page.items.enumerated()), id: \.element.id) { index, creator in
                     HomeCreatorCardView(creator: creator)
                         .frame(maxWidth: .infinity)
@@ -69,7 +77,7 @@ struct SectionDetailView: View {
             }
             .padding(.horizontal, Spacing.md)
         case .recentItems(let page):
-            LazyVGrid(columns: Self.gridColumns, spacing: Spacing.md) {
+            LazyVGrid(columns: gridColumns, spacing: Spacing.md) {
                 ForEach(Array(page.items.enumerated()), id: \.element.id) { index, item in
                     HomeRecentItemCardView(item: item)
                         .frame(maxWidth: .infinity, alignment: .leading)

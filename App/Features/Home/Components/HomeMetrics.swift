@@ -42,6 +42,15 @@ enum HomeMetrics {
     static let recommendationPadding: CGFloat = 8
     static let recommendationCover: CGFloat = 40
     static let recommendationCoverToTitleGap: CGFloat = 12
+    /// Native-only tablet/Mac adaptation (no Flutter counterpart): Home's
+    /// two-up grids (these two, `SectionDetailView`'s) gain a column per
+    /// `gridMinItemWidth` of window width past a phone, so cards stay
+    /// phone-sized. Shared with their skeletons.
+    static let gridMinItemWidth: CGFloat = 190
+
+    static func gridColumns(in width: CGFloat) -> Int {
+        AdaptiveLayout.columns(phone: 2, minItemWidth: gridMinItemWidth, in: width)
+    }
 
     /// `HomeTopWeeklyPlaylistCard`.
     static let weeklyCover: CGFloat = 96

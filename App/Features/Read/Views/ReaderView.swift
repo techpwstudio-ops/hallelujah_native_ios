@@ -44,12 +44,16 @@ struct ReaderView: View {
         guard let book = tocChapterBook else { return .fraction(0.75) }
         return .height(ChapterGridSheet.sheetHeight(
             chapterCount: book.chapters,
-            screenHeight: UIScreen.main.bounds.height
+            width: windowSize.width,
+            screenHeight: windowSize.height
         ))
     }
     @State private var noteEditorVerse: BibleVerse?
     @State private var askEmetVerse: AskEmetSelection?
     @State private var highlightPaletteVerse: HighlightSelection?
+    /// The full-bleed page's size (the screen on a phone), for the chapter
+    /// grid's detent.
+    @State private var windowSize: CGSize = .zero
 
     @State private var navigationStore: ReaderNavigationStore = DependencyContainer.current.resolve()
     @State private var offlineService: BibleOfflineDownloadService = DependencyContainer.current.resolve()
@@ -68,7 +72,12 @@ struct ReaderView: View {
 
     var body: some View {
         ZStack {
-            ReadPalette.background.ignoresSafeArea()
+            ReadPalette.background
+                // Measured here rather than read from `UIScreen`, which is the
+                // whole display in Split View and on a Mac (native-only
+                // tablet/Mac adaptation).
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { windowSize = $0 }
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 if isSearching {
@@ -289,6 +298,8 @@ struct ReaderView: View {
         .frame(height: 44)
         .glassCapsule(interactive: true)
         .padding(.horizontal, Dimens.screenPadding)
+        // Native-only tablet/Mac adaptation: the same column as the results panel under it.
+        .readableContentWidth()
         .frame(height: 56)
     }
 
@@ -344,6 +355,9 @@ struct ReaderView: View {
                 )
                 // Absorb taps on the panel so it doesn't close the overlay.
                 .onTapGesture {}
+                // Native-only tablet/Mac adaptation: verse results in a
+                // readable column, under the search field.
+                .readableContentWidth()
             }
         }
     }
@@ -458,6 +472,9 @@ struct ReaderView: View {
                 .padding(.horizontal, Dimens.spacing20)
                 .padding(.top, 12)
                 .padding(.bottom, Self.versesBottomClearance)
+                // Native-only tablet/Mac adaptation: Bible text in a readable
+                // column; the scroll view, mask and chrome stay full width.
+                .readableContentWidth()
             }
             .mask(
                 LinearGradient(

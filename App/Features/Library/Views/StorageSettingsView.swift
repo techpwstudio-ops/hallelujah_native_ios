@@ -63,6 +63,8 @@ struct StorageSettingsView: View {
                 deleteAllButton
             }
             .padding(Spacing.md)
+            // Native-only tablet/Mac adaptation: settings keep to a readable column.
+            .readableContentWidth()
         }
         .background(theme.color(.backgroundPrimary))
         .navigationTitle("Storage")

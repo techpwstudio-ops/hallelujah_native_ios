@@ -108,6 +108,9 @@ struct SubscriptionPlansView: View {
                 }
                 .padding(.horizontal, Dimens.paddingLarge)
                 .padding(.vertical, Dimens.spacing8)
+                // Native-only tablet/Mac adaptation (no Flutter counterpart): a
+                // readable column, shared by the pinned actions below.
+                .readableContentWidth()
             }
             .refreshable { await viewModel.refresh() }
 
@@ -115,6 +118,7 @@ struct SubscriptionPlansView: View {
                 .padding(.top, Dimens.spacing8)
                 .padding(.horizontal, Dimens.paddingLarge)
                 .padding(.bottom, Dimens.spacing4)
+                .readableContentWidth()
         }
     }
 

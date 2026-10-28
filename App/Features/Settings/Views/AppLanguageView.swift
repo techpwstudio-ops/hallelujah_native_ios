@@ -22,6 +22,8 @@ struct AppLanguageView: View {
                 }
             }
             .padding(Dimens.screenPaddingAll * 2)
+            // Native-only tablet/Mac adaptation: rows stay in a readable column.
+            .readableContentWidth()
         }
         .background(AuthColors.background.ignoresSafeArea())
         .navigationTitle("App Language")

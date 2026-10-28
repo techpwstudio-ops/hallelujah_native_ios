@@ -29,6 +29,9 @@ struct NotificationSettingsView: View {
                 }
             }
             .padding(.horizontal, 16)
+            // Native-only tablet/Mac adaptation (no Flutter counterpart): rows
+            // stay in a readable column instead of spanning the window.
+            .readableContentWidth()
         }
         .parityScaffold()
         .parityNavTitle("Notifications")

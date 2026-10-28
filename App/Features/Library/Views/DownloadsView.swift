@@ -88,6 +88,9 @@ struct DownloadsView: View {
             ParityTypeButton(title: "Podcast", isSelected: isEpisodes) { isEpisodes = true }
         }
         .padding(.horizontal, Dimens.screenPaddingAll + 8)
+        // Native-only tablet/Mac adaptation (no Flutter counterpart): same
+        // column as the rows below.
+        .readableContentWidth()
     }
 
     @ViewBuilder
@@ -107,6 +110,8 @@ struct DownloadsView: View {
                     Color.clear.frame(height: 16)
                 }
                 .padding(.top, 8)
+                // Native-only tablet/Mac adaptation (no Flutter counterpart).
+                .readableContentWidth()
             }
         }
     }

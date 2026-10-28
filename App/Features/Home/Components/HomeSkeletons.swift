@@ -168,6 +168,8 @@ struct HomeSectionSkeletonView: View {
     let title: String
     let type: String
 
+    @Environment(\.layoutWidth) private var layoutWidth
+
     private var isEpisode: Bool { type == "episode" }
 
     var body: some View {
@@ -211,6 +213,8 @@ struct HomeSectionSkeletonView: View {
             }
         case "listSongs":
             listSongs
+                // Same media column as the loaded list (`HomeSectionRailView`).
+                .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                 .padding(.horizontal, HomeMetrics.listInset)
                 .homeShimmer()
         case "recommended":
@@ -278,16 +282,28 @@ struct HomeSectionSkeletonView: View {
         .clipped()
     }
 
-    private var companyGrid: some View {
-        let rows = HomeMetrics.companyGridMaxItems / 2
-        return VStack(spacing: HomeMetrics.companyGridGap) {
-            ForEach(0..<rows, id: \.self) { _ in
-                HStack(spacing: HomeMetrics.companyGridGap) {
-                    companyGridCard
-                    companyGridCard
+    /// `count` placeholder cards laid out as the real two-up grids lay out
+    /// theirs: `HomeMetrics.gridColumns` to a row (two on a phone), a short
+    /// last row padded with empty slots.
+    private func skeletonGrid<Card: View>(count: Int, spacing: CGFloat, card: Card) -> some View {
+        let columns = HomeMetrics.gridColumns(in: layoutWidth)
+        return VStack(spacing: spacing) {
+            ForEach(Array(stride(from: 0, to: count, by: columns)), id: \.self) { start in
+                HStack(spacing: spacing) {
+                    ForEach(0..<columns, id: \.self) { slot in
+                        if start + slot < count {
+                            card
+                        } else {
+                            Color.clear.frame(maxWidth: .infinity)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    private var companyGrid: some View {
+        skeletonGrid(count: HomeMetrics.companyGridMaxItems, spacing: HomeMetrics.companyGridGap, card: companyGridCard)
     }
 
     private var companyGridCard: some View {
@@ -366,14 +382,8 @@ struct HomeSectionSkeletonView: View {
     }
 
     private var recommendationGrid: some View {
-        VStack(spacing: HomeMetrics.recommendationGap) {
-            ForEach(0..<3, id: \.self) { _ in
-                HStack(spacing: HomeMetrics.recommendationGap) {
-                    recommendationCard
-                    recommendationCard
-                }
-            }
-        }
+        // Six cards: three rows of two on a phone.
+        skeletonGrid(count: 6, spacing: HomeMetrics.recommendationGap, card: recommendationCard)
     }
 
     private var recommendationCard: some View {

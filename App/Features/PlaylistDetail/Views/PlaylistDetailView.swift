@@ -73,26 +73,33 @@ struct PlaylistDetailView: View {
 
     private var albumPage: some View {
         GeometryReader { geometry in
+            // The square hero is the full width on a phone. Native-only
+            // tablet/Mac adaptation: on a wider window it stops at a media
+            // column, centred, with the title row and songs in that column.
+            let heroSide = AdaptiveLayout.proportionalWidth(geometry.size.width)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     HomeHeroHeader(
                         url: HomeArt.url(playlist.image, playlist.imageVariants, .lg),
-                        width: geometry.size.width,
+                        width: heroSide,
                         state: scroll
                     )
+                    .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                     albumTitleRow
+                        .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                     songList(emptyText: "0 \((playlist.type ?? "").homeCapitalized)", verticalPadding: Dimens.screenPaddingAll)
+                        .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                     Color.clear.frame(height: HomeMetrics.pageBottomSpacing)
                 }
             }
             .coordinateSpace(name: HomeHeroHeader.space)
             .ignoresSafeArea(edges: .top)
             .overlay(alignment: .top) {
-                HomeCollapsedBarBackdrop(state: scroll, threshold: geometry.size.width - 150)
+                HomeCollapsedBarBackdrop(state: scroll, threshold: heroSide - 150)
             }
             .homeHeroChrome {
                 HomeFadingTitle(title: playlist.title, state: scroll, opacity: { offset in
-                    offset > geometry.size.width - 150 ? 1 : 0
+                    offset > heroSide - 150 ? 1 : 0
                 }, animated: true, weight: .semibold)
             }
         }
@@ -124,16 +131,22 @@ struct PlaylistDetailView: View {
 
     private var companyPage: some View {
         GeometryReader { geometry in
+            // Same native-only tablet/Mac adaptation as `albumPage`: the
+            // square cover stops at a media column, centred, above the rest.
+            let coverSide = AdaptiveLayout.proportionalWidth(geometry.size.width)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ArtworkView(
                         url: HomeArt.url(playlist.image, playlist.imageVariants, .lg),
-                        width: geometry.size.width,
-                        height: geometry.size.width,
+                        width: coverSide,
+                        height: coverSide,
                         cornerRadius: 0
                     )
+                    .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                     companyInfo
+                        .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                     songList(emptyText: String(localized: "No songs yet"), verticalPadding: 0)
+                        .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
                     Color.clear.frame(height: HomeMetrics.pageBottomSpacing)
                 }
             }
