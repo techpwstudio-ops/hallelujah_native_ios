@@ -4,8 +4,8 @@ import Observation
 /// Ports `CreatorGridPage` (`lib/views/library/grid_artists.dart`)'s state:
 /// the paginated all-creators list (`CreatorsBloc`), the favourites snapshot
 /// taken on entry (`_initialFavouriteIds`) and the in-flight selection
-/// (`SelectContentBloc`). "Done" sends the selection with `detach: true` (a
-/// replace), exactly like `attachCreators(selectedIds, sync: true)`.
+/// (`SelectContentBloc`). "Done" follows what was checked and un-follows
+/// what was unchecked (see `done()` for why not Dart's whole-set replace).
 @MainActor
 @Observable
 final class CreatorGridViewModel {
@@ -67,8 +67,21 @@ final class CreatorGridViewModel {
         guard !isSaving else { return false }
         isSaving = true
         defer { isSaving = false }
+        // Only what changed. Dart replaces the whole followed set
+        // (`detach: true`) because its snapshot is every followed artist;
+        // this one is loaded for one content type (and can come back short
+        // if a page fails), so a replace silently un-followed every artist
+        // missing from it — e.g. all podcast artists after "Done" here.
+        let added = selection.subtracting(initialSelection).sorted()
+        let removed = initialSelection.subtracting(selection).sorted()
         do {
-            try await repository.setFollowedCreators(ids: Array(selection).sorted(), replacingExisting: true)
+            if !added.isEmpty {
+                try await repository.setFollowedCreators(ids: added, replacingExisting: false)
+            }
+            if !removed.isEmpty {
+                try await repository.unfollow(creatorIds: removed)
+            }
+            initialSelection = selection
             return true
         } catch {
             logger.warning("save followed creators failed: \(error)")

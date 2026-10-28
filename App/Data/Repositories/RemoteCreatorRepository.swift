@@ -57,67 +57,44 @@ final class RemoteCreatorRepository: CreatorRepository {
         guard response.statusCode == 200 else {
             throw CreatorRepositoryError.unexpectedStatus(response.statusCode)
         }
+        await CreatorFollowStore.shared.record(isFollowing: true, creatorIDs: ids)
     }
 
+    /// Success is the 200. The response's `data` is a list of creator rows
+    /// (Dart writes every one of them into Realm and never assumes which is
+    /// which); it is not guaranteed to hold the creator just sent, and after
+    /// an un-follow it usually doesn't. Only a row whose id matches is
+    /// returned, never "the first row", which used to swap a different
+    /// artist onto the screen or fail an un-follow that had succeeded.
     @discardableResult
-    func follow(creatorId: String) async throws -> Creator {
+    func follow(creatorId: String) async throws -> Creator? {
         let body = try JSONEncoder().encode(FollowCreatorsRequest(detach: false, ids: [creatorId]))
         let response = try await client.send(.followCreators, body: body)
         guard response.statusCode == 200 else {
             throw CreatorRepositoryError.unexpectedStatus(response.statusCode)
         }
-        let decoded = try JSONDecoder().decode(CreatorListResponseDTO.self, from: response.data)
-        guard let match = decoded.data.first(where: { $0.id == creatorId }) ?? decoded.data.first else {
-            throw CreatorRepositoryError.creatorNotFound
-        }
-        // `attachCreators` trusts the decoded response as-is — no
-        // client-side correction, unlike `unfollow` below.
-        return match.toDomain()
+        await CreatorFollowStore.shared.record(isFollowing: true, creatorIDs: [creatorId])
+        return Self.row(for: creatorId, in: response.data)
     }
 
     @discardableResult
-    func unfollow(creatorId: String) async throws -> Creator {
-        let body = try JSONEncoder().encode(UnfollowCreatorsRequest(ids: [creatorId]))
+    func unfollow(creatorId: String) async throws -> Creator? {
+        try await unfollow(creatorIds: [creatorId])
+        return nil
+    }
+
+    func unfollow(creatorIds: [String]) async throws {
+        guard !creatorIds.isEmpty else { return }
+        let body = try JSONEncoder().encode(UnfollowCreatorsRequest(ids: creatorIds))
         let response = try await client.send(.unfollowCreators, body: body)
         guard response.statusCode == 200 else {
             throw CreatorRepositoryError.unexpectedStatus(response.statusCode)
         }
-        let decoded = try JSONDecoder().decode(CreatorListResponseDTO.self, from: response.data)
-        guard let match = decoded.data.first(where: { $0.id == creatorId }) ?? decoded.data.first else {
-            throw CreatorRepositoryError.creatorNotFound
-        }
-        // `detachCreator` (`lib/blocs/favourite/bloc.dart`) does NOT trust
-        // the response for these two fields — after decoding it, it
-        // unconditionally forces `isFavourite = false` and decrements
-        // `followersCount` locally, implying the un-follow response's own
-        // `followers`/`followersCount` don't reliably reflect the
-        // just-applied change. Matched here exactly, same reconstruction
-        // Dart does (its own comment gives no further reasoning — ported
-        // as observed behavior, not "fixed").
-        let decodedCreator = match.toDomain()
-        return Creator(
-            creatorId: decodedCreator.creatorId,
-            name: decodedCreator.name,
-            displayName: decodedCreator.displayName,
-            image: decodedCreator.image,
-            imageVariants: decodedCreator.imageVariants,
-            bio: decodedCreator.bio,
-            email: decodedCreator.email,
-            mobile: decodedCreator.mobile,
-            username: decodedCreator.username,
-            link: decodedCreator.link,
-            band: decodedCreator.band,
-            isActive: decodedCreator.isActive,
-            createdAt: decodedCreator.createdAt,
-            updatedAt: decodedCreator.updatedAt,
-            followersCount: decodedCreator.followersCount.map { $0 - 1 },
-            songsCount: decodedCreator.songsCount,
-            episodeCount: decodedCreator.episodeCount,
-            musicCount: decodedCreator.musicCount,
-            playlistsCount: decodedCreator.playlistsCount,
-            albumsCount: decodedCreator.albumsCount,
-            seasonsCount: decodedCreator.seasonsCount,
-            isFollowing: false
-        )
+        await CreatorFollowStore.shared.record(isFollowing: false, creatorIDs: creatorIds)
+    }
+
+    private static func row(for creatorId: String, in data: Data) -> Creator? {
+        guard let decoded = try? JSONDecoder().decode(CreatorListResponseDTO.self, from: data) else { return nil }
+        return decoded.data.first(where: { $0.id == creatorId })?.toDomain()
     }
 }

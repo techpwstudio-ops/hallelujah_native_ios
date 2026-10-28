@@ -18,8 +18,6 @@ final class SongMetaSectionsViewModel {
     /// True while the detail for the current track is in flight, so the view
     /// can hold the creator card's space instead of collapsing and popping in.
     private(set) var isLoadingSong = false
-    /// creatorId -> optimistic follow state, overriding what the payload said.
-    private(set) var followOverrides: [String: Bool] = [:]
 
     private let songRepository: any SongRepository
     private let creatorRepository: any CreatorRepository
@@ -35,7 +33,6 @@ final class SongMetaSectionsViewModel {
     func load(songId: String, excludeId: String?) async {
         song = nil
         isLoadingSong = true
-        followOverrides = [:]
         if let cached = relatedService.cached(for: songId, excludeId: excludeId) {
             related = cached
         } else {
@@ -55,14 +52,15 @@ final class SongMetaSectionsViewModel {
     var mainCreatorID: String? { song.flatMap(SongMenuViewModel.artistID(of:)) }
 
     func isFollowing(creatorID: String?, fallback: Bool?) -> Bool {
-        if let creatorID, let override = followOverrides[creatorID] { return override }
-        return fallback == true
+        CreatorFollowStore.shared.isFollowing(creatorID, fallback: fallback)
     }
 
     /// `applyCreatorFollow` + `CreatorFollowingChangedEvent`.
     /// Returns false when the request failed and the flag was reverted.
     func toggleFollow(creatorID: String, current: Bool) async -> Bool {
-        followOverrides[creatorID] = !current
+        let store = CreatorFollowStore.shared
+        let previousState = store.state(for: creatorID)
+        store.set(!current, for: creatorID)
         do {
             if current {
                 try await creatorRepository.unfollow(creatorId: creatorID)
@@ -71,7 +69,7 @@ final class SongMetaSectionsViewModel {
             }
             return true
         } catch {
-            followOverrides[creatorID] = current
+            store.set(previousState, for: creatorID)
             return false
         }
     }

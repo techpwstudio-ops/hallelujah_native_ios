@@ -8,30 +8,39 @@ import Observation
 @Observable
 final class CreatorDetailsViewModel {
     let creator: Creator
-    private(set) var isFollowing: Bool
-    private(set) var followersCount: Int
+    private let fetchedFollowersCount: Int
 
     private let repository: any CreatorRepository
 
     init(creator: Creator, container: DependencyContainer = .current) {
         self.creator = creator
-        isFollowing = creator.isFollowing == true
-        followersCount = creator.followersCount ?? 0
+        fetchedFollowersCount = creator.followersCount ?? 0
         repository = container.resolve()
+    }
+
+    /// Shared with every other follow button (`CreatorFollowStore`).
+    var isFollowing: Bool {
+        CreatorFollowStore.shared.isFollowing(creator.creatorId, fallback: creator.isFollowing)
+    }
+
+    /// The fetched count, moved by one when the follow state changed since.
+    var followersCount: Int {
+        if isFollowing == (creator.isFollowing == true) { return fetchedFollowersCount }
+        return isFollowing ? fetchedFollowersCount + 1 : max(fetchedFollowersCount - 1, 0)
     }
 
     /// Returns false when the toggle failed and was reverted.
     func toggleFollow() async -> Bool {
         guard let id = creator.creatorId else { return false }
+        let store = CreatorFollowStore.shared
         let target = !isFollowing
-        isFollowing = target
-        followersCount = max(followersCount + (target ? 1 : -1), 0)
+        let previousState = store.state(for: id)
+        store.set(target, for: id)
         do {
             if target { try await repository.follow(creatorId: id) } else { try await repository.unfollow(creatorId: id) }
             return true
         } catch {
-            isFollowing = !target
-            followersCount = max(followersCount + (target ? -1 : 1), 0)
+            store.set(previousState, for: id)
             return false
         }
     }

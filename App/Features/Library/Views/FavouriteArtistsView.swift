@@ -32,6 +32,10 @@ struct FavouriteArtistsView: View {
                 }
             }
             .task { await viewModel.onAppear() }
+            // Followed or un-followed anywhere: this list is the followed set.
+            .onReceive(NotificationCenter.default.publisher(for: .creatorFollowDidChange)) { _ in
+                Task { await viewModel.refresh() }
+            }
     }
 
     @ViewBuilder

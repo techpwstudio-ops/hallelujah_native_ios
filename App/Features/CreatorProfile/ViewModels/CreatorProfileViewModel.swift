@@ -49,6 +49,8 @@ final class CreatorProfileViewModel {
     private(set) var isLoadingCreator = false
     private(set) var loadError: String?
     private(set) var isTogglingFollow = false
+    /// Toast text when a follow toggle failed (and was put back).
+    private(set) var followError: String?
 
     private(set) var tabs: [CreatorProfileTab] = []
     var selectedTab: CreatorProfileTab?
@@ -102,53 +104,48 @@ final class CreatorProfileViewModel {
 
     // MARK: - Follow
 
-    func toggleFollow() async {
-        guard let creator, !isTogglingFollow else { return }
-        isTogglingFollow = true
-
-        let wasFollowing = creator.isFollowing == true
-        // Optimistic flip, mirrors `CreatorFollowButton`'s instant toggle
-        // (`lib/widgets/player/creator_follow_button.dart`) before the
-        // network call resolves.
-        self.creator = Self.applyingFollow(to: creator, isFollowing: !wasFollowing)
-
-        do {
-            let updated = wasFollowing
-                ? try await repository.unfollow(creatorId: creator.id)
-                : try await repository.follow(creatorId: creator.id)
-            self.creator = updated
-        } catch {
-            logger.warning("follow toggle failed: \(error)")
-            self.creator = creator // revert to the pre-toggle snapshot
-        }
-        isTogglingFollow = false
+    /// The follow state shown: the shared store's (a toggle on any other
+    /// screen) over the fetched flag.
+    var isFollowing: Bool {
+        CreatorFollowStore.shared.isFollowing(creator?.creatorId ?? creatorId, fallback: creator?.isFollowing)
     }
 
-    private static func applyingFollow(to creator: Creator, isFollowing: Bool) -> Creator {
-        Creator(
-            creatorId: creator.creatorId,
-            name: creator.name,
-            displayName: creator.displayName,
-            image: creator.image,
-            imageVariants: creator.imageVariants,
-            bio: creator.bio,
-            email: creator.email,
-            mobile: creator.mobile,
-            username: creator.username,
-            link: creator.link,
-            band: creator.band,
-            isActive: creator.isActive,
-            createdAt: creator.createdAt,
-            updatedAt: creator.updatedAt,
-            followersCount: creator.followersCount.map { isFollowing ? $0 + 1 : max($0 - 1, 0) },
-            songsCount: creator.songsCount,
-            episodeCount: creator.episodeCount,
-            musicCount: creator.musicCount,
-            playlistsCount: creator.playlistsCount,
-            albumsCount: creator.albumsCount,
-            seasonsCount: creator.seasonsCount,
-            isFollowing: isFollowing
-        )
+    /// The fetched count, moved by one when the follow state changed since
+    /// the fetch (here or on another screen).
+    var followersCount: Int? {
+        guard let count = creator?.followersCount else { return nil }
+        let fetched = creator?.isFollowing == true
+        if isFollowing == fetched { return count }
+        return isFollowing ? count + 1 : max(count - 1, 0)
+    }
+
+    func toggleFollow() async {
+        guard let creator, !isTogglingFollow else { return }
+        // The fetched creator's id, else the one the page was opened with.
+        let id = creator.creatorId ?? creatorId
+        isTogglingFollow = true
+        defer { isTogglingFollow = false }
+
+        let store = CreatorFollowStore.shared
+        let wasFollowing = isFollowing
+        let previousState = store.state(for: id)
+        // Optimistic, like `CreatorFollowButton`'s instant toggle.
+        store.set(!wasFollowing, for: id)
+        do {
+            if wasFollowing {
+                try await repository.unfollow(creatorId: id)
+            } else {
+                try await repository.follow(creatorId: id)
+            }
+        } catch {
+            logger.warning("follow toggle for \(id) failed: \(error)")
+            store.set(previousState, for: id)
+            followError = String(localized: "Internet error, please check your internet")
+        }
+    }
+
+    func clearFollowError() {
+        followError = nil
     }
 
     // MARK: - Songs paging
