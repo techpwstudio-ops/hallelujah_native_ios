@@ -6,7 +6,7 @@ Status: **built and pushed to `somesh` in all four repos; not deployed anywhere;
 |---|---|---|---|---|---|
 | Backend | `gs_nh_backend` | `gs_nh_backend` | `somesh` | `915aba9` (also on `dev`), `afe4a0c` | 1st |
 | Admin panel | `gh_admin` | `gh_admin` | `somesh` | `ef9f858` (also on `dev-official`), `e7c0225` (shared with unrelated AI-management work) | 2nd |
-| Flutter app | `ghallelujah_app` | `ghallelujah` | `somesh` | `140ef284` | 3rd |
+| Flutter app | `ghallelujah_app` | `ghallelujah` | `somesh` | `140ef284`, `f44978e5` (reel foreground check) | 3rd |
 | Native iOS | `hallelujah_native_ios` | `g-hallelujah-ios` | `somesh` | `e6913df` | 4th |
 
 Section 2 describes the code **as it was before this work**, read from the code; each **Now:** note says what changed. Sections 3-5 describe what shipped. Nothing has been reproduced on a device or against real dev/QA/prod data; where a claim is a hypothesis it says so.
@@ -19,7 +19,7 @@ Section 2 describes the code **as it was before this work**, read from the code;
 |---|---|
 | Backend | **Built, pushed, not deployed.** Placement split and migration `20261027120000_ads_reel_between_tracks`, legacy alias, `asset_type_not_accepted`, per-format counters, `shown` / `servedNotShown`, `GET /admin/ads/caps`, `GET /admin/ads/viewer`, the per-listener trail, `POST /api/ads/track/not-shown` with its own rate-limit bucket. Not run against real data. The trail's extra Redis write on the serve path has **not been measured**. |
 | Admin | **Built, pushed, not deployed.** *Caps in force* column, every accepted format shown (read-only chips), break-position select, Delivery with served / shown / served-never-shown, per-format split, not-shown reasons, the kept no-fill examples, a *Readiness* tab and a *Listener Lookup* page. No Pacing or Intro/Ad/Gap inputs. Not opened in a browser against a live API. |
-| Flutter | **Built, pushed, not run on a device.** Per-format placements, reel screen redesign, video sized so nothing is cut, reel impression counted on the picture, all 7 not-shown reasons, a 10 s start watchdog, no song counting on the device. |
+| Flutter | **Built, pushed, not run on a device.** Per-format placements, reel screen redesign, video sized so nothing is cut, reel impression counted on the picture and only while the app is in the foreground (the foreground check is `f44978e5`, after `140ef284`), all 7 not-shown reasons, a 10 s start watchdog, no song counting on the device. |
 | Native iOS | **Built, pushed, not run on a device.** Same as Flutter except: 6 of 7 not-shown reasons (no `expired_before_show`), and no break bank or preload (a break is asked for at the song change). The `squareImageUrl` guard and the 6-song pacing are gone. |
 
 The apps must not ship before the backend (§5). The Flutter cropping cause is still a hypothesis (§2.3).
@@ -28,8 +28,8 @@ The apps must not ship before the backend (§5). The Flutter cropping cause is s
 
 | Plan said | What shipped | Status |
 |---|---|---|
-| §4.6: a full-width white CTA pill with a `›` chevron; the Skip chip below the screen; the heart at the right edge, mid-video | The CTA is a white pill sized to its label, centred, no chevron; the Skip chip is in the top row, left of ⋮; the heart is bottom-right, directly above the CTA (both apps) | Yours to confirm (§7) |
-| §4.6: "the impression fires when the video is on screen, as it does now" | That was true of Flutter only; iOS counted at `play()`. Both now count a reel once the painted video has been on screen 0.5 s; iOS also requires the app to be in the foreground, Flutter's trigger does not check that | Yours to confirm (§7) |
+| §4.6: a full-width white CTA pill with a `›` chevron; the Skip chip below the screen; the heart at the right edge, mid-video | The CTA is a white pill sized to its label, centred, no chevron; the Skip chip is in the top row, left of ⋮; the heart is bottom-right, directly above the CTA (both apps) | Accepted 2026-10-28 (§7.4) |
+| §4.6: "the impression fires when the video is on screen, as it does now" | That was true of Flutter only; iOS counted at `play()`. Both apps now count a reel once the painted video has been on screen 0.5 s **with the app in the foreground**; leaving the foreground restarts the half second. iOS shipped with that; Flutter gained the foreground check in `f44978e5` | Accepted 2026-10-28 (§7.5) |
 | D5: "the admin hides Pacing for the two break placements" | Wrong premise: the admin has **no Pacing input for any placement**. `pacingEveryN` is reachable only through `PATCH /admin/ads/placements/:key` | Corrected in §3 |
 | §5 rollback: two admin-panel edits | Three steps, and the first and third are not panel edits | Corrected in §5 |
 | §4.4: `servedNotShown = fill − shown`; the trail written per serve | `max(0, fill − shown)`, because a serve just before IST midnight can be confirmed just after it; the trail is also written on a confirmed impression (`shown`) and on a not-shown report | Corrected in §4.4 |
@@ -93,7 +93,7 @@ Client (the server never sees a request, so there is no 204 to count):
 
 ---
 
-## 3. Decisions — the defaults that shipped; D1, D5 and D6 are still yours to confirm
+## 3. Decisions — the defaults that shipped, all confirmed 2026-10-28
 
 | # | Decision | Shipped | Alternative |
 |---|---|---|---|
@@ -105,7 +105,7 @@ Client (the server never sees a request, so there is no 204 to count):
 | D6 | Reel screen actions | Like (heart), the existing ⋮ menu, Skip (when the creative is skippable), CTA pill (when the ad has a destination), a small "Sponsored" tag. **No** comment or share: ads have neither. | add them later |
 | D7 | Not-shown reports | Token-bound `POST /api/ads/track/not-shown`, closed reason list (§4.5) | device logs only |
 
-D1, D5 and D6 are product calls, as are the layout and impression-timing changes in §0.1; all are in §7. D6 keeps the "Sponsored" tag because D155 requires every ad to be tagged.
+D1, D5 and D6 were product calls, as were the layout and impression-timing changes in §0.1; all were confirmed as shipped on 2026-10-28 (§7). D6 keeps the "Sponsored" tag because D155 requires every ad to be tagged.
 
 ---
 
@@ -158,7 +158,7 @@ Black background, nothing else behind the video.
 ```
 
 - No scrubber, no time labels, no transport, no advertiser/headline rows, no "Your music will continue" line. Tap on the video pauses / resumes; a play glyph shows while paused. A spinner shows until the first frame's shape is known.
-- CTA label is the creative's `ctaLabel`, falling back to the localised "More info"; it opens through the existing ad-action path. ⋮ "Close ad" respects the creative's skip lock. Impression: a reel counts once its painted video has been on screen 0.5 s (iOS also requires the app in the foreground). Audio ads keep the audio layout and their impression timing.
+- CTA label is the creative's `ctaLabel`, falling back to the localised "More info"; it opens through the existing ad-action path. ⋮ "Close ad" respects the creative's skip lock. Impression: in both apps a reel counts once its painted video has been on screen 0.5 s with the app in the foreground; leaving the foreground restarts the half second. Audio ads keep the audio layout and their impression timing.
 
 ---
 
@@ -188,18 +188,18 @@ New builds ask `reel_between_tracks` by name and stay without reels until the sp
 |---|---|---|
 | Backend | At `915aba9`: 991 ads tests (Jest) passed; 62 checks against a real local Postgres 16 + Redis through the real routers; the migration applied twice to a seeded database and through `prisma migrate deploy` to an empty one; lint clean on every changed file. `afe4a0c` (rate-limit bucket, dedupe, docs) added tests; no pass count is recorded for it. Full-repo `npm run lint`: 178 pre-existing errors in 80 files, none in touched files. `swagger:check`: ~499 pre-existing warnings. | The full API process (needs Firebase credentials); anything on dev, QA or prod; the trail's write cost. |
 | Admin | At `ef9f858`: `tsc` clean, 282 vitest tests passed (33 new), lint errors unchanged (pre-existing). `e7c0225` (Readiness, Listener Lookup) added tests; no pass count is recorded for it. | A browser against a live API. |
-| Flutter | `flutter analyze`: 2 issues, both pre-existing. `flutter test`: the only failures are 3 pre-existing files (`test/auth_unified_otp_test.dart`, `test/views/plans_widgets_test.dart`, `test/widget_test.dart`). | A device; any backend with this work deployed. |
+| Flutter | `flutter analyze`: 2 issues, both pre-existing. `flutter test`: the only failures are 3 pre-existing files (`test/auth_unified_otp_test.dart`, `test/views/plans_widgets_test.dart`, `test/widget_test.dart`). `f44978e5` (foreground check), on Flutter 3.47.8: `flutter analyze` on its 3 files — 1 issue, the pre-existing unused `logo` in `ad_break_screen.dart`; all 330 tests in `test/ads/` passed, and the 3 new foreground tests fail with the check removed. | A device; any backend with this work deployed. |
 | Native iOS | The test target compiles at the tip (it did not at the commit before this work); 438 tests in 77 suites passed. | A device; any backend with this work deployed. |
 
 ---
 
-## 7. Open questions for you
+## 7. Questions — 1-5 decided 2026-10-28, 6-7 still open
 
-1. D1: keep `reel_between_tracks` as the name? Renaming now means another migration and new app builds.
-2. D5: keep "no song counting on the device" in both apps, or should both honour `pacingEveryN`?
-3. D6: keep like, ⋮, Skip, CTA and "Sponsored", with no comment or share?
-4. Layout (§0.1): accept the content-sized centred CTA without a chevron, Skip in the top row beside ⋮, and the heart bottom-right above the CTA — or move them back to the plan's places?
-5. Impression timing (§0.1): accept "a reel counts after 0.5 s on screen" in both apps? On iOS it replaces counting at `play()`, so iOS will count fewer reel impressions than before for the same plays.
+1. **Decided:** D1 — keep `reel_between_tracks` as the name.
+2. **Decided:** D5 — no song counting on the device, in both apps; `pacingEveryN` stays unread for breaks.
+3. **Decided:** D6 — keep like, ⋮, Skip, CTA and "Sponsored", with no comment or share.
+4. **Decided:** layout as shipped (§0.1) — the content-sized centred CTA without a chevron, Skip in the top row beside ⋮, the heart bottom-right above the CTA.
+5. **Decided:** a reel counts after its painted video has been on screen 0.5 s with the app in the foreground, in both apps. On iOS it replaces counting at `play()`, so iOS counts fewer reel impressions than before for the same plays.
 6. Can you send the tester's screenshot of the cropped reel on Flutter? Without it the Flutter half of the cropping stays a hypothesis.
 7. Which user / device did the failed test use? The Listener Lookup will answer "why", but only once the backend is deployed and the test is repeated.
 
@@ -230,6 +230,6 @@ Commit: `e6913df`. `c69fc4b` is not part of reel ads. Ship last, after the backe
 
 **Risks still open**
 
-- Counting at "0.5 s on screen while active" instead of at `play()` lowers iOS reel impressions for the same plays. That is the impression-timing question in §7.
+- Counting at "0.5 s on screen while active" instead of at `play()` lowers iOS reel impressions for the same plays. Accepted 2026-10-28 (§7.5); Flutter now applies the same foreground rule (`f44978e5`).
 - Breaks now come at every song change (no 6-song default), so listeners see more breaks than before; the server's caps decide how many. This is intended, but it is a visible change.
 - Sizing and the hidden player chrome in `FullPlayerView` are built from code reading only; nothing has run on a device.
