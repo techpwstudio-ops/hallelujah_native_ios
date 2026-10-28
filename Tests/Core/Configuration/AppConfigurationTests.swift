@@ -7,18 +7,14 @@ import Testing
 /// config is internally consistent with the actual build it's running in,
 /// rather than hardcoding one environment's expected values.
 struct AppConfigurationTests {
-    @Test func environmentMatchesBundleIdentifierSuffix() {
-        let config = AppConfiguration.current
+    /// Every environment ships under the one bundle identifier:
+    /// `APP_BUNDLE_ID_SUFFIX` is empty in all of `Config/Environments/*.xcconfig`,
+    /// so there is no side-by-side `.dev` / `.staging` build.
+    @Test func noEnvironmentAddsABundleIdentifierSuffix() {
         let bundleID = Bundle.main.bundleIdentifier ?? ""
 
-        switch config.environment {
-        case .development:
-            #expect(bundleID.hasSuffix(".dev"))
-        case .staging:
-            #expect(bundleID.hasSuffix(".staging"))
-        case .production:
-            #expect(!bundleID.hasSuffix(".dev") && !bundleID.hasSuffix(".staging"))
-        }
+        #expect(!bundleID.hasSuffix(".dev"))
+        #expect(!bundleID.hasSuffix(".staging"))
     }
 
     @Test func apiBaseURLIsWellFormed() {

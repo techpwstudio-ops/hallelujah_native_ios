@@ -61,13 +61,19 @@ final class AudioEngine {
     /// shape `onQueueExhausted` already established for `QueueController`.
     var onSeek: ((_ from: TimeInterval, _ to: TimeInterval) -> Void)?
 
-    /// T69 — narrow integration point for `AdPacingController`'s pacing
-    /// counter, the same "engine exposes a closure, doesn't know who's
-    /// listening" shape as `onSeek`/`onQueueExhausted` above. Fired at both
-    /// places `currentSong` is assigned (a fresh load and a window top-up
-    /// advance) — never from inside an ad break itself, since ad playback
-    /// never touches this engine's `player`.
+    /// T69 — narrow integration point for `AdPacingController`, which asks the
+    /// server for a break whenever the song changes: the same "engine exposes a
+    /// closure, doesn't know who's listening" shape as `onSeek`/
+    /// `onQueueExhausted` above. Fired at both places `currentSong` is assigned
+    /// (a fresh load and a window top-up advance) — never from inside an ad
+    /// break itself, since ad playback never touches this engine's `player`.
     var onSongChanged: ((Song) -> Void)?
+
+    /// Fired when an audio-session interruption (a call, an alarm, Siri) ends,
+    /// after the session has been set up again, with whether iOS said playback
+    /// may resume. An ad break plays on a player of its own, which this engine
+    /// never resumes — `AdPacingController` listens here to resume it.
+    var onInterruptionEnded: ((_ shouldResume: Bool) -> Void)?
 
     /// Set by `AdPacingController` for the length of an ad break. While held,
     /// nothing may start the speakers: a song picked mid-break (a list tap, the
@@ -96,7 +102,15 @@ final class AudioEngine {
     /// types, only these two narrow signals, matching the split this file's
     /// own top-level doc comment already called for.
     var repeatOneActive = false
+    var repeatAllActive = false
     var onQueueExhausted: (() async -> Void)?
+
+    /// A song that plays again and again with no other song between its plays:
+    /// repeat-one, or repeat-all over a queue of one. Each play is a song change,
+    /// but none of them is a boundary an ad break can sit on.
+    var isLoopingOneSong: Bool {
+        repeatOneActive || (repeatAllActive && logicalQueue.count <= 1)
+    }
 
     /// T47 — offline playback's local-file-first source check. Same "engine
     /// exposes a closure, doesn't know who's listening" shape as `onSeek`/
@@ -466,6 +480,7 @@ final class AudioEngine {
         case .ended:
             reconfigureAndReactivateSession()
             let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+            onInterruptionEnded?(options.contains(.shouldResume))
             guard wasPlayingBeforeInterruption, options.contains(.shouldResume), status != .idle else { return }
             activateSessionAndPlay()
         @unknown default:

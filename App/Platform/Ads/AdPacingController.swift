@@ -3,8 +3,26 @@ import Foundation
 import UIKit
 import Observation
 
+/// What an ad break needs of the playback engine, and no more, so the break's
+/// decisions can be driven in a test without audio hardware. `AudioEngine` is
+/// the one real conformer.
+@MainActor
+protocol AdBreakEngine: AnyObject {
+    var status: AudioEngine.Status { get }
+    var currentSong: Song? { get }
+    /// A song that plays again and again with no other song between its plays.
+    var isLoopingOneSong: Bool { get }
+    var isPlaybackHeld: Bool { get set }
+    var onSongChanged: ((Song) -> Void)? { get set }
+    var onInterruptionEnded: ((_ shouldResume: Bool) -> Void)? { get set }
+    func pause()
+    func resume()
+}
+
+extension AudioEngine: AdBreakEngine {}
+
 /// Ports the player ad-break slice of `PlayerBloc` (`lib/blocs/player/bloc.dart`):
-/// `_maybeStartAdBreak`/`_tracksSinceLastAdBreak`/`_pacingEveryN` for cadence,
+/// `_maybeStartAdBreak`/`_fetchBreakCreative` for asking,
 /// `_onAdBreakStarted`/`_onAdBreakSkipped`/`_onAdBreakPauseToggled`/
 /// `_endAdBreak`/`_playAdCreative` for the break's own lifecycle, and
 /// `openAdAction` (`lib/ads/ad_action.dart`) for the CTA. One
@@ -22,11 +40,19 @@ import Observation
 /// uses one completion/progress mechanism (`AVPlayerItemDidPlayToEndTime` +
 /// a periodic time observer) instead of porting Dart's per-format split.
 ///
-/// Also NOT ported: `_preloadAdCreative`'s separate preload-then-switch
-/// phase. It exists in Dart purely to mask `just_audio`/`video_player`'s
-/// cold-start latency on a throwaway player instance; `AVPlayer(url:)`
-/// already starts buffering immediately on construction, so there's no
-/// equivalent latency to hide behind a second phase.
+/// Also NOT ported: the break bank and `_preloadAdCreative`'s preload-then-
+/// switch phase. Dart fetches a break ahead of the boundary and loads its
+/// player before the song ends; here a break is asked for when the song
+/// changes and its player is built when the answer arrives, so the first
+/// frame can still be on its way when the break opens. A reel draws a spinner
+/// until it is, and the startup watchdog gives up on a creative that never
+/// gets going.
+///
+/// Each format is asked on its own placement (`AdBreakFill`):
+/// `audio_between_tracks` for `audio_ad` and `reel_between_tracks` for
+/// `reel_video`, taking turns, so the dashboard can price, cap and switch off
+/// one without the other. An ad that is served and then never reaches the
+/// screen is reported through `AdsRepository.reportNotShown`.
 ///
 /// `lingerAfterDismiss` (`_endAdBreak`'s `companionAd`/`showCompanionBanner`
 /// branch) is ported: a creative that asked to linger and has a companion
@@ -37,45 +63,76 @@ import Observation
 @Observable
 final class AdPacingController {
     private let adsRepository: AdsRepository
-    private let engine: AudioEngine
+    private let engine: any AdBreakEngine
 
     private(set) var isAdBreak = false
     private(set) var currentAd: AdCreative?
     private(set) var adPosition: TimeInterval = 0
     private(set) var adTotalDuration: TimeInterval = 0
-    private(set) var isAdPaused = false
     private(set) var adSkipUnlocksAt: Date?
+
+    /// How far the current break has got, and the pause its player is in. The
+    /// rules live in `AdBreakProgress` and `AdPauseState`; this class feeds them
+    /// what the player reports.
+    private var progress = AdBreakProgress()
+    private var pauseState = AdPauseState()
+
+    var isAdPaused: Bool { pauseState.isPaused }
+
+    /// Width over height of the playing video, 0 until the item has reported
+    /// its shape. `ReelAdBreak` sizes the video from it and shows a spinner
+    /// while it is 0 — it never guesses a shape.
+    var adVideoAspectRatio: CGFloat { progress.videoAspectRatio }
+
+    /// Whether the item has loaded far enough to show. False while the first
+    /// frame is still coming, which is when the break draws its spinner.
+    var isAdReady: Bool { progress.itemIsReady }
 
     /// `PlayerBlocState.companionAd` / `showCompanionBanner` — the ad left
     /// behind by a break whose creative had `lingerAfterDismiss`.
     private(set) var companionAd: AdCreative?
     private(set) var showCompanionBanner = false
 
-    /// Not `private` — `AdBreakView` reads this directly to feed AVKit's
-    /// `VideoPlayer(player:)` for a `reel_video` creative's visible surface;
-    /// everything else about ad playback stays internal to this controller.
+    /// Not `private` — `AdBreakView` reads this directly to give a `reel_video`
+    /// creative's picture (`ReelVideoSurface`) its player; everything else
+    /// about ad playback stays internal to this controller.
     private(set) var adPlayer: AVPlayer?
     private var timeObserverToken: Any?
     private var endObserver: NSObjectProtocol?
+    private var statusObservation: NSKeyValueObservation?
+    private var sizeObservation: NSKeyValueObservation?
+    private var playerStateObservation: NSKeyValueObservation?
+    private var startupWatchdog: Task<Void, Never>?
 
-    /// `_tracksSinceLastAdBreak`/`_pacingEveryN` (`bloc.dart:238-247`). Not
-    /// reset on a no-fill (mirrors Dart exactly — see `maybeStartAdBreak`
-    /// below): once the threshold is reached, every subsequent track retries
-    /// until one actually fills.
-    private var tracksSinceLastAdBreak = 0
-    private var pacingEveryN: Int?
+    /// Bumped whenever a creative starts or stops, so a callback from one that
+    /// has already ended can tell it is stale.
+    private var breakGeneration = 0
+
+    /// How long a creative gets to become playable before the break gives up on
+    /// it — a held song and a spinner forever is worse than no ad. A test shortens
+    /// it through the initializer; nothing else does.
+    static let defaultStartupTimeout: Duration = .seconds(10)
+    private let startupTimeout: Duration
+
+    /// Which format `maybeStartAdBreak` asks for first; each ask moves it on,
+    /// so audio and reel breaks take turns (`_breakFormatTurn`).
+    private var breakFormatTurn = 0
     private var adBreakFetchInFlight = false
 
-    private static let placement = "audio_between_tracks"
-    private static let previewAssetTypes = ["audio_ad", "reel_video"]
-    private var previewAssetTypeIndex = 0
-
-    init(adsRepository: AdsRepository, engine: AudioEngine) {
+    init(
+        adsRepository: AdsRepository,
+        engine: any AdBreakEngine,
+        startupTimeout: Duration = AdPacingController.defaultStartupTimeout
+    ) {
         self.adsRepository = adsRepository
         self.engine = engine
+        self.startupTimeout = startupTimeout
         engine.onSongChanged = { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in await self.maybeStartAdBreak() }
+        }
+        engine.onInterruptionEnded = { [weak self] shouldResume in
+            self?.adInterruptionEnded(shouldResume: shouldResume)
         }
     }
 
@@ -108,45 +165,50 @@ final class AdPacingController {
         return Date() >= adSkipUnlocksAt
     }
 
-    /// `_maybeStartAdBreak` (`bloc.dart:973`). `force` skips the pacing count
-    /// only — the serve, no-fill handling and in-flight guard are identical
-    /// either way, matching Dart's own doc comment on that parameter.
+    /// `_maybeStartAdBreak` (`bloc.dart`) — asks the server for a break at a
+    /// song boundary.
+    ///
+    /// The device no longer counts songs to decide when: how often a listener
+    /// hears a break is the ads dashboard's to say (the placement's pacing and
+    /// frequency caps), and a count kept here silently overrode it. Every song
+    /// change asks; a no-fill is remembered by `AdsRepository`'s per-format
+    /// backoff, so the asking stays at most one request a minute per format.
+    ///
+    /// `force` only lifts that backoff, and only in preview — the serve, no-fill
+    /// handling and in-flight guard are identical either way.
     func maybeStartAdBreak(force: Bool = false) async {
         guard !isAdBreak, !adBreakFetchInFlight else { return }
 
-        if !force {
-            tracksSinceLastAdBreak += 1
-            let threshold = pacingEveryN ?? 6
-            guard tracksSinceLastAdBreak >= threshold else { return }
-        }
-
         let preview = force && AppConfiguration.current.featureFlags.adsPreviewMode
-        var assetType: String?
-        if preview {
-            assetType = Self.previewAssetTypes[previewAssetTypeIndex]
-            previewAssetTypeIndex = (previewAssetTypeIndex + 1) % Self.previewAssetTypes.count
-        }
+        // A song on repeat never ends into another one: each play is a song
+        // change, but none is a boundary to put a break on, and a break at every
+        // loop would be the same ad over and over (`_breakBlockedReason`).
+        guard preview || !engine.isLoopingOneSong else { return }
+        let turn = breakFormatTurn
+        breakFormatTurn = (turn + 1) % AdBreakFill.assetTypes.count
 
         adBreakFetchInFlight = true
         defer { adBreakFetchInFlight = false }
 
-        var ad = await adsRepository.serve(placement: Self.placement, assetType: assetType, ignoreRetryBackoff: preview)
+        // A break names the format it asks for and the placement that format
+        // lives on, and never leaves the choice to the server: a placement that
+        // also accepts pictures would hand back a PNG the break cannot play, and
+        // a song gets one chance at its boundary.
+        let ad = await AdBreakFill.serveBreak(
+            start: turn,
+            serve: { placement, assetType in
+                await adsRepository.serve(placement: placement, assetType: assetType, ignoreRetryBackoff: preview)
+            },
+            onUnplayable: { unplayable in
+                adsRepository.reportNotShown(unplayable, AdBreakFill.unplayableReason(unplayable))
+            }
+        )
 
-        // A format with nothing booked must not read as "ads are broken" —
-        // retry unrestricted so a preview request still shows something.
-        if preview, ad?.assetUrl == nil {
-            ad = await adsRepository.serve(placement: Self.placement, ignoreRetryBackoff: true)
-        }
-
-        // Ports `_maybeStartAdBreak`'s actual guard verbatim. Dart's own
-        // comment immediately above that line claims "the break is still
-        // valid" when `squareImageUrl` is nil, but the code it's attached to
-        // requires BOTH `assetUrl` and `squareImageUrl` to proceed — this
-        // ports the code that runs, not the comment that contradicts it.
-        guard let ad, ad.assetUrl != nil, ad.squareImageUrl != nil else { return }
-
-        pacingEveryN = ad.adLoad.pacingEveryN ?? pacingEveryN
-        tracksSinceLastAdBreak = 0
+        // Only a missing soundtrack / video is a no-fill. A picture is optional:
+        // the server sends `squareImageUrl` only when the same campaign also has
+        // an image creative booked, so requiring one silently dropped every
+        // plain audio ad — the break draws a glyph for an ad without art.
+        guard let ad else { return }
         startAdBreak(with: ad)
     }
 
@@ -159,9 +221,25 @@ final class AdPacingController {
         Task { await maybeStartAdBreak(force: true) }
     }
 
-    /// `_onAdBreakStarted` (`bloc.dart:2479`).
+    /// `_onAdBreakStarted` (`bloc.dart`).
     private func startAdBreak(with ad: AdCreative) {
-        guard !isAdBreak else { return }
+        // Another break took the slot while this ad was being fetched: it was
+        // served and will not be shown, which only the app can tell the server.
+        // Nothing reaches this today — a second ask is turned away while one is
+        // in flight — so this holds the line for a trigger added later: a break
+        // already under way must never be overwritten, and a served ad is never
+        // dropped without a word.
+        guard !isAdBreak else {
+            adsRepository.reportNotShown(ad, .superseded)
+            return
+        }
+        // The listener paused or stopped the music while this ad was being
+        // fetched. A break would hold nothing back, and its end resumes the
+        // music: it would start what they had just stopped.
+        guard engine.status == .playing || engine.status == .loading else {
+            adsRepository.reportNotShown(ad, .superseded)
+            return
+        }
         // Held for the whole break, so a song the listener picks meanwhile is
         // queued behind the ad instead of playing over it (`endAdBreak` lifts it).
         engine.isPlaybackHeld = true
@@ -171,19 +249,30 @@ final class AdPacingController {
         adPosition = 0
         adTotalDuration = TimeInterval(ad.durationSec ?? 0)
         adSkipUnlocksAt = ad.skipAfterSec.map { Date().addingTimeInterval(TimeInterval($0)) }
-        isAdPaused = false
+        progress = AdBreakProgress()
+        pauseState = AdPauseState()
         isAdBreak = true
 
         playAdCreative(ad)
     }
 
-    /// `_playAdCreative` (`bloc.dart:2609`) — see this file's own doc comment
-    /// on why one `AVPlayer` covers both formats here.
+    /// `_playAdCreative` (`bloc.dart`) — see this file's own doc comment on why
+    /// one `AVPlayer` covers both formats here.
+    ///
+    /// The impression is NOT sent here. It is sent once the creative is really
+    /// there to be had (`confirmImpressionIfShown`): sending it at `play()`
+    /// counted a reel that then failed to decode, and a listener who never saw
+    /// it. An audio ad counts when it can play; a reel waits until its picture
+    /// has been on screen (`reelWasSeen`).
     private func playAdCreative(_ ad: AdCreative) {
         guard let urlString = ad.assetUrl, let url = URL(string: urlString) else {
+            adsRepository.reportNotShown(ad, .assetMissing)
             endAdBreak()
             return
         }
+
+        breakGeneration += 1
+        let generation = breakGeneration
 
         let item = AVPlayerItem(url: url)
         let player = AVPlayer(playerItem: item)
@@ -194,7 +283,24 @@ final class AdPacingController {
             object: item,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.endAdBreak() }
+            Task { @MainActor in self?.adItemPlayedToEnd(generation: generation) }
+        }
+
+        // KVO callbacks are not main-actor isolated. Under Swift 6 a closure
+        // inferred as main-actor and then called from another thread traps, so
+        // these are `@Sendable` like `AudioEngine`'s, and hand over plain values
+        // and a generation number, never the creative or the item: a callback
+        // from a break that has already ended must find nothing to act on.
+        statusObservation = item.observe(\.status, options: [.initial, .new]) { @Sendable [weak self] item, _ in
+            let status = item.status
+            Task { @MainActor in self?.itemStatusChanged(status, generation: generation) }
+        }
+        sizeObservation = item.observe(\.presentationSize, options: [.initial, .new]) { @Sendable [weak self] item, _ in
+            let size = item.presentationSize
+            Task { @MainActor in self?.itemSizeChanged(size, generation: generation) }
+        }
+        playerStateObservation = player.observe(\.timeControlStatus, options: [.new]) { @Sendable [weak self] _, _ in
+            Task { @MainActor in self?.adPlayerStateChanged(generation: generation) }
         }
 
         timeObserverToken = player.addPeriodicTimeObserver(
@@ -209,8 +315,119 @@ final class AdPacingController {
             }
         }
 
+        let timeout = startupTimeout
+        startupWatchdog = Task { [weak self] in
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            self?.startupTimedOut(generation: generation)
+        }
+
         player.play()
-        adsRepository.trackImpression(ad.impressionToken)
+    }
+
+    private func itemStatusChanged(_ status: AVPlayerItem.Status, generation: Int) {
+        guard generation == breakGeneration, isAdBreak, let ad = currentAd else { return }
+        switch status {
+        case .readyToPlay:
+            progress.itemBecameReady()
+            startupSettled(ad)
+        case .failed:
+            failBreak(ad)
+        default:
+            break
+        }
+    }
+
+    private func itemSizeChanged(_ size: CGSize, generation: Int) {
+        guard generation == breakGeneration, isAdBreak, size.width > 0, size.height > 0 else { return }
+        progress.itemReportedSize(size)
+        if let ad = currentAd { startupSettled(ad) }
+    }
+
+    private func adItemPlayedToEnd(generation: Int) {
+        guard generation == breakGeneration else { return }
+        endAdBreak()
+    }
+
+    private func startupTimedOut(generation: Int) {
+        guard generation == breakGeneration, isAdBreak, let ad = currentAd, !progress.isUnderway(ad) else { return }
+        failBreak(ad)
+    }
+
+    /// The creative will not play: say so (unless it already counted as shown)
+    /// and give the listener their song back.
+    private func failBreak(_ ad: AdCreative) {
+        if let reason = progress.notShownReason(afterFailureOf: ad) {
+            adsRepository.reportNotShown(ad, reason)
+        }
+        endAdBreak()
+    }
+
+    /// The startup is over: stop timing it, and count the impression if the
+    /// rest of what it takes is already there.
+    private func startupSettled(_ ad: AdCreative) {
+        guard progress.isUnderway(ad) else { return }
+        startupWatchdog?.cancel()
+        startupWatchdog = nil
+        confirmImpressionIfShown(ad)
+    }
+
+    /// A reel's picture has been on screen, in a foreground app, long enough to
+    /// count (`ReelAdBreak`). A reel plays whether or not anyone is looking at
+    /// it — the full player can be down at the mini player — so its impression
+    /// waits for this: an audio ad is heard the moment it plays, a reel has to
+    /// be seen.
+    func reelWasSeen() {
+        guard isAdBreak, let ad = currentAd, ad.isReel else { return }
+        progress.pictureWasSeen()
+        confirmImpressionIfShown(ad)
+    }
+
+    /// Sends the impression once the creative is genuinely there to be had: the
+    /// item can play and, for a reel, its picture has been seen.
+    private func confirmImpressionIfShown(_ ad: AdCreative) {
+        guard progress.shouldCountImpression(ad) else { return }
+        progress.impressionWasSent()
+        adsRepository.trackImpressionOnce(ad.impressionToken)
+    }
+
+    /// The ad's player stopped, or started again, without a tap: a call, an
+    /// alarm or Siri interrupted the session, the route went away (headphones
+    /// pulled), or the lock screen or a headset sent play. An `AVPlayer` does
+    /// not start again by itself after an interruption, so left alone the
+    /// picture freezes while the break reads as playing — and with no skip to
+    /// press, the listener's music stays held behind it. Showing the pause lets
+    /// a tap resume it, and `adInterruptionEnded` resumes it when iOS says it
+    /// may. Judged on the player as it is now, not as the callback saw it: a
+    /// stale ".paused" queued behind a play must not undo it.
+    private func adPlayerStateChanged(generation: Int) {
+        guard generation == breakGeneration, isAdBreak, let player = adPlayer else { return }
+        switch player.timeControlStatus {
+        case .paused:
+            // A finished item pauses its player on the way to `endAdBreak`;
+            // that is the end of the ad, not a pause to show.
+            pauseState.playerStopped(itemFinished: hasPlayedToItsEnd(player))
+        case .playing, .waitingToPlayAtSpecifiedRate:
+            // Only a pause the system made is the system's to take back; one the
+            // listener made stays until they undo it.
+            pauseState.playerStarted()
+        @unknown default:
+            break
+        }
+    }
+
+    private func hasPlayedToItsEnd(_ player: AVPlayer) -> Bool {
+        guard let item = player.currentItem else { return false }
+        let duration = item.duration.seconds
+        return duration.isFinite && duration > 0 && item.currentTime().seconds >= duration - 0.25
+    }
+
+    /// The engine has set the audio session up again after an interruption. The
+    /// ad's player is not the engine's, so only this starts it — and only when
+    /// it was the interruption that stopped it, not the listener.
+    private func adInterruptionEnded(shouldResume: Bool) {
+        guard isAdBreak, pauseState.interruptionEnded(shouldResume: shouldResume) else { return }
+        adPlayer?.play()
     }
 
     /// `_onAdBreakSkipped` (`bloc.dart:2512`).
@@ -225,8 +442,7 @@ final class AdPacingController {
     /// listener returns to it.
     func togglePause() {
         guard isAdBreak else { return }
-        isAdPaused.toggle()
-        if isAdPaused {
+        if pauseState.listenerToggled() {
             adPlayer?.pause()
         } else {
             adPlayer?.play()
@@ -235,9 +451,14 @@ final class AdPacingController {
 
     /// `_endAdBreak` (`bloc.dart:2574`), including the companion-banner handoff.
     private func endAdBreak() {
+        // Said twice (a failed item whose watchdog also fires, a skip racing the
+        // end of the item), a second end would lift a hold the next break may
+        // already have taken and start the music under it.
+        guard isAdBreak else { return }
         let ended = currentAd
         stopAdPlayback()
-        let linger = ended?.lingerAfterDismiss == true && ended?.companionImageUrl != nil
+        // Only an ad that was shown has anything to leave behind on screen.
+        let linger = ended.map(progress.leavesCompanion) ?? false
         companionAd = linger ? ended : nil
         showCompanionBanner = linger
         isAdBreak = false
@@ -245,7 +466,8 @@ final class AdPacingController {
         adPosition = 0
         adTotalDuration = 0
         adSkipUnlocksAt = nil
-        isAdPaused = false
+        progress = AdBreakProgress()
+        pauseState = AdPauseState()
         // Whatever is current — the song the break interrupted, or the one the
         // listener queued during it — starts now, ad finished or skipped alike.
         engine.isPlaybackHeld = false
@@ -253,6 +475,15 @@ final class AdPacingController {
     }
 
     private func stopAdPlayback() {
+        breakGeneration += 1
+        statusObservation?.invalidate()
+        statusObservation = nil
+        sizeObservation?.invalidate()
+        sizeObservation = nil
+        playerStateObservation?.invalidate()
+        playerStateObservation = nil
+        startupWatchdog?.cancel()
+        startupWatchdog = nil
         if let timeObserverToken {
             adPlayer?.removeTimeObserver(timeObserverToken)
         }

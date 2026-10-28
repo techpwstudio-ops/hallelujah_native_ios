@@ -36,10 +36,10 @@ final class AdsRepository {
     private var retryNotBefore: [String: Date] = [:]
     private static let defaultRetryBackoff: TimeInterval = 60
 
-    /// `_mutedCampaignIds` (Dart) — session-local only; the server-side mute
-    /// is the durable copy. Nothing in this task's scope writes to this set
-    /// yet (`submitFeedback`/the mute sheet is cut — see this task's status-
-    /// log entry), so it only ever matters once something does.
+    /// `_mutedCampaignIds` (Dart) — campaigns the listener muted this session
+    /// (`submitFeedback`). Session-local only; the server-side mute is the
+    /// durable copy. `serve` drops a muted campaign even when the candidates it
+    /// cached before the mute still hold it, and says so (`.mutedCampaign`).
     private var mutedCampaignIDs: Set<String> = []
 
     init(client: HTTPClient, membershipStore: MembershipStore) {
@@ -98,6 +98,8 @@ final class AdsRepository {
 
             if mutedCampaignIDs.contains(ad.campaignKey) {
                 logger.debug("ads:skip placement=\(placement) reason=mutedCampaign campaignKey=\(ad.campaignKey)")
+                // The server already counted this as served; only the app can say it was dropped.
+                reportNotShown(ad, .mutedCampaign)
                 return nil
             }
             logger.debug("ads:served placement=\(placement) kind=\(ad.isCompany ? "company" : "paid") adId=\(ad.adId) campaignKey=\(ad.campaignKey)")
@@ -151,10 +153,42 @@ final class AdsRepository {
 
     /// Fire-and-forget: confirm `token`'s creative was genuinely rendered.
     /// Call once, only once a creative is actually on screen — never at
-    /// serve time.
+    /// serve time. Prefer `trackImpressionOnce`, which also keeps a token that
+    /// was reported as not shown from being counted as shown.
     func trackImpression(_ token: String) {
         Task {
             _ = try? await client.send(.post("/ads/track/impression"), body: try? JSONSerialization.data(withJSONObject: ["token": token]))
+        }
+    }
+
+    /// Tokens already reported as not shown, so a creative that fails in two
+    /// places (a failed item, then the break ending) is said once.
+    private var reportedNotShownTokens: Set<String> = []
+
+    /// `reportNotShown` (Dart) — fire-and-forget: say that a SERVED creative
+    /// never reached the screen, and why. The serve counters know an ad was
+    /// sent and the impression call knows it was shown; this is the gap between
+    /// them, which only the app can report.
+    ///
+    /// A token ends up in one of the two stories, whichever is told first: the
+    /// server keeps no check between them, so a creative already counted as
+    /// shown is never also reported as not shown (and the other way round, in
+    /// `trackImpressionOnce`).
+    ///
+    /// Paid ads only, like `submitFeedback` and `react`: a company ad's token is
+    /// another type (`ads_company`), so the server's report verifier refuses it
+    /// and answers the same silent 204 — the report would be recorded nowhere.
+    func reportNotShown(_ ad: AdCreative, _ reason: AdNotShownReason) {
+        guard !ad.isCompany else { return }
+        let token = ad.impressionToken
+        guard !token.isEmpty,
+              !confirmedImpressionTokens.contains(token),
+              reportedNotShownTokens.insert(token).inserted
+        else { return }
+        logger.debug("ads:not-shown adId=\(ad.adId) reason=\(reason.rawValue)")
+        let body = try? JSONSerialization.data(withJSONObject: ["token": token, "reason": reason.rawValue])
+        Task {
+            _ = try? await client.send(.post("/ads/track/not-shown"), body: body)
         }
     }
 
@@ -228,9 +262,12 @@ final class AdsRepository {
 
     /// `trackImpression`, but once per served ad: the same creative moving from
     /// the mini player's strip onto the full player's cover mid-showing is not
-    /// counted twice (Dart's `trackImpression` dedupes by token).
+    /// counted twice (Dart's `trackImpression` dedupes by token). A token already
+    /// reported as not shown is not counted at all — see `reportNotShown`.
     func trackImpressionOnce(_ token: String) {
-        guard confirmedImpressionTokens.insert(token).inserted else { return }
+        guard !reportedNotShownTokens.contains(token),
+              confirmedImpressionTokens.insert(token).inserted
+        else { return }
         trackImpression(token)
     }
 
@@ -259,6 +296,27 @@ final class AdsRepository {
         defaults.set(timeline.displaySeconds, forKey: "ads_timeline_display:\(placement)")
         defaults.set(timeline.gapSeconds, forKey: "ads_timeline_gap:\(placement)")
     }
+}
+
+/// `ads/ad_not_shown.dart` — why an ad that was served never reached the
+/// screen: the closed list the server accepts on `POST /ads/track/not-shown`.
+/// The server drops a reason outside this list rather than storing it, so a new
+/// one is added there first.
+enum AdNotShownReason: String, Sendable, CaseIterable {
+    /// The file is a format the app has no player for (a picture handed to a break).
+    case unplayableFormat = "unplayable_format"
+    /// The served creative had no usable asset URL.
+    case assetMissing = "asset_missing"
+    /// Downloading or decoding the creative failed or timed out before its slot.
+    case preloadFailed = "preload_failed"
+    /// The video player would not initialise or start.
+    case videoInitFailed = "video_init_failed"
+    /// The listener had muted this campaign a moment earlier.
+    case mutedCampaign = "muted_campaign"
+    /// Another break or screen took the slot first.
+    case superseded
+    /// The ad was held until its impression token's lifetime ran out.
+    case expiredBeforeShow = "expired_before_show"
 }
 
 /// `ads/ad_reaction.dart` — a listener's thumb on an ad. Wire values are the

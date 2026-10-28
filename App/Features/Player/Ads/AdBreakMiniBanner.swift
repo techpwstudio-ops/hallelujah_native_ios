@@ -18,8 +18,10 @@ import SwiftUI
 /// reopens the player. Renders nothing outside a break.
 ///
 /// Not ported: the impression this strip counts in Flutter. The native break
-/// confirms its impression when playback starts (`AdPacingController`), whether
-/// or not any surface is up, so counting it here again would double it.
+/// confirms its own (`AdPacingController`: an audio ad when it can play, a reel
+/// once its picture has been on screen), whether or not this strip is up, so
+/// counting it here as well would double it. A reel heard from behind this strip
+/// and never seen is not counted at all.
 struct AdBreakMiniBanner: View {
     let pacing: AdPacingController
     var horizontalMargin: CGFloat = 0

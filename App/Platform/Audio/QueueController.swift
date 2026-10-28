@@ -85,6 +85,7 @@ final class QueueController {
             repeatMode = restored
         }
         engine.repeatOneActive = (repeatMode == .one)
+        engine.repeatAllActive = (repeatMode == .all)
         engine.onQueueExhausted = { [weak self] in
             await self?.handleQueueExhausted()
         }
@@ -249,6 +250,7 @@ final class QueueController {
         repeatMode = repeatMode.next
         keyValueStore.setString(repeatMode.rawValue, forKey: Self.repeatModeKey)
         engine.repeatOneActive = (repeatMode == .one)
+        engine.repeatAllActive = (repeatMode == .all)
     }
 
     // MARK: - Reorder

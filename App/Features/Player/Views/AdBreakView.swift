@@ -1,4 +1,4 @@
-import AVKit
+import AVFoundation
 import SwiftUI
 
 /// Ports `AdBreakScreen` (`lib/views/home/ad_break_screen.dart`), rendered
@@ -7,16 +7,21 @@ import SwiftUI
 ///   * audio ad — app bar ("Your music will continue after the break", 56pt),
 ///     the picture centred in the leftover space at the largest box of its own
 ///     aspect ratio (the player's full-width square), then the control panel;
-///   * video ad (`reel_video`) — the video fills the screen (cover) and the
-///     same chrome floats over it on scrims (top black @ 65%, bottom @ 92%).
-/// The control panel keeps `AudioPlayerScreen`'s metrics (20 side padding,
-/// 20 top, 8 bottom; 16 / 20 / 24 gaps; 58pt disc): advertiser row with the
-/// Skip chip, a non-seekable 6pt scrubber, the transport row (thumbs, inert
-/// prev/next, play-pause), and the footer line + CTA pill.
+///   * video ad (`reel_video`) — the video on black and only what a reel has
+///     over it (`ReelAdBreak`): a "Sponsored" tag, the Skip chip when the
+///     creative has one, the ⋮ menu, a heart, and the call to action. No
+///     scrubber, transport, advertiser rows or scrim — a reel is a picture to
+///     look at, not a track to control. The video is the screen's width and its
+///     own height, centred (`reelVideoSize`), never cropped; a tap pauses it.
+/// The audio control panel keeps `AudioPlayerScreen`'s metrics (20 side
+/// padding, 20 top, 8 bottom; 16 / 20 / 24 gaps; 58pt disc): advertiser row
+/// with the Skip chip, a non-seekable 6pt scrubber, the transport row (thumbs,
+/// inert prev/next, play-pause), and the footer line + CTA pill.
 ///
 /// Not ported: the two-back-presses escape hatch, the wide (16:9) picture variant (the native
 /// `AdCreative` carries no `wideImageUrl`). Like / dislike persist through
-/// `AdsRepository.react`.
+/// `AdsRepository.react`; a reel has the like only.
+
 struct AdBreakView: View {
     let pacing: AdPacingController
 
@@ -27,7 +32,7 @@ struct AdBreakView: View {
             PlayerStyle.black.ignoresSafeArea()
             if let ad = pacing.currentAd {
                 if ad.assetType == "reel_video" {
-                    VideoAdBreak(pacing: pacing, ad: ad, coordinator: coordinator)
+                    ReelAdBreak(pacing: pacing, ad: ad, coordinator: coordinator)
                 } else {
                     AudioAdBreak(pacing: pacing, ad: ad, coordinator: coordinator)
                 }
@@ -53,16 +58,86 @@ private struct AudioAdBreak: View {
     }
 }
 
-private struct VideoAdBreak: View {
+/// Reel ad: the video on black, and only what a reel has over it. See the file
+/// header for what is left out and why.
+private struct ReelAdBreak: View {
     let pacing: AdPacingController
     let ad: AdCreative
     let coordinator: AppNavigationCoordinator
 
+    private static let edge: CGFloat = 16
+
     var body: some View {
         ZStack {
-            Group {
-                if let player = pacing.adPlayer {
-                    AdVideoSurface(player: player)
+            ReelVideo(pacing: pacing)
+            VStack(spacing: 0) {
+                topRow
+                Spacer(minLength: 0)
+                bottomColumn
+            }
+            .padding(.horizontal, Self.edge)
+        }
+    }
+
+    private var topRow: some View {
+        HStack(spacing: 8) {
+            AdSponsoredBadge()
+            Spacer(minLength: 0)
+            AdBreakSkipChip(pacing: pacing)
+            // Over footage we did not make, so the disc style: nothing else
+            // guarantees the glyph can be seen. Respects the creative's own skip
+            // lock, as in the audio layout: no second, hidden Skip.
+            AdOptionsButton(ad: ad, onDismissAd: {
+                guard pacing.canSkip else { return false }
+                pacing.skip()
+                return true
+            }, style: .overlay, size: 22, overlaySize: 36)
+        }
+        .padding(.vertical, 8)
+    }
+
+    private var bottomColumn: some View {
+        VStack(spacing: 12) {
+            ReelLikeButton(ad: ad)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            if ad.hasDestination {
+                AdBreakCta(pacing: pacing, ad: ad, coordinator: coordinator, horizontalPadding: 28, verticalPadding: 12)
+            }
+        }
+        .padding(.bottom, 8 + 12)
+    }
+}
+
+/// The reel's video at `reelVideoSize`, centred both ways: a reel that fills
+/// the width is centred vertically, one scaled down to fit the height is
+/// centred horizontally. A spinner until the player has reported the video's
+/// shape — never a guessed one.
+private struct ReelVideo: View {
+    let pacing: AdPacingController
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = reelVideoSize(available: proxy.size, aspectRatio: pacing.adVideoAspectRatio)
+            ZStack {
+                if let player = pacing.adPlayer, pacing.isAdReady, size != .zero {
+                    ReelVideoSurface(player: player)
+                        .frame(width: size.width, height: size.height)
+                        // The reel counts once its picture has been seen, not once
+                        // it plays: it plays on at the mini player too.
+                        .reelSeen { pacing.reelWasSeen() }
+                        .overlay {
+                            // Opaque, so the whole video takes the tap.
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture { pacing.togglePause() }
+                                .accessibilityAddTraits(.isButton)
+                                // `Text`, so the catalogue translates it: a ternary of
+                                // bare literals is a `String`, which it never sees.
+                                .accessibilityLabel(pacing.isAdPaused ? Text("Play") : Text("Pause"))
+                        }
+                        .overlay {
+                            if pacing.isAdPaused { pausedMark }
+                        }
                 } else {
                     ProgressView()
                         .progressViewStyle(.circular)
@@ -70,43 +145,201 @@ private struct VideoAdBreak: View {
                         .scaleEffect(1.4)
                 }
             }
-            .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                AdBreakAppBar(pacing: pacing, ad: ad)
-                    .background(scrim(fromTop: true))
-                Spacer(minLength: 0)
-                AdBreakControlPanel(pacing: pacing, ad: ad, coordinator: coordinator)
-                    .background(scrim(fromTop: false))
-            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
+        .ignoresSafeArea()
     }
 
-    /// `_Scrim`: black @ 65% (top) / 92% (bottom) fading to clear.
-    private func scrim(fromTop: Bool) -> some View {
-        LinearGradient(
-            colors: [PlayerStyle.black.opacity(fromTop ? 0.65 : 0.92), PlayerStyle.black.opacity(0)],
-            startPoint: fromTop ? .top : .bottom,
-            endPoint: fromTop ? .bottom : .top
-        )
-        .ignoresSafeArea()
+    /// The play glyph over a paused reel, so a tap that paused it is seen to
+    /// have done so and the next tap is known to resume it.
+    private var pausedMark: some View {
+        Image(systemName: "play.fill")
+            .font(.system(size: 44))
+            .foregroundStyle(PlayerStyle.white)
+            .padding(14)
+            .background(Circle().fill(Color.black.opacity(0x8C / 255)))
+            .allowsHitTesting(false)
+            // The tap target under it already says "Play".
+            .accessibilityHidden(true)
     }
 }
 
-/// Cover-fit, controls-free video surface (`FittedBox(fit: BoxFit.cover)`).
-private struct AdVideoSurface: UIViewControllerRepresentable {
+/// Calls `onSeen` once the view has stayed up for half a second in a foreground
+/// app: the dwell `AdImpressionTrigger` applies, plus the one thing that trigger
+/// cannot know — whether the app is in front. A reel's video plays on whether or
+/// not anyone is looking, so "it played" says nothing about "it was seen".
+///
+/// Restarted whenever the app comes or goes, so a dwell that began in front can
+/// never finish behind. May call more than once (every return to the front);
+/// `reelWasSeen` is idempotent.
+private struct ReelSeen: ViewModifier {
+    let onSeen: () -> Void
+
+    @Environment(\.scenePhase) private var scenePhase
+
+    func body(content: Content) -> some View {
+        content.task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            onSeen()
+        }
+    }
+}
+
+private extension View {
+    func reelSeen(perform onSeen: @escaping () -> Void) -> some View {
+        modifier(ReelSeen(onSeen: onSeen))
+    }
+}
+
+/// A plain `AVPlayerLayer` at the size it is given. `.resizeAspect`, because the
+/// frame already has the video's own shape (`reelVideoSize`): nothing to crop.
+private struct ReelVideoSurface: UIViewRepresentable {
     let player: AVPlayer
 
-    func makeUIViewController(context: Context) -> AVPlayerViewController {
-        let controller = AVPlayerViewController()
-        controller.player = player
-        controller.showsPlaybackControls = false
-        controller.videoGravity = .resizeAspectFill
-        return controller
+    func makeUIView(context: Context) -> PlayerLayerView {
+        let view = PlayerLayerView()
+        view.playerLayer.player = player
+        return view
     }
 
-    func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
-        if controller.player !== player { controller.player = player }
+    func updateUIView(_ view: PlayerLayerView, context: Context) {
+        if view.playerLayer.player !== player { view.playerLayer.player = player }
+    }
+}
+
+private final class PlayerLayerView: UIView {
+    let playerLayer = AVPlayerLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .black
+        playerLayer.videoGravity = .resizeAspect
+        layer.addSublayer(playerLayer)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("PlayerLayerView is not built from a nib or storyboard")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        playerLayer.frame = bounds
+        CATransaction.commit()
+    }
+}
+
+/// The reel's heart: the one reaction a reel has.
+///
+/// The same reaction as the audio layout's thumb-up — same wire value, same
+/// toggle (`AdReaction.next`), same place it is remembered
+/// (`AdsRepository.reaction(for:)`) — drawn as a heart because that is what a
+/// like looks like on a reel. There is no dislike here: "Not interested" in the
+/// ⋮ menu is how a listener makes an ad go away.
+private struct ReelLikeButton: View {
+    let ad: AdCreative
+
+    @State private var reaction: AdReaction?
+    private let ads: AdsRepository = DependencyContainer.current.resolve()
+
+    var body: some View {
+        let liked = reaction == .like
+        Button {
+            let next = AdReaction.next(current: reaction, tapped: .like)
+            reaction = next
+            ads.react(to: ad, next)
+        } label: {
+            Image(systemName: liked ? "heart.fill" : "heart")
+                .font(.system(size: 28))
+                .foregroundStyle(liked ? PlayerStyle.white : PlayerStyle.whiteAlpha(0.7))
+                .frame(width: 48, height: 48)
+                .background(Circle().fill(Color.black.opacity(0x8C / 255)))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Like this ad")
+        .accessibilityAddTraits(liked ? .isSelected : [])
+        // A different ad in the slot starts from what the repository holds for it.
+        .task(id: ad.impressionToken) { reaction = ads.reaction(for: ad) }
+    }
+}
+
+/// `_AdBreakSkipButton`: absent for an unskippable creative; while the wait
+/// runs it shows the seconds left in a chip, then becomes live. Shared by both
+/// layouts.
+private struct AdBreakSkipChip: View {
+    let pacing: AdPacingController
+
+    var body: some View {
+        if let unlockAt = pacing.adSkipUnlocksAt {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let canSkip = context.date >= unlockAt
+                let remaining = canSkip ? 0 : Int(unlockAt.timeIntervalSince(context.date)) + 1
+                let tint = canSkip ? PlayerStyle.black : PlayerStyle.greyMuted
+                Button {
+                    if canSkip { pacing.skip() }
+                } label: {
+                    HStack(spacing: 0) {
+                        Text("Skip")
+                            .typography(Typography.titleSmall)
+                            .foregroundStyle(tint)
+                        if !canSkip {
+                            Text("\(remaining)")
+                                .typography(Typography.labelMedium)
+                                .foregroundStyle(PlayerStyle.black)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(PlayerStyle.greySubtle))
+                                .padding(.leading, 6)
+                        }
+                        Image(systemName: "forward.end.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(tint)
+                            .padding(.leading, 4)
+                    }
+                    .padding(EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 10))
+                    .background(Capsule().fill(PlayerStyle.white))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSkip)
+            }
+        }
+    }
+}
+
+/// `_AdBreakCta`: the call-to-action pill. The label is the creative's own, or
+/// "More Info"; it is dimmed and inert when there is nowhere to send the
+/// listener. Shared by both layouts.
+private struct AdBreakCta: View {
+    let pacing: AdPacingController
+    let ad: AdCreative
+    let coordinator: AppNavigationCoordinator
+    var horizontalPadding: CGFloat = 18
+    var verticalPadding: CGFloat = 9
+
+    private var label: String {
+        ad.ctaLabel?.isEmpty == false ? (ad.ctaLabel ?? String(localized: "More Info")) : String(localized: "More Info")
+    }
+
+    var body: some View {
+        let enabled = ad.hasDestination
+        Button {
+            if enabled { pacing.openAction(coordinator: coordinator) }
+        } label: {
+            Text(label)
+                .typography(Typography.titleSmall)
+                .foregroundStyle(enabled ? PlayerStyle.black : PlayerStyle.whiteAlpha(0.54))
+                .padding(.horizontal, horizontalPadding)
+                .padding(.vertical, verticalPadding)
+                .background(Capsule().fill(enabled ? PlayerStyle.white : PlayerStyle.whiteAlpha(0.24)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
     }
 }
 
@@ -198,8 +431,6 @@ private struct AdBreakControlPanel: View {
 
     private typealias Reaction = AdReaction
 
-    private var hasCTA: Bool { ad.action != nil || ad.clickUrl != nil }
-
     var body: some View {
         VStack(spacing: 0) {
             advertiserRow
@@ -237,47 +468,7 @@ private struct AdBreakControlPanel: View {
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            skipChip
-        }
-    }
-
-    /// `_AdBreakSkipButton`: absent for an unskippable creative; while the wait
-    /// runs it shows the seconds left in a chip, then becomes live.
-    @ViewBuilder
-    private var skipChip: some View {
-        if let unlockAt = pacing.adSkipUnlocksAt {
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                let canSkip = context.date >= unlockAt
-                let remaining = canSkip ? 0 : Int(unlockAt.timeIntervalSince(context.date)) + 1
-                let tint = canSkip ? PlayerStyle.black : PlayerStyle.greyMuted
-                Button {
-                    if canSkip { pacing.skip() }
-                } label: {
-                    HStack(spacing: 0) {
-                        Text("Skip")
-                            .typography(Typography.titleSmall)
-                            .foregroundStyle(tint)
-                        if !canSkip {
-                            Text("\(remaining)")
-                                .typography(Typography.labelMedium)
-                                .foregroundStyle(PlayerStyle.black)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(PlayerStyle.greySubtle))
-                                .padding(.leading, 6)
-                        }
-                        Image(systemName: "forward.end.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(tint)
-                            .padding(.leading, 4)
-                    }
-                    .padding(EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 10))
-                    .background(Capsule().fill(PlayerStyle.white))
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .disabled(!canSkip)
-            }
+            AdBreakSkipChip(pacing: pacing)
         }
     }
 
@@ -295,7 +486,7 @@ private struct AdBreakControlPanel: View {
                 PlayerPlayPauseDisc(isPlaying: !pacing.isAdPaused, isLoading: false)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(pacing.isAdPaused ? "Play" : "Pause")
+            .accessibilityLabel(pacing.isAdPaused ? Text("Play") : Text("Pause"))
             Spacer(minLength: 0)
             inertGlyph("forward.end.fill")
             Spacer(minLength: 0)
@@ -344,19 +535,7 @@ private struct AdBreakControlPanel: View {
                 .foregroundStyle(PlayerStyle.white)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button {
-                if hasCTA { pacing.openAction(coordinator: coordinator) }
-            } label: {
-                Text(ad.ctaLabel?.isEmpty == false ? (ad.ctaLabel ?? String(localized: "More Info")) : String(localized: "More Info"))
-                    .typography(Typography.titleSmall)
-                    .foregroundStyle(hasCTA ? PlayerStyle.black : PlayerStyle.whiteAlpha(0.54))
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 9)
-                    .background(Capsule().fill(hasCTA ? PlayerStyle.white : PlayerStyle.whiteAlpha(0.24)))
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(!hasCTA)
+            AdBreakCta(pacing: pacing, ad: ad, coordinator: coordinator)
         }
     }
 }
