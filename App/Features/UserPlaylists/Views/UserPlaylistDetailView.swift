@@ -50,7 +50,8 @@ struct UserPlaylistDetailView: View {
             case .loading:
                 ParitySpinner(fills: true).frame(maxHeight: .infinity)
             case .failed:
-                ParityEmptyText(text: "Playlist not found").frame(maxHeight: .infinity)
+                ParityEmptyText(text: viewModel.failureMessage.map { LocalizedStringKey($0) } ?? "Playlist not found")
+                    .frame(maxHeight: .infinity)
             case .empty(let playlist):
                 scroll(playlist: playlist, page: nil)
             case .loaded(let playlist, let page):

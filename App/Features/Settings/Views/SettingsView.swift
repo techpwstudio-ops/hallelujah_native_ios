@@ -153,10 +153,14 @@ struct SettingsView: View {
                     },
                     trailing: { EmptyView() }
                 )
+                // Offline, Safari can't load these (or shows a cached page
+                // without its images), so say so instead of leaving the app.
                 tile(icon: "asset:settings_privacy_policy", title: "Privacy Policy", subtitle: Text("Your data, your rights.")) {
+                    guard ReachabilityBroadcast.shared.requireOnline() else { return }
                     UIApplication.shared.open(AppConfiguration.current.privacyPolicyURL)
                 }
                 tile(icon: "asset:settings_terms_condition", title: "Terms And Conditions", subtitle: Text("All the details you need to know.")) {
+                    guard ReachabilityBroadcast.shared.requireOnline() else { return }
                     UIApplication.shared.open(AppConfiguration.current.termsAndConditionsURL)
                 }
 

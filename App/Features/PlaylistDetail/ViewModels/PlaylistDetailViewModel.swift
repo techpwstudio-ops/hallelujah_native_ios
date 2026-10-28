@@ -25,6 +25,9 @@ final class PlaylistDetailViewModel {
     let playlist: Playlist
     private(set) var state: LoadState = .loading
     private(set) var isLoadingMore = false
+    /// Set with `.failed` when the request never got a response (offline,
+    /// timed out), so the screen says that instead of the empty-playlist text.
+    private(set) var failureMessage: String?
 
     private let repository: any PlaylistRepository
     private let logger = AppLogger(category: .content)
@@ -71,6 +74,7 @@ final class PlaylistDetailViewModel {
 
     private func load(page: Int) async {
         state = .loading
+        failureMessage = nil
         loadTask = Task {
             defer { loadTask = nil }
             do {
@@ -78,6 +82,9 @@ final class PlaylistDetailViewModel {
                 state = result.items.isEmpty ? .empty : .loaded(result)
             } catch {
                 logger.warning("playlist \(self.playlist.id) page \(page) failed: \(error)")
+                if UserFacingError.isTransportFailure(error) {
+                    failureMessage = UserFacingError.message(for: error)
+                }
                 state = .failed
             }
         }

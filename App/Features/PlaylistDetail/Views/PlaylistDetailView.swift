@@ -232,8 +232,11 @@ struct PlaylistDetailView: View {
         case .loading:
             HomeSpinner()
                 .frame(maxWidth: .infinity, minHeight: 300)
-        case .empty, .failed:
+        case .empty:
             HomeEmptyText(text: emptyText)
+                .frame(minHeight: 300)
+        case .failed:
+            HomeEmptyText(text: viewModel.failureMessage ?? emptyText)
                 .frame(minHeight: 300)
         case .loaded(let page):
             LazyVStack(spacing: 0) {

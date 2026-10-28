@@ -165,8 +165,14 @@ struct SubscriptionPlansView: View {
                 }
             }
             PlansFooterLinks(
-                onTerms: { openURL(AppConfiguration.current.termsAndConditionsURL) },
-                onPrivacy: { openURL(AppConfiguration.current.privacyPolicyURL) },
+                onTerms: {
+                    guard ReachabilityBroadcast.shared.requireOnline() else { return }
+                    openURL(AppConfiguration.current.termsAndConditionsURL)
+                },
+                onPrivacy: {
+                    guard ReachabilityBroadcast.shared.requireOnline() else { return }
+                    openURL(AppConfiguration.current.privacyPolicyURL)
+                },
                 onRestore: viewModel.isPremiumUser ? nil : { Task { await viewModel.restoreTapped() } }
             )
         }

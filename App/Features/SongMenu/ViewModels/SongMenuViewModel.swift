@@ -158,6 +158,15 @@ final class SongMenuViewModel {
 
     func download() async -> SongMenuOutcome {
         guard await premiumGate.allows(.downloads) else { return .requiresPremium }
+        // Starting, retrying or resuming a download needs the network. Without
+        // this the song was queued, silently failed, and the sheet just closed.
+        // Removing or cancelling one works offline, so those fall through.
+        switch downloadEngine.tasks[song.id]?.state {
+        case nil, .failed, .paused:
+            guard ReachabilityBroadcast.shared.isOnline else { return .notice(UserFacingError.offline) }
+        default:
+            break
+        }
         switch downloadEngine.tasks[song.id]?.state {
         case nil:
             let quality = await AudioQualitySelector.live(keyValueStore: keyValueStore).targetQuality()

@@ -96,7 +96,9 @@ final class LanguageViewModel {
             languageOptions = try await authRepository.fetchLanguages()
         } catch {
             logger.warning("fetch languages failed: \(error)")
-            errorMessage = String(localized: "Network error")
+            // Empty for a cancelled load (the screen went away): nothing to show.
+            let message = UserFacingError.message(for: error)
+            errorMessage = message.isEmpty ? nil : message
         }
         isLoading = false
     }
@@ -149,7 +151,7 @@ final class LanguageViewModel {
             return false
         } catch {
             logger.warning("save languages failed: \(error)")
-            saveState = .error(message: String(localized: "Network error"))
+            saveState = .error(message: UserFacingError.message(for: error))
             return false
         }
     }

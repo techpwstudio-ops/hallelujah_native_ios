@@ -25,6 +25,9 @@ final class UserPlaylistDetailViewModel {
     private(set) var state: LoadState = .loading
     private(set) var isLoadingMore = false
     private(set) var isOwner = false
+    /// Set with `.failed` when the request never got a response (offline,
+    /// timed out): "Playlist not found" would be wrong, the playlist exists.
+    private(set) var failureMessage: String?
     /// Follow state + share link for the action row (non-owner Follow button, Share).
     let actions: UserPlaylistActionsViewModel?
 
@@ -184,6 +187,7 @@ final class UserPlaylistDetailViewModel {
             return
         }
         state = .loading
+        failureMessage = nil
         loadTask = Task {
             defer { loadTask = nil }
             do {
@@ -196,6 +200,9 @@ final class UserPlaylistDetailViewModel {
                     : .loaded(playlist: result.playlist, songs: result.songs)
             } catch {
                 logger.warning("playlist \(playlistID) page \(page) failed: \(error)")
+                if UserFacingError.isTransportFailure(error) {
+                    failureMessage = UserFacingError.message(for: error)
+                }
                 state = .failed
             }
         }

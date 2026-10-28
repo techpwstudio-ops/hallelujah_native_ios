@@ -63,7 +63,7 @@ struct HTTPRequestPolicyTests {
     }
 
     @Test func offlineAndTimeoutMessagesDiffer() {
-        #expect(HTTPRequestPolicy.transportToast(for: URLError(.notConnectedToInternet)) == "No internet connection. Please check your network.")
+        #expect(HTTPRequestPolicy.transportToast(for: URLError(.notConnectedToInternet)) == UserFacingError.offline)
         #expect(HTTPRequestPolicy.transportToast(for: URLError(.timedOut)) == "Connection timeout. Please try again.")
     }
 

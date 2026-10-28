@@ -23,6 +23,8 @@ private struct FavouriteArtistsPage: Sendable {
 final class FavouriteArtistsViewModel {
     private let type: HomeContentType
     private var page = FavouriteArtistsPage()
+    /// Why the first page didn't load; see `FavouriteSongsViewModel.loadError`.
+    private(set) var loadError: String?
     private let repository: any FavouriteRepository
     private let logger = AppLogger(category: .content)
 
@@ -61,11 +63,14 @@ final class FavouriteArtistsViewModel {
             page.items.append(contentsOf: result.items)
             page.page = result.page
             page.hasMore = result.hasMore
+            loadError = nil
         } catch {
             logger.warning("favourite artists page load failed: \(error)")
             if page.page == 0 {
                 page.page = 1
                 page.hasMore = false
+                let message = UserFacingError.message(for: error)
+                loadError = message.isEmpty ? nil : message
             }
         }
         page.isLoading = false

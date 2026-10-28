@@ -84,7 +84,9 @@ enum HTTPRequestPolicy {
     static func transportToast(for error: URLError) -> String {
         switch error.code {
         case .notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff:
-            String(localized: "No internet connection. Please check your network.")
+            // Same text `UserFacingError` gives the screen that made the call,
+            // so the two toasts for one failure are one toast.
+            UserFacingError.offline
         default:
             String(localized: "Connection timeout. Please try again.")
         }

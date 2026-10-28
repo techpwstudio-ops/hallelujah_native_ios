@@ -103,7 +103,8 @@ struct FavouriteSongsView: View {
             if viewModel.isLoadingSongs || !viewModel.hasLoadedOnce {
                 ParitySpinner(fills: true)
             } else {
-                ParityEmptyText(text: LocalizedStringKey(viewModel.emptyText))
+                // A page that failed to load is not "No music": say why.
+                ParityEmptyText(text: LocalizedStringKey(viewModel.loadError ?? viewModel.emptyText))
             }
         } else {
             ScrollView {

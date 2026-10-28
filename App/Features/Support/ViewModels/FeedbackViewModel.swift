@@ -5,11 +5,13 @@ import Observation
 /// distinguishes with its `try`/`else`/`catch` — kept separate here (rather
 /// than collapsing "failure" and "thrown error" into one case) because Dart
 /// shows a different message for each: the server's own `message` for a
-/// non-200 response, a fixed generic string for a transport failure.
+/// non-200 response, a fixed generic string for a transport failure. Native
+/// words the thrown case through `UserFacingError`, so being offline reads as
+/// "No internet connection" rather than the generic text.
 enum FeedbackSubmitOutcome: Equatable {
     case success
     case failure(message: String?)
-    case transportError
+    case transportError(message: String)
 }
 
 /// Ports `_FeedbackPageState._onSubmit`'s network call and its in-flight
@@ -45,7 +47,7 @@ final class FeedbackViewModel {
             return result.succeeded ? .success : .failure(message: result.message)
         } catch {
             logger.warning("submit feedback failed: \(error)")
-            return .transportError
+            return .transportError(message: UserFacingError.message(for: error))
         }
     }
 }

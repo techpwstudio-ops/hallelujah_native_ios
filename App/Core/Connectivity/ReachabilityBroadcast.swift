@@ -26,6 +26,15 @@ final class ReachabilityBroadcast {
         }
     }
 
+    /// For an action that only works online and leaves nothing on screen to say
+    /// so (handing a web page to Safari). Offline it shows the app's "No
+    /// internet connection" toast and returns `false`.
+    func requireOnline() -> Bool {
+        guard !isOnline else { return true }
+        ToastCenter.shared.show(UserFacingError.offline)
+        return false
+    }
+
     /// A stream of subsequent changes. Terminating it (cancelling the
     /// consuming task) unregisters the listener.
     func changes() -> AsyncStream<Bool> {

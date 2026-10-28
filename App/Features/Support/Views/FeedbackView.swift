@@ -78,7 +78,8 @@ struct FeedbackContentView: View {
     }
 
     /// `_onSubmit`: success toasts, resets the form and pops; a non-200 shows
-    /// the server message (or "Failed"); a thrown error shows "Something went wrong".
+    /// the server message (or "Failed"); a thrown error shows the view model's
+    /// `UserFacingError` text ("No internet connection…" when offline).
     private func submit() {
         guard let selectedReason else {
             toastCenter.show("Please select a reason")
@@ -97,8 +98,8 @@ struct FeedbackContentView: View {
                 coordinator.pop()
             case let .failure(message):
                 toastCenter.show(message ?? "Failed")
-            case .transportError:
-                toastCenter.show("Something went wrong")
+            case let .transportError(message):
+                toastCenter.show(message)
             }
         }
     }

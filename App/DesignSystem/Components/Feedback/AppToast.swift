@@ -43,7 +43,16 @@ final class ToastCenter {
 
     func show(_ text: String) {
         dismissTask?.cancel()
-        let message = ToastMessage(text: L10n.tr(text))
+        let localized = L10n.tr(text)
+        // The same text shown again (a request's own offline toast, then the
+        // screen's) keeps the pill that is up and restarts its timer, rather
+        // than swapping in an identical one that animates in over it.
+        let message: ToastMessage
+        if let current, current.text == localized {
+            message = current
+        } else {
+            message = ToastMessage(text: localized)
+        }
         current = message
         dismissTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(Self.duration))

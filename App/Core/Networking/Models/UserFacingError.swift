@@ -28,6 +28,14 @@ enum UserFacingError {
         return generic
     }
 
+    /// The request never got a response (offline, timed out, host unreachable).
+    /// A screen that would otherwise read the failure as "not found" or "empty"
+    /// checks this first, since that is not what happened.
+    static func isTransportFailure(_ error: Error) -> Bool {
+        if let apiError = error as? APIError, case .transport = apiError { return true }
+        return error is URLError
+    }
+
     private static func message(for urlError: URLError) -> String {
         switch urlError.code {
         case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff:

@@ -14,6 +14,11 @@ final class CreatorGridViewModel {
     private(set) var hasMore = true
     private(set) var hasLoadedOnce = false
     private(set) var isSaving = false
+    /// Why the first page didn't load ("No internet connection…"); the grid
+    /// would otherwise sit blank with no explanation.
+    private(set) var loadError: String?
+    /// Why the last `done()` failed, for the caller's toast.
+    private(set) var saveError: String?
     private(set) var initialSelection: Set<String> = []
     private(set) var selection: Set<String> = []
 
@@ -66,6 +71,7 @@ final class CreatorGridViewModel {
     func done() async -> Bool {
         guard !isSaving else { return false }
         isSaving = true
+        saveError = nil
         defer { isSaving = false }
         // Only what changed. Dart replaces the whole followed set
         // (`detach: true`) because its snapshot is every followed artist;
@@ -85,6 +91,7 @@ final class CreatorGridViewModel {
             return true
         } catch {
             logger.warning("save followed creators failed: \(error)")
+            saveError = UserFacingError.message(for: error)
             return false
         }
     }
@@ -114,9 +121,14 @@ final class CreatorGridViewModel {
             creators.append(contentsOf: result.items)
             page = result.page
             hasMore = result.hasMore
+            loadError = nil
         } catch {
             logger.warning("all creators page load failed: \(error)")
-            if page == 0 { hasMore = false }
+            if page == 0 {
+                hasMore = false
+                let message = UserFacingError.message(for: error)
+                loadError = message.isEmpty ? nil : message
+            }
         }
         isLoading = false
         hasLoadedOnce = true

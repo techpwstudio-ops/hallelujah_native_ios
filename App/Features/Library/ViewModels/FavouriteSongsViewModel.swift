@@ -37,6 +37,10 @@ final class FavouriteSongsViewModel {
     private let type: HomeContentType
 
     private var page = FavouriteSongsPage()
+    /// Why the first page didn't load ("No internet connection…"). Without it
+    /// a failed first page fell through to the empty state and an offline
+    /// listener was told they had no liked music.
+    private(set) var loadError: String?
     private let repository: any FavouriteRepository
     private let logger = AppLogger(category: .content)
 
@@ -102,11 +106,14 @@ final class FavouriteSongsViewModel {
             page.items.append(contentsOf: result.items)
             page.page = result.page
             page.hasMore = result.hasMore
+            loadError = nil
         } catch {
             logger.warning("favourite songs page load failed: \(error)")
             if page.page == 0 {
                 page.page = 1
                 page.hasMore = false
+                let message = UserFacingError.message(for: error)
+                loadError = message.isEmpty ? nil : message
             }
         }
         page.isLoading = false

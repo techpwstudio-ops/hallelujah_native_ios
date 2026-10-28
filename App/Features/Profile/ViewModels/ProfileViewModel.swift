@@ -89,7 +89,10 @@ final class ProfileViewModel {
             return false
         } catch {
             logger.warning("profile save failed: \(error)")
-            state = .error(message: String(localized: "Something went wrong. Please try again."))
+            // Offline, the photo upload or the profile call throws a transport
+            // error, not an `UploadError`; `UserFacingError` words that as
+            // "No internet connection" instead of the generic text.
+            state = .error(message: UserFacingError.message(for: error))
             return false
         }
     }

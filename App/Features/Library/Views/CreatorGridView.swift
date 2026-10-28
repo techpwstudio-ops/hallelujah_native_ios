@@ -29,6 +29,8 @@ struct CreatorGridView: View {
 
             if viewModel.creators.isEmpty && !viewModel.hasLoadedOnce {
                 ParitySpinner(fills: true)
+            } else if viewModel.creators.isEmpty, let loadError = viewModel.loadError {
+                ParityEmptyText(text: LocalizedStringKey(loadError))
             } else {
                 CreatorMaxExtentGrid(items: viewModel.creators) { creator in
                     CreatorGridCell(creator: creator, isSelected: viewModel.isSelected(creator)) {
@@ -62,7 +64,7 @@ struct CreatorGridView: View {
                     if await viewModel.done() {
                         coordinator.pop()
                     } else {
-                        toastCenter.show("Something went wrong. Please try again.")
+                        toastCenter.show(viewModel.saveError ?? UserFacingError.generic)
                     }
                 }
             } label: {

@@ -45,7 +45,8 @@ struct FavouriteArtistsView: View {
                 ParitySpinner(fills: true)
                     .frame(maxHeight: .infinity)
             } else {
-                ParityEmptyText(text: "No favourite artists.")
+                // A page that failed to load is not "No favourite artists": say why.
+                ParityEmptyText(text: viewModel.loadError.map { LocalizedStringKey($0) } ?? "No favourite artists.")
                     .frame(maxHeight: .infinity)
             }
         } else {
