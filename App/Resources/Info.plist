@@ -162,8 +162,13 @@
 	<true/>
 	<key>NSRemoteNotificationUsageDescription</key>
 	<string>Hallelujah sends notifications about new songs and albums from artists you follow, reminders for your daily Bible reading, and updates about your subscription, such as when it is about to renew.</string>
-	<key>UIUserInterfaceStyle</key>
-	<string>Dark</string>
+	<!-- Deliberately NO `UIUserInterfaceStyle`. The phone UI is dark-only via
+	     `.preferredColorScheme(.dark)` on the WindowGroup root
+	     (`HallelujahApp`); the plist key is app-wide, so it also forced Dark
+	     onto the CarPlay scene, which then disagreed with the head unit's own
+	     day/night style and left CarPlay text unreadable (dark labels on a dark
+	     backdrop, light labels on a light one). The Flutter host has no such key
+	     either. The launch screen is a fixed black colour, so it is unaffected. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Hallelujah needs the camera so you can take a profile photo.</string>
 

@@ -10,6 +10,10 @@ import UIKit
 /// player — the phone UI and CarPlay read and drive the same objects, which
 /// is what makes "start on the phone, continue in the car" free (T52).
 ///
+/// Now Playing goes beyond the Dart delegate's lone heart: Shuffle, Repeat and
+/// (premium) Sleep Timer buttons beside it, and the Up Next button opening the
+/// playback queue — each mirrors a control the phone player already has.
+///
 /// Lifetime: created in `didConnect`, `stop()`ped in `didDisconnect`. Remote
 /// commands (play/pause/next/seek) are NOT registered here — the app-wide
 /// `NowPlayingCoordinator` already owns `MPRemoteCommandCenter`, and CarPlay's
@@ -25,6 +29,8 @@ final class CarPlayController {
     private let provider: CarPlayContentProvider
     private let engine: AudioEngine
     private let queueController: QueueController
+    private let sleepTimer: SleepTimerController
+    private let premiumGate: PremiumGate
     private let favourites: any FavouriteRepository
     private let session: Session
     private let artwork: ArtworkSource
@@ -42,20 +48,35 @@ final class CarPlayController {
 
     private var likedList: LiveList?
     private var downloadsList: LiveList?
-    private var playlistsList: LiveList?
     /// Open user-playlist drill-downs, by playlist id, so a playlist edit made
     /// elsewhere can re-fetch the one on screen.
     private var playlistSongLists: [String: LiveList] = [:]
     private var changeObserver: NSObjectProtocol?
 
-    private var likeButton: CPNowPlayingImageButton?
+    private var nowPlayingButtons: [CPNowPlayingImageButton] = []
+    /// The row as last submitted to CarPlay, so an unchanged row isn't sent again.
+    private var appliedButtons: (row: [CarPlayNowPlayingButton], likeScale: CGFloat)?
+    /// 1 normally, enlarged for the instant after a like tap (the "pop").
+    private var likeScale: CGFloat = 1.0
+    /// Whether the listener's plan includes the sleep timer, which decides if
+    /// its button is on Now Playing at all. Re-checked as songs change: the
+    /// membership can still be loading when the car connects.
+    private var offersSleepTimer = false
+    private var nowPlayingObserver: NowPlayingObserver?
     private var lastFavouriteState: (songID: String, isFavorited: Bool)?
+
+    /// The pushed Queue screen, re-rendered in place while it is on top.
+    private var queueTemplate: CPListTemplate?
+    /// Bumped per render so a slow artwork fetch can't overwrite a newer one.
+    private var queueRefreshGeneration = 0
 
     init(interfaceController: CPInterfaceController, container: DependencyContainer = .current) {
         self.interfaceController = interfaceController
         provider = CarPlayContentProvider(container: container)
         engine = container.resolve()
         queueController = container.resolve()
+        sleepTimer = container.resolve()
+        premiumGate = container.resolve()
         favourites = container.resolve()
         session = container.resolve()
         artwork = ArtworkSource(session: container.resolve(), proxyHost: AppConfiguration.current.proxyBaseURL.host)
@@ -76,9 +97,9 @@ final class CarPlayController {
         let tabBar = CPTabBarTemplate(templates: [homeTemplate, recentsTemplate, searchTemplate, libraryTemplate])
         interfaceController.setRootTemplate(tabBar, animated: false, completion: nil)
 
-        observeEngine()
+        observePlayback()
         observeIntegrationChanges()
-        refreshLikeButton()
+        configureNowPlaying()
 
         Task { await loadAllTabs() }
     }
@@ -87,10 +108,12 @@ final class CarPlayController {
         isActive = false
         likedList = nil
         downloadsList = nil
-        playlistsList = nil
         playlistSongLists = [:]
+        queueTemplate = nil
         if let changeObserver { NotificationCenter.default.removeObserver(changeObserver) }
         changeObserver = nil
+        if let nowPlayingObserver { CPNowPlayingTemplate.shared.remove(nowPlayingObserver) }
+        nowPlayingObserver = nil
     }
 
     // MARK: - Integration change notifications
@@ -123,7 +146,7 @@ final class CarPlayController {
         case .downloads:
             refreshIfOnTop(downloadsList)
         case .playlists:
-            refreshIfOnTop(playlistsList)
+            Task { await loadLibraryTab() }
         case .playlistSongs:
             if let playlistID { refreshIfOnTop(playlistSongLists[playlistID]) }
         }
@@ -155,8 +178,8 @@ final class CarPlayController {
         async let home: Void = loadHomeTab()
         async let recents: Void = loadRecentsTab()
         async let search: Void = loadSearchTab()
-        loadLibraryTab()
-        _ = await (home, recents, search)
+        async let library: Void = loadLibraryTab()
+        _ = await (home, recents, search, library)
     }
 
     private func isSignedIn() async -> Bool {
@@ -210,7 +233,9 @@ final class CarPlayController {
         searchTemplate.updateSections([CPListSection(items: [hint] + genreItems)])
     }
 
-    private func loadLibraryTab() {
+    /// Liked Songs and Downloads show at once; the library's playlists are
+    /// added when the merged feed arrives, so the tab doesn't sit on "Loading…".
+    private func loadLibraryTab() async {
         let liked = CPListItem(
             text: String(localized: "Liked Songs"),
             detailText: String(localized: "Your favorites")
@@ -227,15 +252,12 @@ final class CarPlayController {
             completion()
             MainActor.assumeIsolated { self?.pushDownloads() }
         }
-        let playlists = CPListItem(
-            text: String(localized: "Playlists"),
-            detailText: String(localized: "Yours and curated for you")
-        )
-        playlists.handler = { [weak self] _, completion in
-            completion()
-            MainActor.assumeIsolated { self?.pushAllPlaylists() }
-        }
-        libraryTemplate.updateSections([CPListSection(items: [liked, downloads, playlists])])
+        libraryTemplate.updateSections([CPListSection(items: [liked, downloads])])
+
+        let group = CarPlayRowGroup(rows: await provider.libraryPlaylistRows(), songs: [], source: Self.noSource)
+        guard isActive else { return }
+        let playlistItems = await makeListItems(group, emptyKey: nil)
+        libraryTemplate.updateSections([CPListSection(items: [liked, downloads] + playlistItems)])
     }
 
     // MARK: - Pushed templates (T51)
@@ -253,16 +275,6 @@ final class CarPlayController {
             title: String(localized: "Downloads"),
             emptyKey: "No downloads yet",
             load: { [provider] in provider.downloadedSongs() }
-        )
-    }
-
-    private func pushAllPlaylists() {
-        playlistsList = pushSongList(
-            title: String(localized: "Playlists"),
-            emptyKey: "No playlists yet",
-            load: { [provider] in
-                CarPlayRowGroup(rows: await provider.allPlaylistRows(), songs: [], source: Self.noSource)
-            }
         )
     }
 
@@ -354,7 +366,7 @@ final class CarPlayController {
             play(group.songs, startIndex: index, source: group.source)
         case .recentSong(let songID):
             Task {
-                guard let song = await provider.resolveSong(id: songID, title: row.title) else {
+                guard let song = await provider.resolveSong(id: songID) else {
                     logger.warning("CarPlay recent song \(songID) could not be resolved")
                     return
                 }
@@ -377,7 +389,15 @@ final class CarPlayController {
         }
     }
 
+    /// Every song a CarPlay row or rail tile starts goes through here, so a tap
+    /// anywhere opens Now Playing. It goes up at tap time rather than once
+    /// playback has begun: `engine.play` waits on the stream to resolve, and
+    /// the car would otherwise sit on the list for that long. The cost is that
+    /// Now Playing shows the previous track (or nothing) until the engine
+    /// publishes the new song to `MPNowPlayingInfoCenter`.
     private func play(_ songs: [Song], startIndex: Int, source: QueueAttribution) {
+        guard songs.indices.contains(startIndex) else { return }
+        showNowPlaying()
         Task { await queueController.play(songs: songs, startIndex: startIndex, source: source) }
     }
 
@@ -418,7 +438,11 @@ final class CarPlayController {
                     showsImageFullHeight: false,
                     title: row.title,
                     subtitle: row.subtitle,
-                    tintColor: .clear
+                    // `nil` = the system's own card surface. A `.clear` tint
+                    // removed that surface, so the title/subtitle landed
+                    // straight on the head unit's backdrop in a colour chosen
+                    // for the card, and went unreadable on some cars.
+                    tintColor: nil
                 )
             }
             item = CPListImageRowItem(text: rail.title, cardElements: elements, allowsMultipleLines: false)
@@ -444,26 +468,51 @@ final class CarPlayController {
 
     // MARK: - Engine observation and Now Playing (T52)
 
+    /// Brings CarPlay's Now Playing screen to the top once the user starts a
+    /// song (`CPNowPlayingTemplate.sharedTemplate` is documented as the thing
+    /// to present "in response to the user selecting a playable item"). CarPlay
+    /// also presents it on its own in some cases, so it may already be on
+    /// screen or lower in the stack: it is pushed only when absent, and popped
+    /// back to when something sits above it.
+    func showNowPlaying() {
+        guard isActive else { return }
+        let nowPlaying = CPNowPlayingTemplate.shared
+        if interfaceController.topTemplate === nowPlaying { return }
+        if interfaceController.templates.contains(where: { $0 === nowPlaying }) {
+            interfaceController.pop(to: nowPlaying, animated: true, completion: nil)
+        } else {
+            push(nowPlaying)
+        }
+    }
+
     /// Re-arms itself after every change, the same pattern as
     /// `NowPlayingCoordinator.trackEngine`. Reads only what it reacts to:
-    /// the current song's identity and favourite flag (like button, "now
-    /// playing" row dots, Liked Songs refresh) and the download catalogue.
-    private func observeEngine() {
+    /// the current song's identity and favourite flag, the queue, the shuffle
+    /// and repeat modes, and whether a sleep timer is running — everything the
+    /// Now Playing buttons, the Queue screen and the "now playing" row dots
+    /// show, plus the Liked Songs refresh.
+    private func observePlayback() {
         guard isActive else { return }
         withObservationTracking {
             _ = engine.currentSong?.id
             _ = engine.currentSong?.isFavorited
+            _ = queueController.queue
+            _ = queueController.isShuffled
+            _ = queueController.repeatMode
+            _ = sleepTimer.isActive
         } onChange: { [weak self] in
             Task { @MainActor in
-                self?.engineChanged()
-                self?.observeEngine()
+                self?.playbackChanged()
+                self?.observePlayback()
             }
         }
     }
 
-    private func engineChanged() {
+    private func playbackChanged() {
         guard isActive else { return }
-        refreshLikeButton()
+        refreshNowPlayingButtons()
+        refreshQueueIfOnTop()
+        Task { await refreshSleepTimerAvailability() }
 
         let current = engine.currentSong
         let newState = current.map { (songID: $0.id, isFavorited: $0.isFavorited) }
@@ -475,17 +524,67 @@ final class CarPlayController {
         lastFavouriteState = newState
     }
 
-    /// `CPNowPlayingImageButton.image` is get-only — changing what the button
-    /// shows means building a new button and resubmitting it.
-    private func refreshLikeButton(scale: CGFloat = 1.0) {
-        let isFavorited = engine.currentSong?.isFavorited ?? false
-        let heart = Self.heartImage(filled: isFavorited, scale: scale)
-        let button = CPNowPlayingImageButton(image: heart) { [weak self] _ in
-            MainActor.assumeIsolated { self?.toggleFavouriteFromCarPlay() }
+    /// What only CarPlay's shared Now Playing screen has: the button row, and
+    /// the Up Next button, retitled "Queue" and opening our playback queue
+    /// (Spotify's is "Queue and Jam"; there is no Jam here, so just the queue).
+    private func configureNowPlaying() {
+        let template = CPNowPlayingTemplate.shared
+        template.isUpNextButtonEnabled = true
+        template.upNextTitle = String(localized: "Queue")
+        let observer = NowPlayingObserver { [weak self] in self?.pushQueue() }
+        template.add(observer)
+        nowPlayingObserver = observer
+
+        refreshNowPlayingButtons()
+        Task { await refreshSleepTimerAvailability() }
+    }
+
+    /// `CPNowPlayingImageButton.image` is get-only — changing what a button
+    /// shows means building a new one and resubmitting the row, so that only
+    /// happens when the row differs from what CarPlay already has.
+    private func refreshNowPlayingButtons() {
+        guard isActive else { return }
+        let row = CarPlayNowPlayingButton.row(
+            isFavorited: engine.currentSong?.isFavorited ?? false,
+            isShuffled: queueController.isShuffled,
+            repeatMode: queueController.repeatMode,
+            offersSleepTimer: offersSleepTimer,
+            isSleepTimerRunning: sleepTimer.isActive
+        )
+        guard appliedButtons?.row != row || appliedButtons?.likeScale != likeScale else { return }
+        appliedButtons = (row, likeScale)
+        nowPlayingButtons = row.map(makeNowPlayingButton)
+        CPNowPlayingTemplate.shared.updateNowPlayingButtons(nowPlayingButtons)
+    }
+
+    /// Custom image buttons throughout, not CarPlay's own shuffle and repeat
+    /// buttons: those take their selected state from what the app reports
+    /// through `MPRemoteCommandCenter`, which `NowPlayingCoordinator` owns and
+    /// registers no shuffle or repeat commands on. An image button's selected
+    /// state is ours to set, and its tap goes straight to the handler.
+    private func makeNowPlayingButton(_ slot: CarPlayNowPlayingButton) -> CPNowPlayingImageButton {
+        let scale = slot.kind == .like ? likeScale : 1.0
+        let button = CPNowPlayingImageButton(image: Self.glyphImage(slot.symbol, scale: scale)) { [weak self] _ in
+            MainActor.assumeIsolated { self?.nowPlayingButtonTapped(slot.kind) }
         }
-        button.isSelected = isFavorited
-        likeButton = button
-        CPNowPlayingTemplate.shared.updateNowPlayingButtons([button])
+        button.isSelected = slot.isSelected
+        return button
+    }
+
+    private func nowPlayingButtonTapped(_ kind: CarPlayNowPlayingButton.Kind) {
+        switch kind {
+        case .like: toggleFavouriteFromCarPlay()
+        case .shuffle: Task { await queueController.toggleShuffle() }
+        case .repeatMode: queueController.cycleRepeatMode()
+        case .sleepTimer: pushSleepTimer()
+        }
+    }
+
+    private func refreshSleepTimerAvailability() async {
+        let allowed = await premiumGate.allows(.sleepTimer)
+        guard isActive, allowed != offersSleepTimer else { return }
+        offersSleepTimer = allowed
+        refreshNowPlayingButtons()
     }
 
     /// Optimistic flip + a brief enlarged frame ("pop"), reverted if the
@@ -494,11 +593,13 @@ final class CarPlayController {
         guard let song = engine.currentSong else { return }
         let target = !song.isFavorited
         engine.setCurrentSongFavorited(target, songId: song.id)
-        refreshLikeButton(scale: Self.likePopScale)
+        likeScale = Self.likePopScale
+        refreshNowPlayingButtons()
 
         Task {
             try? await Task.sleep(for: Self.likePopDuration)
-            if engine.currentSong?.id == song.id { refreshLikeButton() }
+            likeScale = 1.0
+            refreshNowPlayingButtons()
         }
         Task {
             do {
@@ -516,15 +617,143 @@ final class CarPlayController {
     /// Rendered onto a fixed canvas so the pop's scale steps share one
     /// footprint and CarPlay doesn't reflow the button. Left uncoloured on
     /// purpose: CarPlay recolours custom button images to its own theme.
-    private static func heartImage(filled: Bool, scale: CGFloat) -> UIImage {
+    private static func glyphImage(_ symbol: String, scale: CGFloat) -> UIImage {
         let canvas = CGSize(width: 40, height: 40)
         let configuration = UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
-        let symbol = UIImage(systemName: filled ? "heart.fill" : "heart", withConfiguration: configuration) ?? UIImage()
+        let glyph = UIImage(systemName: symbol, withConfiguration: configuration) ?? UIImage()
         return UIGraphicsImageRenderer(size: canvas).image { _ in
-            let size = CGSize(width: symbol.size.width * scale, height: symbol.size.height * scale)
+            let size = CGSize(width: glyph.size.width * scale, height: glyph.size.height * scale)
             let origin = CGPoint(x: (canvas.width - size.width) / 2, y: (canvas.height - size.height) / 2)
-            symbol.draw(in: CGRect(origin: origin, size: size))
+            glyph.draw(in: CGRect(origin: origin, size: size))
         }
+    }
+
+    // MARK: - Queue
+
+    /// The Up Next button's screen: the playing song, then what follows it.
+    /// Rows jump within the existing queue — they must not go through
+    /// `makeListItem`, whose song rows rebuild the queue from a fresh list.
+    private func pushQueue() {
+        let template = CPListTemplate(title: String(localized: "Queue"), sections: [Self.messageSection("Loading…")])
+        guard push(template) else { return }
+        queueTemplate = template
+        refreshQueue()
+    }
+
+    /// A song change moves the "playing" row; a shuffle, or an edit made on the
+    /// phone, reorders the rest — so the screen follows while it is showing.
+    private func refreshQueueIfOnTop() {
+        guard let queueTemplate, interfaceController.topTemplate === queueTemplate else { return }
+        refreshQueue()
+    }
+
+    private func refreshQueue() {
+        queueRefreshGeneration += 1
+        let generation = queueRefreshGeneration
+        Task {
+            let sections = await makeQueueSections()
+            guard isActive, generation == queueRefreshGeneration else { return }
+            queueTemplate?.updateSections(sections)
+        }
+    }
+
+    private func makeQueueSections() async -> [CPListSection] {
+        guard let queue = queueController.queue,
+              let window = CarPlayQueueWindow(queue: queue, limit: CarPlayContentProvider.maxFetchedRows)
+        else {
+            return [Self.messageSection("Queue is empty")]
+        }
+        let rows = provider.songGroup(window.songs, source: queue.source).rows
+        let images = await artwork.images(for: rows)
+        let items = rows.indices.map { offset in
+            makeQueueItem(
+                rows[offset],
+                image: images[offset],
+                song: window.songs[offset],
+                queueIndex: window.startIndex + offset,
+                isCurrent: offset == 0
+            )
+        }
+
+        let nowPlaying = String(localized: "Now Playing")
+        var sections = [CPListSection(items: [items[0]], header: nowPlaying, sectionIndexTitle: nil)]
+        if items.count > 1 {
+            let upNext = String(localized: "Up Next")
+            sections.append(CPListSection(items: Array(items.dropFirst()), header: upNext, sectionIndexTitle: nil))
+        }
+        return sections
+    }
+
+    private func makeQueueItem(
+        _ row: CarPlayRow,
+        image: UIImage,
+        song: Song,
+        queueIndex: Int,
+        isCurrent: Bool
+    ) -> CPListItem {
+        let item = CPListItem(text: row.title, detailText: row.subtitle, image: image)
+        item.isPlaying = isCurrent
+        item.playingIndicatorLocation = .trailing
+        item.handler = { [weak self] _, completion in
+            completion()
+            MainActor.assumeIsolated { self?.selectQueueSong(id: song.id, at: queueIndex) }
+        }
+        return item
+    }
+
+    /// Back to Now Playing at once, then the jump — the same order as `play`.
+    /// The playing row only returns to Now Playing: restarting the track you are
+    /// already hearing is not what a tap on it means in a car.
+    private func selectQueueSong(id: String, at index: Int) {
+        showNowPlaying()
+        guard let queue = queueController.queue else { return }
+        // The row was built from an earlier queue; a shuffle or reorder since
+        // then can have moved the song, so find it again by identity.
+        let target = queue.songs.indices.contains(index) && queue.songs[index].id == id
+            ? index
+            : queue.songs.firstIndex(where: { $0.id == id })
+        guard let target, target != queue.currentIndex else { return }
+        Task { await queueController.jump(to: target) }
+    }
+
+    // MARK: - Sleep timer
+
+    /// The Sleep Timer button's screen: the phone sheet's six durations, plus
+    /// Turn Off while one is running. Picking returns to Now Playing, where the
+    /// button lights (or goes dark) — CarPlay has no toast to confirm it.
+    private func pushSleepTimer() {
+        push(CPListTemplate(title: String(localized: "Sleep Timer"), sections: sleepTimerSections()))
+    }
+
+    private func sleepTimerSections() -> [CPListSection] {
+        let options = SleepTimerController.options.map { minutes -> CPListItem in
+            let isSelected = sleepTimer.selectedMinutes == minutes
+            let item = CPListItem(
+                text: String(localized: "\(minutes) minutes"),
+                detailText: isSelected ? String(localized: "Active · \(minutes)m selected") : nil
+            )
+            item.handler = { [weak self] _, completion in
+                completion()
+                MainActor.assumeIsolated {
+                    self?.sleepTimer.start(minutes: minutes)
+                    self?.showNowPlaying()
+                }
+            }
+            return item
+        }
+        var sections = [CPListSection(items: options)]
+        if sleepTimer.isActive {
+            let turnOff = CPListItem(text: String(localized: "Turn Off Timer"), detailText: nil)
+            turnOff.handler = { [weak self] _, completion in
+                completion()
+                MainActor.assumeIsolated {
+                    self?.sleepTimer.cancel()
+                    self?.showNowPlaying()
+                }
+            }
+            sections.append(CPListSection(items: [turnOff]))
+        }
+        return sections
     }
 
     // MARK: - Small helpers
@@ -555,6 +784,22 @@ private final class LiveList {
 extension CarPlayController {
     fileprivate static func loadingSection() -> CPListSection {
         messageSection("Loading…")
+    }
+}
+
+/// `CPNowPlayingTemplate` reports its Up Next button through an observer
+/// protocol, which needs an `NSObject`; the controller isn't one.
+private final class NowPlayingObserver: NSObject, CPNowPlayingTemplateObserver {
+    private let upNextTapped: @MainActor () -> Void
+
+    init(upNextTapped: @escaping @MainActor () -> Void) {
+        self.upNextTapped = upNextTapped
+    }
+
+    func nowPlayingTemplateUpNextButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {
+        // Copied out so the main-actor closure doesn't capture this non-Sendable object.
+        let handler = upNextTapped
+        MainActor.assumeIsolated { handler() }
     }
 }
 

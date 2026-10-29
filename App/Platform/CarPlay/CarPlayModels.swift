@@ -62,3 +62,79 @@ struct CarPlayRail: Sendable, Equatable, Identifiable {
     /// the Dart delegate.
     var isTrendingGrid: Bool { viewType == "trending" }
 }
+
+/// One slot in Now Playing's button row. A plain value so what the row holds
+/// — which buttons exist, which glyph each wears, which are lit — can be
+/// decided, compared and tested without a CarPlay scene; `CarPlayController`
+/// turns each slot into a `CPNowPlayingImageButton`.
+struct CarPlayNowPlayingButton: Sendable, Equatable {
+    enum Kind: Sendable, Equatable {
+        case like
+        case shuffle
+        case repeatMode
+        case sleepTimer
+    }
+
+    let kind: Kind
+    /// SF Symbol name.
+    let symbol: String
+    /// Drawn lit by CarPlay: favourited, shuffle on, repeat on, timer running.
+    let isSelected: Bool
+
+    /// Only what the app can actually do, in display order: Like, Shuffle,
+    /// Repeat and — for listeners whose plan includes it — Sleep Timer.
+    /// CarPlay has five slots; the app has no playback-speed control, so
+    /// nothing fills the rest.
+    static func row(
+        isFavorited: Bool,
+        isShuffled: Bool,
+        repeatMode: RepeatMode,
+        offersSleepTimer: Bool,
+        isSleepTimerRunning: Bool
+    ) -> [CarPlayNowPlayingButton] {
+        var buttons = [
+            CarPlayNowPlayingButton(
+                kind: .like,
+                symbol: isFavorited ? "heart.fill" : "heart",
+                isSelected: isFavorited
+            ),
+            CarPlayNowPlayingButton(kind: .shuffle, symbol: "shuffle", isSelected: isShuffled),
+            // Repeat-one wears its own glyph; off and all share one and differ
+            // only in whether it is lit.
+            CarPlayNowPlayingButton(
+                kind: .repeatMode,
+                symbol: repeatMode == .one ? "repeat.1" : "repeat",
+                isSelected: repeatMode != .off
+            ),
+        ]
+        if offersSleepTimer {
+            buttons.append(
+                CarPlayNowPlayingButton(
+                    kind: .sleepTimer,
+                    symbol: isSleepTimerRunning ? "moon.zzz.fill" : "moon.zzz",
+                    isSelected: isSleepTimerRunning
+                )
+            )
+        }
+        return buttons
+    }
+}
+
+/// The slice of the playback queue CarPlay's Queue screen lists: the song
+/// that is playing, then what follows it. Songs already played are left out —
+/// in a car the screen answers "what's next", and Previous lives on Now
+/// Playing.
+struct CarPlayQueueWindow: Sendable, Equatable {
+    /// Where `songs[0]` sits in the full queue, so a tapped row maps back to a
+    /// queue index.
+    let startIndex: Int
+    /// The current song first, then up to `limit - 1` that follow it.
+    let songs: [Song]
+
+    /// `nil` when the queue points at no song.
+    init?(queue: PlaybackQueue, limit: Int) {
+        guard limit > 0, queue.songs.indices.contains(queue.currentIndex) else { return nil }
+        startIndex = queue.currentIndex
+        songs = Array(queue.songs[queue.currentIndex...].prefix(limit))
+    }
+}

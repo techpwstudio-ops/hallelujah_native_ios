@@ -28,9 +28,10 @@ final class CarPlayContentProvider {
     private let creators: any CreatorRepository
     private let playlists: any PlaylistRepository
     private let userPlaylists: any UserPlaylistRepository
+    private let library: any LibraryRepository
     private let genres: any GenreRepository
     private let favourites: any FavouriteRepository
-    private let search: any SearchRepository
+    private let songs: any SongRepository
     private let downloads: DownloadEngine
     private let artwork: ArtworkURLResolver
     private let logger = AppLogger(category: .carPlay)
@@ -40,9 +41,10 @@ final class CarPlayContentProvider {
         creators = container.resolve()
         playlists = container.resolve()
         userPlaylists = container.resolve()
+        library = container.resolve()
         genres = container.resolve()
         favourites = container.resolve()
-        search = container.resolve()
+        songs = container.resolve()
         downloads = container.resolve()
         artwork = ArtworkURLResolver()
     }
@@ -134,17 +136,16 @@ final class CarPlayContentProvider {
         )
     }
 
-    /// A recent *song* card carries only an id — there is no song-by-id
-    /// endpoint — so it is resolved by searching its title and picking the
-    /// hit with the matching id. `nil` when the search doesn't surface it.
-    func resolveSong(id: String, title: String) async -> Song? {
-        guard !title.isEmpty,
-              let results = try? await search.search(
-                  query: title, filter: nil,
-                  musicPage: 1, episodePage: 1, creatorPage: 1, playlistPage: 1,
-                  userPlaylistId: nil
-              ) else { return nil }
-        return (results.music.items + results.episodes.items).first { $0.id == id }
+    /// A recent *song* card carries only an id, no playable `Song`, so it is
+    /// fetched by id (`GET /song/:id`) — the same call the phone's card tap
+    /// makes to resume it. `nil` when the fetch fails.
+    func resolveSong(id: String) async -> Song? {
+        do {
+            return try await songs.fetchSong(id: id)
+        } catch {
+            logger.warning("CarPlay could not fetch song \(id): \(error)")
+            return nil
+        }
     }
 
     // MARK: - Search tab (genres)
@@ -194,36 +195,27 @@ final class CarPlayContentProvider {
         return songGroup(songs, source: source)
     }
 
-    /// Library → Playlists: company playlists (collected from the Home
-    /// feed's playlist rails, as the Dart side aggregated them) followed by
-    /// the user's own playlists, in one list.
-    func allPlaylistRows() async -> [CarPlayRow] {
-        async let companyRows = companyPlaylistRows()
-        async let userRows = userPlaylistRows()
-        return await companyRows + userRows
-    }
-
-    private func companyPlaylistRows() async -> [CarPlayRow] {
-        var seen = Set<String>()
-        var rows: [CarPlayRow] = []
-        for rail in await homeRails() {
-            for row in rail.group.rows {
-                guard case .companyPlaylist(let id) = row.kind, seen.insert(id).inserted else { continue }
-                rows.append(row)
-            }
+    /// Library → playlists: the same merged feed the phone's Library tab shows
+    /// (`GET /library/items`) — playlists the user owns or follows, plus the
+    /// company and creator playlists they saved. Nothing is pulled from Home.
+    func libraryPlaylistRows() async -> [CarPlayRow] {
+        let entries = await fetchPages { page in
+            try await self.library.fetchItems(songType: .all, page: page)
         }
-        return rows
+        return entries.map(libraryRow)
     }
 
-    private func userPlaylistRows() async -> [CarPlayRow] {
-        guard let page = try? await userPlaylists.fetchPlaylists(page: 1) else { return [] }
-        return page.items.map { playlist in
-            CarPlayRow(
-                id: "user-playlist-\(playlist.id)",
-                title: playlist.title,
-                subtitle: nil,
-                artworkURL: artworkURL(path: playlist.image, variants: playlist.imageVariants),
-                kind: .userPlaylist(id: playlist.id)
+    private func libraryRow(_ entry: LibraryEntry) -> CarPlayRow {
+        switch entry {
+        case let .playlist(playlist):
+            return playlistRow(playlist)
+        case let .userPlaylist(id, title, image, imageVariants, _, _, detail):
+            return CarPlayRow(
+                id: "user-playlist-\(id)",
+                title: title,
+                subtitle: detail,
+                artworkURL: artworkURL(path: image, variants: imageVariants),
+                kind: .userPlaylist(id: id)
             )
         }
     }

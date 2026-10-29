@@ -22,8 +22,13 @@ private struct SleepTimerSheetPresenter: ViewModifier {
     @Binding var isPresented: Bool
     @State private var sleepTimer: SleepTimerController = DependencyContainer.current.resolve()
 
+    /// Tall enough for the header, six option rows and the "Turn Off Timer"
+    /// row shown while a timer runs (~530pt); the default `.medium` clipped
+    /// the header in that state. `.large` stays for larger Dynamic Type.
+    private static let detents: Set<PresentationDetent> = [.height(580), .large]
+
     func body(content: Content) -> some View {
-        content.appSheet(isPresented: $isPresented) {
+        content.appSheet(isPresented: $isPresented, detents: Self.detents) {
             SleepTimerSheet(controller: sleepTimer) { isPresented = false }
         }
     }

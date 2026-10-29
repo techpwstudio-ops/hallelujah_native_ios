@@ -38,8 +38,11 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         guard let query = SiriPlayService.query(from: userActivity) else { return }
-        Task { @MainActor in
-            await SiriPlayService().play(query: query)
+        Task { @MainActor [weak self] in
+            // Siri-started playback opens Now Playing like a tap in the lists.
+            if await SiriPlayService().play(query: query) {
+                self?.controller?.showNowPlaying()
+            }
         }
     }
 
