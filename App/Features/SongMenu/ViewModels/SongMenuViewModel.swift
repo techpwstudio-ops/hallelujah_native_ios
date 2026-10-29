@@ -295,4 +295,7 @@ enum SongMenuOutcome: Equatable {
     case stopped
     case reported
     case goToArtist(String)
+    /// Open "Name your playlist" and add `songID` to the new playlist. The host
+    /// pushes it, leaving the full player first when that is where it lives.
+    case createPlaylist(songID: String)
 }

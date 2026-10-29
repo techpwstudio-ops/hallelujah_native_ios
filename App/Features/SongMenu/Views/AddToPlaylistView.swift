@@ -7,13 +7,13 @@ struct AddToPlaylistView: View {
     let onOutcome: (SongMenuOutcome) -> Void
 
     @Environment(\.appTheme) private var theme
-    @Environment(AppNavigationCoordinator.self) private var coordinator
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Navigation is the host's call: from the full player the push has
+            // to leave the player first, or the new screen lands behind it.
             AppButton.secondary("Create New Playlist") {
-                coordinator.push(.createPlaylist(userPlaylistID: nil, songType: nil, songID: viewModel.song.id))
-                onOutcome(.dismiss)
+                onOutcome(.createPlaylist(songID: viewModel.song.id))
             }
             .padding(Dimens.paddingSmall)
             .padding(.horizontal, Dimens.paddingSmall)

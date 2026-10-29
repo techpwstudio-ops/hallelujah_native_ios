@@ -379,6 +379,27 @@ struct AIChatConversationView: View {
         Array(viewModel.messages.reversed())
     }
 
+    private static let bottomAnchorID = "ai-chat-bottom"
+
+    /// What the transcript follows: the newest row appearing, or growing in
+    /// place. The message count alone misses the second — a streamed reply is
+    /// one placeholder row inserted up front and then filled in delta by
+    /// delta, so the count never moves while the text grows past the fold.
+    private struct NewestMessageState: Equatable {
+        let id: String?
+        let contentSize: Int
+        let toolCount: Int
+    }
+
+    private var newestMessageState: NewestMessageState {
+        let newest = viewModel.messages.first
+        return NewestMessageState(
+            id: newest?.id,
+            contentSize: newest?.content?.utf8.count ?? 0,
+            toolCount: newest?.toolData?.count ?? 0
+        )
+    }
+
     @ViewBuilder
     private var messageList: some View {
         if viewModel.isInitialLoading {
@@ -412,6 +433,12 @@ struct AIChatConversationView: View {
                                 Task { await viewModel.loadMore() }
                             }
                         }
+                        // Scroll target below the last row: scrolling to the
+                        // last message itself can stop short when a tall
+                        // reply is still being measured by the lazy stack.
+                        Color.clear
+                            .frame(height: 1)
+                            .id(Self.bottomAnchorID)
                     }
                     .padding(.top, 12)
                     .padding(.bottom, 8)
@@ -422,11 +449,18 @@ struct AIChatConversationView: View {
                 .defaultScrollAnchor(.bottom)
                 .scrollDismissesKeyboard(.interactively)
                 .simultaneousGesture(TapGesture().onEnded { aiDismissKeyboard() })
-                .onChange(of: viewModel.messages.count) { oldCount, newCount in
-                    guard newCount > oldCount, !viewModel.isLoadingMore,
-                          let newestID = viewModel.messages.first?.id else { return }
-                    withAnimation(.easeOut(duration: 0.28)) {
-                        proxy.scrollTo(newestID, anchor: .bottom)
+                .onChange(of: newestMessageState) { old, new in
+                    // Older pages append at the far end of the newest-first
+                    // array, so paging in history never changes the newest row.
+                    guard !viewModel.isLoadingMore else { return }
+                    if old.id != new.id {
+                        withAnimation(.easeOut(duration: 0.28)) {
+                            proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
+                        }
+                    } else {
+                        // Mid-stream growth: no animation, so a burst of
+                        // deltas doesn't queue up competing scroll animations.
+                        proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
                     }
                 }
             }

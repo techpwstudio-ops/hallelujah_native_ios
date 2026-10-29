@@ -54,7 +54,6 @@ struct CreatePlaylistView: View {
             guard let existingTitle = await viewModel.loadExistingTitle() else { return }
             title = existingTitle
         }
-        .onAppear { isFocused = true }
     }
 
     private var content: some View {

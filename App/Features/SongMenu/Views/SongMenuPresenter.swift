@@ -83,6 +83,9 @@ private struct SongMenuPresenter: ViewModifier {
         case .goToArtist(let creatorID):
             leavePlayerIfNeeded()
             coordinator.push(.creatorSongs(creatorID: creatorID, userPlaylistID: nil))
+        case .createPlaylist(let songID):
+            leavePlayerIfNeeded()
+            coordinator.push(.createPlaylist(userPlaylistID: nil, songType: nil, songID: songID))
         }
         song = nil
     }

@@ -102,6 +102,12 @@ struct FullPlayerView: View {
                         isAddToPlaylistPresented = false
                     case .notice(let text):
                         toastCenter.show(text)
+                    case .createPlaylist(let songID):
+                        // The player is a full-screen cover above the tab
+                        // stacks, so it has to close for the new screen to show.
+                        isAddToPlaylistPresented = false
+                        coordinator.dismissFullScreen()
+                        coordinator.push(.createPlaylist(userPlaylistID: nil, songType: nil, songID: songID))
                     default:
                         isAddToPlaylistPresented = false
                     }

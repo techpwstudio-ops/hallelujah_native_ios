@@ -15,5 +15,7 @@ struct SongMenuViewModelTests {
         #expect(SongMenuOutcome.message("a") == .message("a"))
         #expect(SongMenuOutcome.message("a") != .notice("a"))
         #expect(SongMenuOutcome.goToArtist("1") == .goToArtist("1"))
+        #expect(SongMenuOutcome.createPlaylist(songID: "1") == .createPlaylist(songID: "1"))
+        #expect(SongMenuOutcome.createPlaylist(songID: "1") != .createPlaylist(songID: "2"))
     }
 }

@@ -44,6 +44,11 @@ final class VoiceSearchController {
     private var heardAnything = false
     private let audio: AudioEngine
     private var pausedMusic = false
+    /// True from the moment `beginCapture` reconfigures the shared audio
+    /// session until `tearDown` hands it back. The session also carries the
+    /// music player's playback, so a controller that never listened (the
+    /// search screen just closing → `cancel()`) must leave it alone.
+    private var ownsAudioSession = false
     private let logger = AppLogger(category: .content)
 
     init(audio: AudioEngine = DependencyContainer.current.resolve()) {
@@ -92,6 +97,7 @@ final class VoiceSearchController {
 
     private func beginCapture(recognizer: SFSpeechRecognizer) throws {
         let session = AVAudioSession.sharedInstance()
+        ownsAudioSession = true
         try session.setCategory(.playAndRecord, mode: .measurement, options: [.duckOthers, .defaultToSpeaker])
         try session.setActive(true, options: .notifyOthersOnDeactivation)
 
@@ -141,14 +147,28 @@ final class VoiceSearchController {
     private func tearDown() {
         pauseTimer?.cancel(); pauseTimer = nil
         ceilingTimer?.cancel(); ceilingTimer = nil
-        if engine.isRunning { engine.stop() }
-        engine.inputNode.removeTap(onBus: 0)
+        if ownsAudioSession {
+            if engine.isRunning { engine.stop() }
+            engine.inputNode.removeTap(onBus: 0)
+        }
         request?.endAudio()
         task?.cancel()
         request = nil
         task = nil
         level = 0
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        releaseAudioSession()
+    }
+
+    /// Gives the session back the way `AudioEngine` configured it (`.playback`,
+    /// default mode) so the song resumes in its normal mode rather than the
+    /// `.measurement` one dictation needed. A no-op unless `beginCapture` took
+    /// the session: deactivating it here would cut off music that's playing.
+    private func releaseAudioSession() {
+        guard ownsAudioSession else { return }
+        ownsAudioSession = false
+        let session = AVAudioSession.sharedInstance()
+        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        try? session.setCategory(.playback, mode: .default)
     }
 
     private func setListening(_ value: Bool) {
