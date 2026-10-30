@@ -100,7 +100,6 @@ struct SongMetaSections: View {
     @State private var detailsCreator: Creator?
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
-    @Environment(\.layoutWidth) private var layoutWidth
 
     private struct Trigger: Hashable { let songId: String; let excludeId: String? }
 
@@ -184,30 +183,26 @@ struct SongMetaSections: View {
         }
     }
 
-    /// Dart's `screenWidth - 2 * screenPaddingAll` square on a phone, where
-    /// the window is the screen. Native-only tablet/Mac adaptation (and the
-    /// fallback before the window is measured): a square as wide as the
-    /// column this view is given, since the player holds its column well
-    /// short of the window.
-    @ViewBuilder
+    /// A square as wide as the column this view is given, on every device.
+    /// The phone branch used to draw Dart's fixed `screenWidth - 16` square,
+    /// but the player's column is 20pt-padded, so the card was 24pt wider
+    /// than its slot: each time it loaded for a new song it widened the
+    /// whole player column, eating the side padding and shifting the title,
+    /// seek bar and controls above it — the "flicker" on every song change.
     private func creatorArtwork(url: URL?) -> some View {
-        if layoutWidth > 0, !AdaptiveLayout.isWide(layoutWidth) {
-            let side = layoutWidth - 2 * Dimens.screenPaddingAll
-            ArtworkView(url: url, width: side, height: side, cornerRadius: Dimens.cornerRadiusMedium)
-        } else {
-            Color.clear
-                .aspectRatio(1, contentMode: .fit)
-                .overlay {
-                    GeometryReader { proxy in
-                        ArtworkView(
-                            url: url,
-                            width: proxy.size.width,
-                            height: proxy.size.height,
-                            cornerRadius: Dimens.cornerRadiusMedium
-                        )
-                    }
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .overlay {
+                GeometryReader { proxy in
+                    ArtworkView(
+                        url: url,
+                        width: proxy.size.width,
+                        height: proxy.size.height,
+                        cornerRadius: Dimens.cornerRadiusMedium
+                    )
                 }
-        }
+            }
     }
 
     /// `CreatorFollowButton`: 36pt tall, "Follow" / "Following", w600 white.

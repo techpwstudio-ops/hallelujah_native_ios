@@ -24,6 +24,10 @@ import SwiftUI
 /// recommended-playlist hand-off identically.
 struct PlayerArtworkPager: View {
     let queueController: QueueController
+    /// The player's measured width; 0 until the first layout pass. When set,
+    /// the pager is framed to exactly `width` x `width / aspectRatio`, so it
+    /// can't report a different size while it pages to the next song.
+    var width: CGFloat = 0
 
     /// `_Artwork` passes `radius: 0` and fills the full screen width — a
     /// square for music, 16:9 for episodes, edge to edge with no inset.
@@ -54,9 +58,24 @@ struct PlayerArtworkPager: View {
         // an outer `.aspectRatio`) has no precedent elsewhere in this
         // codebase to confirm against without a build; flag on the first
         // real one.
-        .aspectRatio(currentSong?.displayAspectRatio ?? 1, contentMode: .fit)
-        .frame(maxWidth: .infinity)
+        .modifier(PagerFrame(width: width, aspectRatio: currentSong?.displayAspectRatio ?? 1))
+        .clipped()
         .simultaneousGesture(edgeOverscrollGesture)
+    }
+
+    private struct PagerFrame: ViewModifier {
+        let width: CGFloat
+        let aspectRatio: Double
+
+        func body(content: Content) -> some View {
+            if width > 0 {
+                content.frame(width: width, height: (width / CGFloat(aspectRatio)).rounded())
+            } else {
+                content
+                    .aspectRatio(aspectRatio, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+            }
+        }
     }
 
     /// How far past the end the user has to pull for it to count as "next".
