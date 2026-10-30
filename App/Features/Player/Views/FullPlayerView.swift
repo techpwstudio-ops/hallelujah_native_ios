@@ -41,6 +41,10 @@ struct FullPlayerView: View {
     /// offering for this store, or a failed request) hides the tip button.
     @State private var offerings: [Offering] = []
     @State private var isTipSheetPresented = false
+    /// The scroll view's width. The artwork and the column below it are
+    /// framed to exactly this, so nothing a new song brings (a wider title,
+    /// a different cover, the pager settling on a new page) can resize them.
+    @State private var pageWidth: CGFloat = 0
 
     private var song: Song? { engine.currentSong }
 
@@ -148,7 +152,7 @@ struct FullPlayerView: View {
                     onOpen: { ad in adPacing.openAction(for: ad, coordinator: coordinator) },
                     isUncovered: isPlayerUncovered
                 ) {
-                    PlayerArtworkPager(queueController: queueController)
+                    PlayerArtworkPager(queueController: queueController, width: pageWidth)
                 }
 
                 VStack(spacing: 0) {
@@ -162,25 +166,36 @@ struct FullPlayerView: View {
                     }
                     .padding(.top, 16)
                     PlayerTransportControls(engine: engine, queueController: queueController)
+                        .frame(height: PlayerStyle.playButtonDiameter)
                         .padding(.top, 20)
                     SleepTimerBadge(controller: sleepTimer)
                         .padding(.top, 24)
+                    // The row's 44pt tap boxes carry 10pt of their own space
+                    // above the glyphs, so 14 here reads as the old 24.
                     queueAndShareRow
-                        .padding(.top, sleepTimer.isActive ? 0 : 24)
+                        .padding(.top, sleepTimer.isActive ? 0 : 14)
                     metaSection
-                        .padding(.top, 24)
+                        .padding(.top, 14)
                 }
-                .padding(.top, 20)
+                // Breathing room between the edge-to-edge cover and the title.
+                .padding(.top, 24)
                 .padding(.horizontal, PlayerStyle.pageSidePadding)
                 .padding(.bottom, 8)
+                // A song change swaps everything in here at once; laying it
+                // out without animation keeps the controls from sliding.
+                .transaction(value: song?.id) { $0.animation = nil }
             }
             // Pin the content to the scroll view's width. Something inside
             // (the paging artwork) proposed a wider ideal width, which pushed
             // the whole column ~24pt past the screen and swallowed the 20pt
-            // side padding.
+            // side padding — and, mid page-change, made the whole column
+            // shift sideways and up on every new song. An explicit width
+            // (once measured) leaves the pager nothing to negotiate.
             .containerRelativeFrame(.horizontal)
+            .frame(width: pageWidth > 0 ? pageWidth : nil)
         }
         .scrollBounceBehavior(.always)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
         .background(PlayerStyle.black.ignoresSafeArea())
         // `AdCompanionBanner`, bottom-aligned over the body.
         .overlay(alignment: .bottom) {
@@ -207,7 +222,11 @@ struct FullPlayerView: View {
 
     /// `_SongHeadline`: title (`titleMedium` w700) and artists
     /// (`bodyMedium`) marquees, then the favourite heart (24) and the
-    /// add-to-playlist circle (24 with 8 padding).
+    /// add-to-playlist circle (24 with 8 padding). Fixed height: the two
+    /// marquees are 24 + 21 and the buttons 40, so a missing or very long
+    /// title/artist line never changes where the scrubber starts.
+    private static let headlineHeight: CGFloat = 45
+
     private var headline: some View {
         HStack(alignment: .center, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
@@ -249,6 +268,7 @@ struct FullPlayerView: View {
                 .accessibilityLabel("Add to playlist")
             }
         }
+        .frame(height: Self.headlineHeight)
     }
 
     /// `TipService.instance.sendTip` — the store's payment sheet takes over;
@@ -288,28 +308,37 @@ struct FullPlayerView: View {
         }
     }
 
-    /// `_QueueAndShareRow`: `spaceBetween` — the queue `menu.svg` glyph, then
-    /// the share glyph.
+    /// `_QueueAndShareRow`: `spaceBetween` — queue, then share. iOS glyphs
+    /// rather than the Flutter `menu.svg` hamburger and the three-dot share
+    /// SVG: `list.bullet` is the "Up Next" glyph iOS users know from Music,
+    /// and `square.and.arrow.up` is the system share icon. Both sit in the
+    /// same 44pt box so the row's height never depends on which is shown.
     private var queueAndShareRow: some View {
         HStack {
             Button { isQueuePresented = true } label: {
-                theme.icon(.queue, size: 24)
-                    .foregroundStyle(PlayerStyle.white)
+                queueRowGlyph("list.bullet", alignment: .leading)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Queue")
 
             Spacer()
 
-            if song != nil {
-                Button { isSharePresented = true } label: {
-                    theme.icon(.share, size: 24)
-                        .foregroundStyle(PlayerStyle.white)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Share")
+            Button { isSharePresented = true } label: {
+                queueRowGlyph("square.and.arrow.up", alignment: .trailing)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Share")
+            .opacity(song == nil ? 0 : 1)
+            .disabled(song == nil)
         }
+    }
+
+    private func queueRowGlyph(_ systemName: String, alignment: Alignment) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 20, weight: .medium))
+            .foregroundStyle(PlayerStyle.white)
+            .frame(width: 44, height: 44, alignment: alignment)
+            .contentShape(Rectangle())
     }
 
     /// `SongMetaDataUi`: lyrics card, then (not ported: creator card and

@@ -70,7 +70,7 @@ struct VerseHighlightTests {
     }
 
     @Test func decodesTheLegacySingleColourCacheShape() throws {
-        let json = Data(#"{"id":"h","verseId":"v","colorHex":"#FFABAB"}"#.utf8)
+        let json = Data(##"{"id":"h","verseId":"v","colorHex":"#FFABAB"}"##.utf8)
         let decoded = try JSONDecoder().decode(VerseHighlight.self, from: json)
         #expect(decoded.words == [.init(index: nil, colorHex: "#FFABAB")])
 
@@ -79,7 +79,7 @@ struct VerseHighlightTests {
     }
 
     @Test func serverRowMapsToWordsAndAnEmptyRowToNil() throws {
-        let row = Data(#"{"id":"h","verseId":"v","highlights":[{"id":"w","index":2,"color":"#FFDDAB"}]}"#.utf8)
+        let row = Data(##"{"id":"h","verseId":"v","highlights":[{"id":"w","index":2,"color":"#FFDDAB"}]}"##.utf8)
         let dto = try JSONDecoder().decode(VerseHighlightDTO.self, from: row)
         #expect(dto.toDomain()?.words == [.init(index: 2, colorHex: "#FFDDAB")])
 

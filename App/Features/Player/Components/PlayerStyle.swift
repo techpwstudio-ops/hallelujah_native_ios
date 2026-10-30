@@ -76,8 +76,10 @@ struct PlayerPlayPauseDisc: View {
             Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                 .font(.system(size: glyphSize * 0.8))
                 .foregroundStyle(PlayerStyle.black)
-                .id(isPlaying)
-                .transition(.scale)
+                // Swap the glyph in place. The old `.id` + `.transition(.scale)`
+                // removed one image before inserting the other, leaving an
+                // empty white disc for a frame on every song change.
+                .contentTransition(.symbolEffect(.replace))
                 .opacity(isLoading ? 0.4 : 1)
         }
         .frame(width: diameter, height: diameter)
