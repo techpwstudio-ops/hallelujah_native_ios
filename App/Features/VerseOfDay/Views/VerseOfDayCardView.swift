@@ -264,8 +264,10 @@ struct VerseOfDayHeartIcon: View {
     }
 }
 
-/// `VerseOfDayActionBar`: four equal slots, icon left-aligned in each (22pt,
+/// `VerseOfDayActionBar`: four equal slots, icon centred in each (22pt,
 /// 8pt vertical tap padding), a 6pt gap to the count where there is one.
+/// Centred, not leading: leading left the last slot's icon far from the
+/// card's right edge, so the bar looked lopsided against the 16pt padding.
 private struct VerseOfDayActionBar: View {
     let verse: VerseOfDay
     let shareURL: URL?
@@ -310,7 +312,7 @@ private struct VerseOfDayActionBar: View {
         Button(action: onTap) {
             content()
                 .padding(.vertical, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -323,7 +325,7 @@ private struct VerseOfDayActionBar: View {
             .foregroundStyle(ReadPalette.white)
             .frame(width: Self.iconSize, height: Self.iconSize)
             .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
             .contentShape(Rectangle())
         if let shareURL {
             ShareLink(item: shareURL) { icon }
