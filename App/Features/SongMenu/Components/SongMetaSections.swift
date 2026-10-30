@@ -138,12 +138,25 @@ struct SongMetaSections: View {
         if let creator = song.creator {
             let creatorID = viewModel.mainCreatorID
             ZStack(alignment: .bottomLeading) {
-                ArtworkView(
-                    url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants, fallbackName: creator.name),
-                    width: UIScreen.main.bounds.width - 2 * Dimens.screenPaddingAll,
-                    height: UIScreen.main.bounds.width - 2 * Dimens.screenPaddingAll,
-                    cornerRadius: Dimens.cornerRadiusMedium
-                )
+                // Square at whatever width the parent gives it. This used to
+                // be a fixed `screen - 16` box inside the player's 20pt-padded
+                // column: 24pt wider than its slot, so each time the card
+                // arrived it widened the whole player column (eating the side
+                // padding) and shifted the controls above it — the "flicker"
+                // on every song change.
+                Color.clear
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .overlay {
+                        GeometryReader { proxy in
+                            ArtworkView(
+                                url: ArtworkURLResolver().resolve(path: creator.image, variant: .lg, allowedVariants: creator.imageVariants, fallbackName: creator.name),
+                                width: proxy.size.width,
+                                height: proxy.size.height,
+                                cornerRadius: Dimens.cornerRadiusMedium
+                            )
+                        }
+                    }
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0),
