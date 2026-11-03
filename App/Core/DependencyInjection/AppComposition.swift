@@ -26,7 +26,6 @@ enum AppComposition {
         // Q5 (progress.md Open questions), resolved: Crashlytics.
         container.register((any CrashReporting).self) { FirebaseCrashReporter() }
         container.register((any AppStoreVersionChecking).self) { ITunesAppStoreVersionChecker() }
-        container.register((any AppTrackingTransparencyRequesting).self) { SystemAppTrackingTransparencyRequester() }
         // T19 — factory closure, not a captured shared instance like
         // `session`/`database` below: `NetworkStatusStore` resolves this once
         // per its own lifetime (`AppShellView`'s `@State`), and T38's

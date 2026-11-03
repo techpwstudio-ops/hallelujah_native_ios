@@ -57,8 +57,7 @@ final class AccountDeletionViewModel {
     ///   `evaluatePolicy(.deviceOwnerAuthentication, localizedReason:)`,
     ///   bridged from its completion-handler shape to `async`/`await` with
     ///   `withCheckedContinuation` since `LAContext` predates Swift
-    ///   concurrency (same bridging shape as
-    ///   `SystemAppTrackingTransparencyRequester`).
+    ///   concurrency.
     ///   - `success == true` -> Dart's `if (res) return true;` -> `.passed`,
     ///     no toast.
     ///   - `success == false` with the user having actually engaged a real

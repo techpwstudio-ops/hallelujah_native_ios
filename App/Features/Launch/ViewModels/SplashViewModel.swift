@@ -43,7 +43,6 @@ final class SplashViewModel {
     private let currentUserStore: CurrentUserStore
     private let authRepository: any AuthRepository
     private let versionChecker: any AppStoreVersionChecking
-    private let trackingRequester: any AppTrackingTransparencyRequesting
     private let realtimeConnectionManager: RealtimeConnectionManager
     private let logger = AppLogger(category: .launch)
 
@@ -52,19 +51,17 @@ final class SplashViewModel {
         currentUserStore = container.resolve()
         authRepository = container.resolve()
         versionChecker = container.resolve()
-        trackingRequester = container.resolve()
         realtimeConnectionManager = container.resolve()
     }
 
     /// Runs the minimum-duration timer concurrently with destination
     /// resolution, same as Dart's `minDurationTimer` / `_resolveDestination`
     /// pair — the session check never makes the splash slower than the logo
-    /// animation already is on its own. The version check and ATT prompt are
-    /// fire-and-forget and never gate navigation.
+    /// animation already is on its own. The version check is fire-and-forget
+    /// and never gates navigation.
     func start() async {
         logger.debug("splash: resolving launch destination")
         Task { self.availableUpdate = await self.versionChecker.checkForUpdate() }
-        Task { await self.trackingRequester.requestAuthorization() }
 
         async let resolved = resolveDestination()
         try? await Task.sleep(for: Self.minimumDuration)

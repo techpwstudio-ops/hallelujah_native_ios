@@ -125,12 +125,6 @@
 #endif
 	</dict>
 
-	<!-- Native-only addition (T15) — the Flutter app never requests App
-	     Tracking Transparency, so there's no Dart copy to port; this string
-	     is self-authored. Requested from SplashViewModel.start(). -->
-	<key>NSUserTrackingUsageDescription</key>
-	<string>This lets us personalize your experience and measure how our marketing performs. Your data is never sold.</string>
-
 	<!-- T68 — Sharing. String matches ios/Runner/Info.plist's own
 	     NSPhotoLibraryAddUsageDescription verbatim (same Save Image feature). -->
 	<key>NSPhotoLibraryAddUsageDescription</key>

@@ -8,12 +8,10 @@
 	     its own code calls. Must be reviewed against the App Store privacy
 	     "nutrition label" before every submission. -->
 
-	<!-- The app requests App Tracking Transparency (SplashViewModel) for ad
-	     measurement. -->
+	<!-- No tracking, same as the Flutter app this replaces: neither build
+	     requests App Tracking Transparency. -->
 	<key>NSPrivacyTracking</key>
-	<true/>
-	<key>NSPrivacyTrackingDomains</key>
-	<array/>
+	<false/>
 
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
@@ -72,7 +70,7 @@
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
-			<true/>
+			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
