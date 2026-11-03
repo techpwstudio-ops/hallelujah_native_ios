@@ -123,7 +123,7 @@ actor PlaybackAnalyticsUploader {
     /// One row per `session_id`, later rows filling in fields the earlier
     /// ones lacked (a session's START and END rows usually travel together).
     /// Order of first appearance is kept. Mirrors `mergeSessionRows` in
-    /// gs_nh_backend `src/services/analytics/trackIngest.js`.
+    /// backend `src/services/analytics/trackIngest.js`.
     static func mergeSessionRows(_ rows: [[String: Any]]) -> [[String: Any]] {
         var order: [String] = []
         var merged: [String: [String: Any]] = [:]

@@ -1,7 +1,7 @@
 import UserNotifications
 
 /// Downloads and attaches the `fcm_options.image` URL the backend sets on
-/// every push with an image (see gs_nh_backend firebase.service.js) so it
+/// every push with an image (see backend firebase.service.js) so it
 /// renders in the system notification. iOS only invokes this extension when
 /// the payload's `aps.mutable-content` flag is 1 — the backend already sets
 /// that whenever an image is present, but without this extension target
