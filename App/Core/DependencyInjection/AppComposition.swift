@@ -368,6 +368,19 @@ enum AppComposition {
             tokenProvider: session
         )
         container.register(AudioEngine.self) { audioEngine }
+        // Podcast player (Phase 1/2) — captured shared instances. The detail cache
+        // is one in-memory copy per song, shared by the player and the song menu
+        // (I2). The store is shared so the player and the transcript screen read one timeline.
+        let songRepository: any SongRepository = container.resolve()
+        let songDetailCache = SongDetailCache(repository: songRepository)
+        container.register(SongDetailCache.self) { songDetailCache }
+        let transcriptRepository = TranscriptRepository(songDetailCache: songDetailCache)
+        let episodeTimelineStore = EpisodeTimelineStore(
+            engine: audioEngine,
+            cache: songDetailCache,
+            transcripts: transcriptRepository
+        )
+        container.register(EpisodeTimelineStore.self) { episodeTimelineStore }
         // T47 — local-file-first playback source: consulted at the top of
         // `AudioEngine.makePlayerItem(for:forceProxy:)` before any remote
         // resolution, so a downloaded (T46) song plays from disk instead.

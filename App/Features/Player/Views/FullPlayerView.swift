@@ -23,7 +23,11 @@ struct FullPlayerView: View {
     @Environment(\.appTheme) private var theme
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
+    @Environment(\.scenePhase) private var scenePhase
     @State private var engine: AudioEngine = DependencyContainer.current.resolve()
+    /// Chapters, speakers and transcript for the song playing (Phase 1/2). Shared
+    /// with the transcript screen, so the two never fetch or clock separately.
+    @State private var timelineStore: EpisodeTimelineStore = DependencyContainer.current.resolve()
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var favouriteRepository: any FavouriteRepository = DependencyContainer.current.resolve()
     @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
@@ -33,6 +37,7 @@ struct FullPlayerView: View {
     @State private var isQueuePresented = false
     @State private var isAddToPlaylistPresented = false
     @State private var isSleepTimerSheetPresented = false
+    @State private var isChaptersPresented = false
     @State private var menuSong: Song?
     @State private var tipPurchases: TipPurchaseManager = DependencyContainer.current.resolve()
     @State private var tipRepository: any TipRepository = DependencyContainer.current.resolve()
@@ -52,7 +57,7 @@ struct FullPlayerView: View {
     private var isPlayerUncovered: Bool {
         coordinator.playerPath.isEmpty
             && !isSharePresented && !isQueuePresented && !isAddToPlaylistPresented
-            && !isSleepTimerSheetPresented && !isTipSheetPresented && menuSong == nil
+            && !isSleepTimerSheetPresented && !isTipSheetPresented && !isChaptersPresented && menuSong == nil
     }
 
     @ViewBuilder
@@ -128,6 +133,17 @@ struct FullPlayerView: View {
             guard AppConfiguration.current.featureFlags.tipButtonEnabled else { return }
             offerings = await tipRepository.offerings()
         }
+        .appSheet(isPresented: $isChaptersPresented, detents: [.large]) {
+            ChaptersSheet(chapters: timelineStore.chapters, position: engine.currentPosition) { chapter in
+                // Chapter rows seek and play, as the Flutter chapter list does.
+                engine.seek(to: Double(chapter.startMs) / 1000)
+                engine.resume()
+                isChaptersPresented = false
+            }
+        }
+        .task(id: song?.id) {
+            await timelineStore.load(for: song)
+        }
         .songMenu(song: $menuSong, leavesPlayer: true)
         .sleepTimerSheet(isPresented: $isSleepTimerSheetPresented)
         // The timer pauses playback itself (it usually fires with the phone
@@ -140,6 +156,20 @@ struct FullPlayerView: View {
         .onChange(of: engine.currentSong?.id) { _, newValue in
             if newValue == nil { coordinator.dismissFullScreen() }
         }
+        // The transcript clock runs only while playing, outside ad breaks, in the
+        // active scene, and with the read-along or transcript on screen (Phase 2).
+        .onAppear(perform: syncTranscriptClock)
+        .onChange(of: engine.status) { _, _ in syncTranscriptClock() }
+        .onChange(of: adPacing.isAdBreak) { _, _ in syncTranscriptClock() }
+        .onChange(of: scenePhase) { _, _ in syncTranscriptClock() }
+        .onChange(of: engine.seekGeneration) { _, _ in timelineStore.clock.seeked() }
+    }
+
+    private func syncTranscriptClock() {
+        let clock = timelineStore.clock
+        clock.setPlaying(engine.status == .playing)
+        clock.setAdBreak(adPacing.isAdBreak)
+        clock.setSceneActive(scenePhase == .active)
     }
 
     private var playerContent: some View {
@@ -283,7 +313,8 @@ struct FullPlayerView: View {
             PlayerSeekBar(
                 position: engine.currentPosition,
                 duration: engine.currentItemDuration ?? TimeInterval(song?.duration ?? 0),
-                barHeight: PlayerStyle.seekBarHeight
+                barHeight: PlayerStyle.seekBarHeight,
+                chapters: timelineStore.chapters
             ) { target in
                 engine.seek(to: target)
             }
@@ -403,6 +434,17 @@ struct FullPlayerView: View {
 
             Spacer()
 
+            // Only for episodes with two or more chapters (rule R2, applied by the store).
+            if !timelineStore.chapters.isEmpty {
+                Button { isChaptersPresented = true } label: {
+                    queueRowGlyph("list.number", alignment: .center)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Chapters")
+
+                Spacer()
+            }
+
             Button { isSharePresented = true } label: {
                 queueRowGlyph("square.and.arrow.up", alignment: .trailing)
             }
@@ -428,6 +470,15 @@ struct FullPlayerView: View {
     private var metaSection: some View {
         if let song {
             VStack(alignment: .leading, spacing: 0) {
+                // Rule R1: the read-along shows only for a ready transcript; otherwise this column is as before.
+                if timelineStore.hasReadAlong {
+                    if timelineStore.hasMultipleSpeakers {
+                        NowSpeakingChip(store: timelineStore)
+                    }
+                    ReadAlongCard(store: timelineStore) {
+                        coordinator.pushInPlayer(.episodeTranscript)
+                    }
+                }
                 PlayerLyricsPreviewCard(song: song, currentPosition: engine.currentPosition) {
                     coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? String(localized: "Lyrics")))
                 }

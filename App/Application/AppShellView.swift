@@ -354,6 +354,8 @@ private struct FullScreenDestinationView: View {
             QueueView()
         case let .lyrics(songTitle):
             SongLyricsView(songTitle: songTitle)
+        case .episodeTranscript:
+            EpisodeTranscriptView()
         }
     }
 

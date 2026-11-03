@@ -18,6 +18,11 @@ enum SessionTeardown {
         Task { @MainActor in AppDataSync.shared.reset() }
         // Private proxy images (Emet attachments) must not outlive the account.
         Task.detached(priority: .utility) { ArtworkDiskCache.removeAll() }
+        // Podcast player (D-I5): the in-memory song details and the stored transcripts.
+        Task.detached(priority: .utility) { TranscriptRepository.removeAll() }
+        if let songDetailCache = container.resolveIfRegistered(SongDetailCache.self) {
+            Task { await songDetailCache.clear() }
+        }
         if let homeCache = container.resolveIfRegistered(HomeFeedCache.self) {
             Task {
                 for type in [HomeContentType.all, .music, .episode] {

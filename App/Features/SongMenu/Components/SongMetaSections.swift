@@ -19,12 +19,12 @@ final class SongMetaSectionsViewModel {
     /// can hold the creator card's space instead of collapsing and popping in.
     private(set) var isLoadingSong = false
 
-    private let songRepository: any SongRepository
+    private let songDetailCache: SongDetailCache
     private let creatorRepository: any CreatorRepository
     private let relatedService: RelatedContentService
 
     init(container: DependencyContainer = .current) {
-        songRepository = container.resolve()
+        songDetailCache = container.resolve()
         creatorRepository = container.resolve()
         relatedService = container.resolve()
     }
@@ -39,7 +39,8 @@ final class SongMetaSectionsViewModel {
             related = .empty
             isLoadingRelated = true
         }
-        async let detail = try? songRepository.fetchSong(id: songId)
+        // Shared with the player's episode timeline, so the player makes one request, not two (I2).
+        async let detail = try? await songDetailCache.song(id: songId)
         async let rail = relatedService.fetchForSong(songId, excludeId: excludeId)
         let (loadedSong, loadedRelated) = await (detail, rail)
         guard !Task.isCancelled else { return }

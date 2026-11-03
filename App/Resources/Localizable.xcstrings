@@ -5372,6 +5372,47 @@
         }
       }
     },
+    "Auto-generated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto-generated"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "स्वतः तैयार"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಸ್ವಯಂಚಾಲಿತ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "സ്വയമേവ സൃഷ്ടിച്ചത്"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "தானாக உருவாக்கப்பட்டது"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "స్వయంచాలకంగా రూపొందించబడింది"
+          }
+        }
+      }
+    },
     "Available for offline reading.": {
       "extractionState": "manual",
       "localizations": {
@@ -5450,6 +5491,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "వెనుకకు"
+          }
+        }
+      }
+    },
+    "Back to current": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to current"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "वर्तमान पर वापस"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಪ್ರಸ್ತುತಕ್ಕೆ ಹಿಂತಿರುಗಿ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "നിലവിലേക്ക് മടങ്ങുക"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "தற்போதையதுக்குத் திரும்பு"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ప్రస్తుతానికి తిరిగి వెళ్ళు"
           }
         }
       }
@@ -6106,6 +6188,88 @@
           "stringUnit": {
             "state": "translated",
             "value": "రద్దు చేయబడింది"
+          }
+        }
+      }
+    },
+    "Chapter %lld of %lld, %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chapter %lld of %lld, %@"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अध्याय %lld / %lld, %@"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಅಧ್ಯಾಯ %lld / %lld, %@"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "അധ്യായം %lld / %lld, %@"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "அத்தியாயம் %lld / %lld, %@"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "అధ్యాయం %lld / %lld, %@"
+          }
+        }
+      }
+    },
+    "Chapters": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chapters"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अध्याय"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಅಧ್ಯಾಯಗಳು"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "അധ്യായങ്ങൾ"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "அத்தியாயங்கள்"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "అధ్యాయాలు"
           }
         }
       }
@@ -18451,6 +18615,47 @@
         }
       }
     },
+    "Now speaking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Now speaking"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अभी बोल रहे हैं"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈಗ ಮಾತನಾಡುತ್ತಿದ್ದಾರೆ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഇപ്പോൾ സംസാരിക്കുന്നു"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இப்போது பேசுகிறார்"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఇప్పుడు మాట్లాడుతున్నారు"
+          }
+        }
+      }
+    },
     "OTP field": {
       "extractionState": "manual",
       "localizations": {
@@ -20907,6 +21112,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "మళ్లీ యాక్టివేట్ చేయండి"
+          }
+        }
+      }
+    },
+    "Read along": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read along"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "साथ-साथ पढ़ें"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಜೊತೆಗೆ ಓದಿ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഒപ്പം വായിക്കുക"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "உடன் படியுங்கள்"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "కలిసి చదవండి"
           }
         }
       }
@@ -24929,6 +25175,47 @@
         }
       }
     },
+    "Speaker %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speaker %lld"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "वक्ता %lld"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಭಾಷಣಕಾರ %lld"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "സ്പീക്കർ %lld"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "பேச்சாளர் %lld"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "వక్త %lld"
+          }
+        }
+      }
+    },
     "Speaking...": {
       "extractionState": "manual",
       "localizations": {
@@ -27754,6 +28041,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "అగ్ర ఫలితం"
+          }
+        }
+      }
+    },
+    "Transcript": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcript"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "प्रतिलिपि"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಪ್ರತಿಲೇಖನ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ട്രാൻസ്ക്രിപ്റ്റ്"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "எழுத்துப்பெயர்ப்பு"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ట్రాన్స్క్రిప్ట్"
           }
         }
       }

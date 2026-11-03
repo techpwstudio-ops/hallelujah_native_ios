@@ -14,4 +14,7 @@ import Foundation
 enum PlayerRoute: Hashable, Sendable {
     case queue
     case lyrics(songTitle: String)
+    /// The full transcript of the episode playing (Phase 2). Read from the shared
+    /// `EpisodeTimelineStore`, so the route carries nothing but the case.
+    case episodeTranscript
 }

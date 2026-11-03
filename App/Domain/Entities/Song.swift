@@ -116,6 +116,13 @@ struct Song: Sendable, Equatable, Identifiable {
     /// user, so any entry at all means "favorited by me".
     let isFavorited: Bool
 
+    /// Chapters, speakers and transcript reference for an episode, from the
+    /// detail call only (`nil` for music and for list rows). `var` with a
+    /// default, not `let`: a `let` default would drop it from the memberwise
+    /// initializer, and five call sites rely on that initializer. Not persisted
+    /// with the song (I3); its signed transcript URL expires like `audioUrls`.
+    var episodeTimeline: EpisodeTimeline? = nil
+
     var isEpisode: Bool { type == "episode" }
 
     /// `SONG_RESPONSE_SHAPE.md`'s "Audio URL Rules": which square/rectangle
@@ -192,7 +199,8 @@ extension Song {
             songPrimaryArtists: songPrimaryArtists,
             transcripts: transcripts,
             songCredits: songCredits,
-            isFavorited: isFavorited
+            isFavorited: isFavorited,
+            episodeTimeline: episodeTimeline
         )
     }
 }

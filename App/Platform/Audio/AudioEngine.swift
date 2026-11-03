@@ -350,6 +350,34 @@ final class AudioEngine {
     // caller to bypass that. Skip/jump instead go through `play(queue:startAt:)`
     // above, called by `QueueController` with an already-resolved index.
 
+    /// The playhead in whole milliseconds, read from the player now (I1).
+    /// `currentPosition` is only refreshed every 0.5 s, so the podcast clock
+    /// reads it on demand. The same `pendingSeek` rule as the periodic tick applies.
+    func currentPlaybackMs() -> Int {
+        Self.playbackMilliseconds(
+            reported: player.currentTime().seconds,
+            current: currentPosition,
+            pendingSeek: pendingSeek,
+            now: Date()
+        )
+    }
+
+    /// The rule behind `currentPlaybackMs()`, pure so it can be tested without
+    /// AVFoundation. While a seek is pending, a reading far from its target is
+    /// the old position still, so the last position already published stands in.
+    nonisolated static func playbackMilliseconds(
+        reported: TimeInterval,
+        current: TimeInterval,
+        pendingSeek: (target: TimeInterval, until: Date)?,
+        now: Date
+    ) -> Int {
+        guard reported.isFinite else { return Int(current * 1000) }
+        if let pendingSeek, now < pendingSeek.until, abs(reported - pendingSeek.target) > 1 {
+            return Int(current * 1000)
+        }
+        return Int(reported * 1000)
+    }
+
     func seek(to time: TimeInterval) {
         let from = currentPosition
         player.seek(to: CMTime(seconds: time, preferredTimescale: 1000))

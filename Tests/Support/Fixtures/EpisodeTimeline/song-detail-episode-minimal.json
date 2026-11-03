@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "message": "Song fetched successfully",
+  "data": {
+    "id": "4a2d3c0f-8b5e-4d2f-ac3b-6e7f8a9b0c1d",
+    "title": "Midweek Devotional",
+    "type": "episode",
+    "duration": 900,
+    "image": "hallelujah/assets/creators/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/thumbnail-song/9c8b7a6d/original.jpg",
+    "audioUrls": {
+      "hls": "https://cdn.example.com/hallelujah/assets/creators/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/audio/3f1c2b9e-7a4d-4c1e-9b2a-5d6e7f8a9b0c/master.m3u8?Expires=1793700000&Signature=abc&Key-Pair-Id=K1"
+    },
+    "creator": {
+      "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+      "name": "Grace Church",
+      "image": null
+    },
+    "songStatus": "public",
+    "reviewStatus": "accepted",
+    "plays": 1234,
+    "transcripts": [],
+    "chapters": [],
+    "speakers": [],
+    "episodeTranscript": {
+      "status": "none"
+    }
+  }
+}

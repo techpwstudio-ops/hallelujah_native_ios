@@ -270,6 +270,12 @@ struct SongDTO: Decodable, Sendable {
 
     let transcripts: [LyricsTranscriptDTO]?
     let songCredits: [SongCreditDTO]?
+
+    /// Episode-only fields (`episode-timeline` contract §3). Each is wrapped so a
+    /// malformed value drops only itself (`EpisodeTimelineDTOs.swift`, I4).
+    let chapters: LenientValue<LossyArray<ChapterDTO>>?
+    let speakers: LenientValue<LossyArray<SpeakerDTO>>?
+    let episodeTranscript: LenientValue<EpisodeTranscriptDTO>?
 }
 
 extension SongDTO {
@@ -353,7 +359,8 @@ extension SongDTO {
                     SongCredit(role: sanitized($0.role), name: sanitized($0.name), category: sanitized($0.category))
                 }
             },
-            isFavorited: !(favoritedBy ?? []).isEmpty
+            isFavorited: !(favoritedBy ?? []).isEmpty,
+            episodeTimeline: resolvedEpisodeTimeline
         )
     }
 }

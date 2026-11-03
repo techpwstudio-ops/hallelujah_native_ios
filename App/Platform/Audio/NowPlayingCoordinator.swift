@@ -33,6 +33,9 @@ final class NowPlayingCoordinator {
     /// without it blanked the artwork until the async fetch put it back —
     /// the flicker on every tap in Control Center / the lock screen.
     private var artwork: (songID: String, artwork: MPMediaItemArtwork)?
+    /// The one pending republish for the next chapter start. Replaced on
+    /// every publish, cancelled when nothing is playing a chaptered episode.
+    private var chapterBoundaryTask: Task<Void, Never>?
 
     init(
         engine: AudioEngine,
@@ -82,6 +85,8 @@ final class NowPlayingCoordinator {
 
     private func publish() {
         guard let song = engine.currentSong else {
+            chapterBoundaryTask?.cancel()
+            chapterBoundaryTask = nil
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
             return
         }
@@ -97,6 +102,7 @@ final class NowPlayingCoordinator {
         if duration > 0 {
             info[MPMediaItemPropertyPlaybackDuration] = duration
         }
+        applyChapter(of: song, to: &info)
         if let artwork, artwork.songID == song.id {
             info[MPMediaItemPropertyArtwork] = artwork.artwork
             MPNowPlayingInfoCenter.default().nowPlayingInfo = info
@@ -114,6 +120,42 @@ final class NowPlayingCoordinator {
             updated[MPMediaItemPropertyArtwork] = artwork
             MPNowPlayingInfoCenter.default().nowPlayingInfo = updated
         }
+    }
+
+    /// Lock-screen and Control Center chapter number/count (podcast Phase 3).
+    /// Only set for episodes that carry chapters, so music and chapterless
+    /// episodes publish exactly the info they did before. Deliberately never
+    /// driven by the position tick: the next chapter start schedules one
+    /// republish (`scheduleNextChapterPublish`), and only while playing —
+    /// a paused position does not move, so a timer would only re-fire.
+    private func applyChapter(of song: Song, to info: inout [String: Any]) {
+        chapterBoundaryTask?.cancel()
+        chapterBoundaryTask = nil
+        guard let chapters = song.episodeTimeline?.chapters, !chapters.isEmpty else { return }
+
+        let positionMs = Int(engine.currentPosition * 1000)
+        let index = Self.chapterIndex(in: chapters, positionMs: positionMs)
+        info[MPNowPlayingInfoPropertyChapterNumber] = index + 1
+        info[MPNowPlayingInfoPropertyChapterCount] = chapters.count
+        scheduleNextChapterPublish(chapters: chapters, index: index, positionMs: positionMs)
+    }
+
+    private func scheduleNextChapterPublish(chapters: [EpisodeChapter], index: Int, positionMs: Int) {
+        guard engine.status == .playing, index + 1 < chapters.count else { return }
+        let delayMs = chapters[index + 1].startMs - positionMs
+        guard delayMs > 0 else { return }
+        chapterBoundaryTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(delayMs))
+            guard !Task.isCancelled else { return }
+            self?.publish()
+        }
+    }
+
+    /// Last chapter that has started by `positionMs`. Chapters are sorted by
+    /// `EpisodeTimelineMapper`; before the first start (a non-zero first
+    /// chapter) this answers the first chapter rather than nothing.
+    nonisolated static func chapterIndex(in chapters: [EpisodeChapter], positionMs: Int) -> Int {
+        chapters.lastIndex(where: { $0.startMs <= positionMs }) ?? 0
     }
 
     /// Built in a nonisolated context: MediaPlayer invokes the request handler

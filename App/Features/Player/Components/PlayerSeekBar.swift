@@ -7,21 +7,47 @@ import SwiftUI
 /// `bodySmall` time labels `timeLabelPadding: 8` below the bar. While
 /// dragging, the thumb shows the package's soft glow (`thumbColor @ 0.2`).
 /// Seeks on release, like the package's `onSeek`.
+///
+/// With `chapters` (two or more, Phase 1) the track is drawn as one segment per
+/// chapter, and the current chapter's title sits between the time labels. With
+/// the default empty `chapters` every caller renders exactly as before.
 struct PlayerSeekBar: View {
     var position: TimeInterval
     var duration: TimeInterval
     var buffered: TimeInterval = 0
     var barHeight: CGFloat = PlayerStyle.seekBarHeight
     var isInteractive: Bool = true
+    var chapters: [EpisodeChapter] = []
     var onSeek: (TimeInterval) -> Void = { _ in }
 
     @State private var dragPosition: TimeInterval?
+    @State private var dragChapterIndex: Int?
 
     private let thumbRadius = PlayerStyle.thumbRadius
     private let glowRadius: CGFloat = 30
     private let labelPadding: CGFloat = 8
+    /// Chapter track heights while scrubbing: 4 pt at rest, 8 pt while dragging.
+    private static let chapterRestingHeight: CGFloat = 4
+    private static let chapterDraggingHeight: CGFloat = 8
+    private static let dragLabelWidth: CGFloat = 180
 
     private var displayPosition: TimeInterval { dragPosition ?? position }
+
+    private var hasChapters: Bool { !chapters.isEmpty }
+
+    private var chapterSpans: [(start: Double, end: Double)] {
+        chapters.map { (start: Double($0.startMs) / 1000, end: Double($0.endMs) / 1000) }
+    }
+
+    private var trackHeight: CGFloat {
+        guard hasChapters else { return barHeight }
+        return dragPosition == nil ? Self.chapterRestingHeight : Self.chapterDraggingHeight
+    }
+
+    /// The chapter playing at `seconds`: the last one that has started.
+    private func chapterIndex(at seconds: TimeInterval) -> Int? {
+        chapters.lastIndex { Double($0.startMs) / 1000 <= seconds }
+    }
 
     private func fraction(_ value: TimeInterval) -> CGFloat {
         guard duration > 0 else { return 0 }
@@ -35,18 +61,22 @@ struct PlayerSeekBar: View {
                 let progressX = trackWidth * fraction(displayPosition)
 
                 ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(PlayerStyle.fill.opacity(0.8))
-                        .frame(width: trackWidth, height: barHeight)
-                        .offset(x: thumbRadius)
-                    Capsule()
-                        .fill(PlayerStyle.fill)
-                        .frame(width: trackWidth * fraction(buffered), height: barHeight)
-                        .offset(x: thumbRadius)
-                    Capsule()
-                        .fill(PlayerStyle.white)
-                        .frame(width: progressX, height: barHeight)
-                        .offset(x: thumbRadius)
+                    if hasChapters {
+                        chapterSegments(trackWidth: trackWidth)
+                    } else {
+                        Capsule()
+                            .fill(PlayerStyle.fill.opacity(0.8))
+                            .frame(width: trackWidth, height: barHeight)
+                            .offset(x: thumbRadius)
+                        Capsule()
+                            .fill(PlayerStyle.fill)
+                            .frame(width: trackWidth * fraction(buffered), height: barHeight)
+                            .offset(x: thumbRadius)
+                        Capsule()
+                            .fill(PlayerStyle.white)
+                            .frame(width: progressX, height: barHeight)
+                            .offset(x: thumbRadius)
+                    }
                     if dragPosition != nil {
                         Circle()
                             .fill(PlayerStyle.whiteAlpha(0.2))
@@ -58,13 +88,48 @@ struct PlayerSeekBar: View {
                         .frame(width: thumbRadius * 2, height: thumbRadius * 2)
                         .offset(x: progressX)
                 }
-                .frame(height: max(thumbRadius * 2, barHeight), alignment: .leading)
+                .frame(height: max(thumbRadius * 2, trackHeight), alignment: .leading)
+                .animation(.easeOut(duration: 0.15), value: trackHeight)
+                .overlay(alignment: .topLeading) {
+                    if let index = dragChapterIndex, chapters.indices.contains(index) {
+                        dragLabel(for: chapters[index], thumbX: progressX, trackWidth: trackWidth)
+                    }
+                }
                 .contentShape(Rectangle())
                 .gesture(dragGesture(trackWidth: trackWidth))
                 .allowsHitTesting(isInteractive)
             }
-            .frame(height: max(thumbRadius * 2, barHeight))
+            .frame(height: max(thumbRadius * 2, trackHeight))
 
+            timeLabels
+        }
+        .modifier(ChapterSeekAccessibility(
+            chapters: chapters,
+            position: displayPosition,
+            onSeek: onSeek
+        ))
+    }
+
+    /// The original labels, unchanged, when there are no chapters.
+    @ViewBuilder
+    private var timeLabels: some View {
+        if hasChapters {
+            HStack(spacing: labelPadding) {
+                Text(Self.format(displayPosition))
+                    .fixedSize()
+                if let index = chapterIndex(at: displayPosition) {
+                    Text(chapters[index].title)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Spacer()
+                }
+                Text(Self.format(duration))
+                    .fixedSize()
+            }
+            .typography(PlayerStyle.timeLabel)
+            .foregroundStyle(PlayerStyle.white)
+        } else {
             HStack {
                 Text(Self.format(displayPosition))
                 Spacer()
@@ -75,14 +140,54 @@ struct PlayerSeekBar: View {
         }
     }
 
+    /// One segment per drawn chapter group. Each fills with its own played fraction.
+    private func chapterSegments(trackWidth: CGFloat) -> some View {
+        ForEach(ChapterSegmentLayout.segments(spans: chapterSpans, trackWidth: trackWidth)) { segment in
+            Capsule()
+                .fill(PlayerStyle.fill.opacity(0.8))
+                .overlay(alignment: .leading) {
+                    Capsule()
+                        .fill(PlayerStyle.white)
+                        .frame(width: segment.width * CGFloat(segment.playedFraction(at: displayPosition)))
+                }
+                .frame(width: segment.width, height: trackHeight)
+                .offset(x: thumbRadius + segment.startX)
+        }
+    }
+
+    /// The chapter title and time above the thumb while scrubbing.
+    private func dragLabel(for chapter: EpisodeChapter, thumbX: CGFloat, trackWidth: CGFloat) -> some View {
+        let widest = trackWidth + thumbRadius * 2 - Self.dragLabelWidth
+        let left = min(max(thumbX + thumbRadius - Self.dragLabelWidth / 2, 0), max(widest, 0))
+        return VStack(spacing: 2) {
+            Text(chapter.title)
+                .lineLimit(1)
+            Text(Self.format(displayPosition))
+        }
+        .typography(PlayerStyle.timeLabel)
+        .foregroundStyle(PlayerStyle.white)
+        .frame(width: Self.dragLabelWidth)
+        .offset(x: left, y: -36)
+        .allowsHitTesting(false)
+    }
+
     private func dragGesture(trackWidth: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
-                dragPosition = target(for: value.location.x, trackWidth: trackWidth)
+                let newTarget = target(for: value.location.x, trackWidth: trackWidth)
+                dragPosition = newTarget
+                if hasChapters {
+                    let newIndex = chapterIndex(at: newTarget)
+                    if newIndex != dragChapterIndex {
+                        dragChapterIndex = newIndex
+                        HapticFeedback.impact(.light).trigger()
+                    }
+                }
             }
             .onEnded { value in
                 let seekTarget = target(for: value.location.x, trackWidth: trackWidth)
                 dragPosition = nil
+                dragChapterIndex = nil
                 onSeek(seekTarget)
             }
     }
@@ -92,13 +197,63 @@ struct PlayerSeekBar: View {
         return duration * Double(clamped / trackWidth)
     }
 
-    private static func format(_ interval: TimeInterval) -> String {
+    static func format(_ interval: TimeInterval) -> String {
         let total = max(Int(interval.rounded(.down)), 0)
         let hours = total / 3600
         let minutes = (total % 3600) / 60
         let seconds = total % 60
         if hours > 0 { return String(format: "%d:%02d:%02d", hours, minutes, seconds) }
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+/// VoiceOver for the chapter track: the value names the chapter, and swiping
+/// up or down moves to the next or previous chapter. Applied only with chapters,
+/// so the plain bar keeps its current accessibility.
+private struct ChapterSeekAccessibility: ViewModifier {
+    let chapters: [EpisodeChapter]
+    let position: TimeInterval
+    let onSeek: (TimeInterval) -> Void
+
+    func body(content: Content) -> some View {
+        if chapters.isEmpty {
+            content
+        } else {
+            content
+                .accessibilityValue(valueText)
+                .accessibilityAdjustableAction { direction in
+                    adjust(direction)
+                }
+        }
+    }
+
+    private var currentIndex: Int {
+        chapters.lastIndex { Double($0.startMs) / 1000 <= position } ?? 0
+    }
+
+    private var valueText: String {
+        let current = currentIndex
+        let title = chapters[current].title
+        return String(localized: "Chapter \(current + 1) of \(chapters.count), \(title)")
+    }
+
+    private func adjust(_ direction: AccessibilityAdjustmentKind) {
+        let current = currentIndex
+        switch direction {
+        case .increment:
+            guard current + 1 < chapters.count else { return }
+            onSeek(Double(chapters[current + 1].startMs) / 1000)
+        case .decrement:
+            // Within a few seconds of a chapter's start, "back" goes to the previous chapter.
+            let start = Double(chapters[current].startMs) / 1000
+            if position > start + 3 {
+                onSeek(start)
+            } else {
+                onSeek(Double(chapters[max(current - 1, 0)].startMs) / 1000)
+            }
+        default:
+            break
+        }
     }
 }
 
