@@ -37,7 +37,6 @@ struct FullPlayerView: View {
     @State private var isQueuePresented = false
     @State private var isAddToPlaylistPresented = false
     @State private var isSleepTimerSheetPresented = false
-    @State private var isChaptersPresented = false
     @State private var menuSong: Song?
     @State private var tipPurchases: TipPurchaseManager = DependencyContainer.current.resolve()
     @State private var tipRepository: any TipRepository = DependencyContainer.current.resolve()
@@ -57,7 +56,12 @@ struct FullPlayerView: View {
     private var isPlayerUncovered: Bool {
         coordinator.playerPath.isEmpty
             && !isSharePresented && !isQueuePresented && !isAddToPlaylistPresented
-            && !isSleepTimerSheetPresented && !isTipSheetPresented && !isChaptersPresented && menuSong == nil
+            && !isSleepTimerSheetPresented && !isTipSheetPresented && menuSong == nil
+    }
+
+    /// The playing item's length: the engine's once it is known, else the song's own.
+    private var playbackDuration: TimeInterval {
+        engine.currentItemDuration ?? TimeInterval(song?.duration ?? 0)
     }
 
     @ViewBuilder
@@ -132,14 +136,6 @@ struct FullPlayerView: View {
         .task {
             guard AppConfiguration.current.featureFlags.tipButtonEnabled else { return }
             offerings = await tipRepository.offerings()
-        }
-        .appSheet(isPresented: $isChaptersPresented, detents: [.large]) {
-            ChaptersSheet(chapters: timelineStore.chapters, position: engine.currentPosition) { chapter in
-                // Chapter rows seek and play, as the Flutter chapter list does.
-                engine.seek(to: Double(chapter.startMs) / 1000)
-                engine.resume()
-                isChaptersPresented = false
-            }
         }
         .task(id: song?.id) {
             await timelineStore.load(for: song)
@@ -312,7 +308,7 @@ struct FullPlayerView: View {
             headline
             PlayerSeekBar(
                 position: engine.currentPosition,
-                duration: engine.currentItemDuration ?? TimeInterval(song?.duration ?? 0),
+                duration: playbackDuration,
                 barHeight: PlayerStyle.seekBarHeight,
                 chapters: timelineStore.chapters
             ) { target in
@@ -434,17 +430,6 @@ struct FullPlayerView: View {
 
             Spacer()
 
-            // Only for episodes with two or more chapters (rule R2, applied by the store).
-            if !timelineStore.chapters.isEmpty {
-                Button { isChaptersPresented = true } label: {
-                    queueRowGlyph("list.number", alignment: .center)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Chapters")
-
-                Spacer()
-            }
-
             Button { isSharePresented = true } label: {
                 queueRowGlyph("square.and.arrow.up", alignment: .trailing)
             }
@@ -470,6 +455,19 @@ struct FullPlayerView: View {
     private var metaSection: some View {
         if let song {
             VStack(alignment: .leading, spacing: 0) {
+                // An episode's chapters sit inline under the controls (the mapper keeps none for fewer than two).
+                if !timelineStore.chapters.isEmpty {
+                    ChaptersCard(
+                        chapters: timelineStore.chapters,
+                        position: engine.currentPosition,
+                        duration: playbackDuration,
+                        isPlaying: engine.status == .playing
+                    ) { chapter in
+                        // A row seeks and plays, as the Flutter chapter list does.
+                        engine.seek(to: Double(chapter.startMs) / 1000)
+                        engine.resume()
+                    }
+                }
                 // Rule R1: the read-along shows only for a ready transcript; otherwise this column is as before.
                 if timelineStore.hasReadAlong {
                     if timelineStore.hasMultipleSpeakers {
@@ -492,7 +490,15 @@ struct FullPlayerView: View {
                             Text("Description")
                                 .typography(Typography.bodyMedium)
                                 .foregroundStyle(PlayerStyle.white)
-                            PlayerExpandableText(text: song.description ?? "")
+                            PlayerExpandableText(
+                                text: song.description ?? "",
+                                chapterStartsMs: timelineStore.chapters.map(\.startMs),
+                                onTimestampTap: { milliseconds in
+                                    // A tapped timestamp seeks and plays, like a row of the chapters sheet.
+                                    engine.seek(to: Double(milliseconds) / 1000)
+                                    engine.resume()
+                                }
+                            )
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     )
@@ -523,6 +529,12 @@ private struct PlayerAddToPlaylistSheet: View {
 /// "Read more" / "Read less" toggle shown only when the text overflows.
 /// With `onReadMore` (the creator card's bio, `CreatorMetaUi`), "Read more"
 /// runs that instead of expanding in place, as Flutter's `onTap` does.
+///
+/// With `chapterStartsMs`, a timestamp in the text that equals a chapter's start
+/// (`DescriptionTimestamps`) is drawn as a blue link, and tapping it calls
+/// `onTimestampTap` with its time in milliseconds. The link carries a private
+/// URL scheme that this view handles itself. With no chapters the text is
+/// plain, exactly as before.
 struct PlayerExpandableText: View {
     let text: String
     var maxLines: Int = 3
@@ -530,6 +542,8 @@ struct PlayerExpandableText: View {
     var color: Color = PlayerStyle.white
     var linkColor: Color = PlayerStyle.white
     var onReadMore: (() -> Void)? = nil
+    var chapterStartsMs: [Int] = []
+    var onTimestampTap: ((Int) -> Void)? = nil
 
     @State private var isExpanded = false
     @State private var fullHeight: CGFloat = 0
@@ -537,11 +551,27 @@ struct PlayerExpandableText: View {
 
     private var overflows: Bool { fullHeight > limitedHeight + 1 }
 
+    /// The text with its chapter timestamps as links, or `nil` when none match.
+    private var linkedText: AttributedString? {
+        let links = DescriptionTimestamps.links(in: text, chapterStartsMs: chapterStartsMs)
+        guard !links.isEmpty else { return nil }
+        var result = AttributedString(text)
+        for link in links {
+            guard let range = Range(link.range, in: result),
+                  let url = DescriptionTimestamps.url(forMilliseconds: link.milliseconds)
+            else { continue }
+            result[range].link = url
+            result[range].foregroundColor = PlayerStyle.timestampLink
+        }
+        return result
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(text)
+            visibleText
                 .typography(token)
                 .foregroundStyle(color)
+                .tint(PlayerStyle.timestampLink)
                 .lineLimit(isExpanded ? nil : maxLines)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
@@ -569,6 +599,26 @@ struct PlayerExpandableText: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+}
+
+extension PlayerExpandableText {
+    /// What the reader sees. The two hidden copies that measure the height stay
+    /// plain, since a link does not change the layout.
+    @ViewBuilder
+    fileprivate var visibleText: some View {
+        if let linkedText {
+            Text(linkedText)
+                .environment(\.openURL, OpenURLAction { url in
+                    guard let milliseconds = DescriptionTimestamps.milliseconds(from: url) else {
+                        return .systemAction
+                    }
+                    onTimestampTap?(milliseconds)
+                    return .handled
+                })
+        } else {
+            Text(text)
         }
     }
 }

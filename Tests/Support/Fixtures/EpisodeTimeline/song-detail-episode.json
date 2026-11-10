@@ -4,6 +4,7 @@
   "data": {
     "id": "3f1c2b9e-7a4d-4c1e-9b2a-5d6e7f8a9b0c",
     "title": "Sunday Sermon: Grace in the Storm",
+    "description": "Grace in the storm: a Sunday sermon from Mark 4.\n\n0:00 Intro\n1:14 Reading: Mark 4:35-41\n25:00 Sermon\n50:00 ప్రార్థన (Prayer)\n\nJoin us every Sunday at 9:00 AM.",
     "type": "episode",
     "duration": 3600,
     "image": "hallelujah/assets/creators/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/thumbnail-song/9c8b7a6d/original.jpg",
@@ -21,36 +22,24 @@
     "transcripts": [],
     "chapters": [
       {
-        "id": "c0000000-0000-4000-8000-000000000001",
         "startMs": 0,
         "endMs": 74000,
-        "title": "Intro",
-        "imageUrl": null,
-        "linkUrl": null
+        "title": "Intro"
       },
       {
-        "id": "c0000000-0000-4000-8000-000000000002",
         "startMs": 74000,
         "endMs": 1500000,
-        "title": "Reading: Mark 4:35-41",
-        "imageUrl": "https://cdn.example.com/chapters/storm.jpg",
-        "linkUrl": "https://www.bible.com/bible/111/MRK.4.35-41"
+        "title": "Reading: Mark 4:35-41"
       },
       {
-        "id": "c0000000-0000-4000-8000-000000000003",
         "startMs": 1500000,
         "endMs": 3000000,
-        "title": "Sermon",
-        "imageUrl": null,
-        "linkUrl": null
+        "title": "Sermon"
       },
       {
-        "id": "c0000000-0000-4000-8000-000000000004",
         "startMs": 3000000,
         "endMs": 3600000,
-        "title": "ప్రార్థన (Prayer)",
-        "imageUrl": null,
-        "linkUrl": null
+        "title": "ప్రార్థన (Prayer)"
       }
     ],
     "speakers": [

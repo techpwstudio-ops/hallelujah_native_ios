@@ -23,7 +23,9 @@ struct TimelineIndex: Sendable, Equatable {
     }
 
     /// The chapter playing at `positionMs`: the last one that has started. `nil`
-    /// before the first chapter, or with no chapters.
+    /// before the first chapter, or with no chapters. Only the starts matter:
+    /// chapters have no gaps, so a chapter with no `endMs` (the last one, when the
+    /// server does not know the duration) stays active to the end of the episode.
     func activeChapterIndex(positionMs: Int) -> Int? {
         Self.lastIndex(in: chapterStartsMs, atMost: positionMs)
     }

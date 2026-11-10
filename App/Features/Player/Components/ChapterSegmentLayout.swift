@@ -31,13 +31,20 @@ enum ChapterSegmentLayout {
     }
 
     /// Widths are proportional to chapter length, with `gap` between segments.
-    /// The chapters together fill exactly `trackWidth`.
+    /// The chapters together fill exactly `trackWidth`, so no segment is ever
+    /// wider than the bar, whatever the spans say.
+    ///
+    /// A span with no `end` is open-ended. It ends where the next span starts,
+    /// and the last one gets the average length of the others (a whole unit when
+    /// it is alone). That is only a stand-in for the width until the real end is
+    /// known, and it becomes the segment's `endSeconds`.
     static func segments(
-        spans: [(start: Double, end: Double)],
+        spans rawSpans: [(start: Double, end: Double?)],
         trackWidth: CGFloat,
         gap: CGFloat = defaultGap,
         minimumWidth: CGFloat = defaultMinimumWidth
     ) -> [Segment] {
+        let spans = closedSpans(rawSpans)
         let totalLength = spans.reduce(0) { $0 + max($1.end - $1.start, 0) }
         guard !spans.isEmpty, totalLength > 0, trackWidth > 0 else { return [] }
         let available = max(trackWidth - gap * CGFloat(spans.count - 1), 0)
@@ -79,5 +86,17 @@ enum ChapterSegmentLayout {
             cursor += group.width + gap
         }
         return result
+    }
+
+    /// Gives every open-ended span an end, as `segments` describes.
+    private static func closedSpans(_ spans: [(start: Double, end: Double?)]) -> [(start: Double, end: Double)] {
+        let knownLengths = spans.compactMap { span in span.end.map { max($0 - span.start, 0) } }
+        let average = knownLengths.isEmpty ? 1 : knownLengths.reduce(0, +) / Double(knownLengths.count)
+        let standIn = average > 0 ? average : 1
+        return spans.enumerated().map { offset, span in
+            if let end = span.end { return (start: span.start, end: end) }
+            let nextStart = offset + 1 < spans.count ? spans[offset + 1].start : nil
+            return (start: span.start, end: nextStart ?? span.start + standIn)
+        }
     }
 }

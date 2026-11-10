@@ -25,9 +25,9 @@ struct EpisodeTimelineDTOTests {
         let timeline = try #require(song.episodeTimeline)
 
         #expect(timeline.chapters.map(\.startMs) == [0, 74_000, 1_500_000, 3_000_000])
+        #expect(timeline.chapters.map(\.endMs) == [74_000, 1_500_000, 3_000_000, 3_600_000])
         #expect(timeline.chapters[0].title == "Intro")
-        #expect(timeline.chapters[1].imageURL?.absoluteString == "https://cdn.example.com/chapters/storm.jpg")
-        #expect(timeline.chapters[1].linkURL?.absoluteString == "https://www.bible.com/bible/111/MRK.4.35-41")
+        #expect(timeline.chapters[1].title == "Reading: Mark 4:35-41")
         #expect(timeline.chapters[3].title == "ప్రార్థన (Prayer)")
 
         #expect(timeline.speakers.map(\.label) == ["S1", "S2"])
@@ -66,6 +66,115 @@ struct EpisodeTimelineDTOTests {
         #expect(timeline.chapters.count == 4)
         #expect(timeline.speakers.count == 2)
         #expect(timeline.transcript.status == .ready)
+    }
+
+    @Test func chapterProblemFixtureHasNoChaptersAndTheCheckIsIgnored() throws {
+        let song = try decodeSong("creator-song-detail-episode-chapter-problem")
+        let timeline = try #require(song.episodeTimeline)
+
+        #expect(timeline.chapters.isEmpty)
+        #expect(timeline.transcript.status == .absent)
+    }
+
+    @Test func chaptersKeyMissingReadsAsNoChapters() throws {
+        // An older backend, or a song that never had chapters: the key is absent.
+        let song = try decodeEpisode(#""episodeTranscript": {"status": "none"}"#)
+
+        #expect(song.episodeTimeline != nil)
+        #expect(song.episodeTimeline?.chapters.isEmpty == true)
+    }
+
+    @Test func chaptersNullReadsAsNoChapters() throws {
+        let song = try decodeEpisode(#""chapters": null"#)
+
+        #expect(song.episodeTimeline?.chapters.isEmpty == true)
+    }
+
+    @Test func emptyChaptersArrayReadsAsNoChapters() throws {
+        let song = try decodeEpisode(#""chapters": []"#)
+
+        #expect(song.episodeTimeline?.chapters.isEmpty == true)
+    }
+
+    @Test func lastChapterWithNullEndKeepsNilAndTheRestKeepTheirEnds() throws {
+        let chapters = """
+        "chapters": [
+          {"startMs": 0, "endMs": 5000, "title": "Intro"},
+          {"startMs": 5000, "endMs": 9000, "title": "Main"},
+          {"startMs": 9000, "endMs": null, "title": "Outro"}
+        ]
+        """
+        let timeline = try #require(try decodeEpisode(chapters).episodeTimeline)
+
+        #expect(timeline.chapters.map(\.endMs) == [5000, 9000, nil])
+        #expect(timeline.chapters.map(\.title) == ["Intro", "Main", "Outro"])
+    }
+
+    @Test func lastChapterWithNoEndKeyKeepsNil() throws {
+        let chapters = """
+        "chapters": [
+          {"startMs": 0, "endMs": 5000, "title": "Intro"},
+          {"startMs": 5000, "title": "Main"}
+        ]
+        """
+        let timeline = try #require(try decodeEpisode(chapters).episodeTimeline)
+
+        #expect(timeline.chapters.map(\.endMs) == [5000, nil])
+    }
+
+    @Test func aMiddleChapterWithNoEndTakesTheNextStart() throws {
+        let chapters = """
+        "chapters": [
+          {"startMs": 0, "endMs": null, "title": "Intro"},
+          {"startMs": 5000, "endMs": 9000, "title": "Main"},
+          {"startMs": 9000, "endMs": null, "title": "Outro"}
+        ]
+        """
+        let timeline = try #require(try decodeEpisode(chapters).episodeTimeline)
+
+        #expect(timeline.chapters.map(\.endMs) == [5000, 9000, nil])
+    }
+
+    @Test func emptyAndMissingTitlesAreKeptAsEmpty() throws {
+        let chapters = """
+        "chapters": [
+          {"startMs": 0, "endMs": 5000, "title": ""},
+          {"startMs": 5000, "endMs": 9000, "title": "   "},
+          {"startMs": 9000, "endMs": null}
+        ]
+        """
+        let timeline = try #require(try decodeEpisode(chapters).episodeTimeline)
+
+        #expect(timeline.chapters.count == 3)
+        #expect(timeline.chapters.map(\.title) == ["", "", ""])
+        #expect(timeline.chapters.allSatisfy { !$0.hasTitle })
+    }
+
+    @Test func aChapterWhoseEndIsNotAfterItsStartIsDropped() throws {
+        let chapters = """
+        "chapters": [
+          {"startMs": 0, "endMs": 5000, "title": "Intro"},
+          {"startMs": 5000, "endMs": 5000, "title": "Empty"},
+          {"startMs": 5000, "endMs": 9000, "title": "Main"}
+        ]
+        """
+        let timeline = try #require(try decodeEpisode(chapters).episodeTimeline)
+
+        #expect(timeline.chapters.map(\.title) == ["Intro", "Main"])
+    }
+
+    @Test func oldContractFieldsAreIgnored() throws {
+        // A backend from before the change still sends id, imageUrl and linkUrl.
+        let chapters = """
+        "chapters": [
+          {"id": "c1", "startMs": 0, "endMs": 5000, "title": "Intro", "imageUrl": "https://x.test/a.jpg"},
+          {"id": "c2", "startMs": 5000, "endMs": 9000, "title": "Main", "linkUrl": "https://x.test/b"}
+        ]
+        """
+        let timeline = try #require(try decodeEpisode(chapters).episodeTimeline)
+
+        #expect(timeline.chapters.map(\.title) == ["Intro", "Main"])
+        #expect(timeline.chapters.map(\.endMs) == [5000, 9000])
     }
 
     @Test func chaptersAsAStringDropOnlyTheChapters() throws {

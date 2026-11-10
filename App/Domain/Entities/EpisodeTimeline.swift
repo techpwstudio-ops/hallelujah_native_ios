@@ -1,14 +1,36 @@
 import Foundation
 
-/// One chapter of an episode (`chapters` in the song detail, contract §3).
-/// `endMs` is the next chapter's `startMs`; the last one ends at the duration.
-struct EpisodeChapter: Sendable, Equatable, Identifiable {
-    let id: String
+/// One chapter of an episode (`chapters` in the song detail). Times are whole
+/// milliseconds. Chapters are sorted, the first starts at 0, and there are no gaps.
+struct EpisodeChapter: Sendable, Equatable {
     let startMs: Int
-    let endMs: Int
+    /// The next chapter's `startMs`. `nil` only for the last chapter, when the
+    /// server does not know the episode's duration. Use `effectiveEndMs(playerDurationMs:)`.
+    let endMs: Int?
+    /// May be empty. Use `displayTitle(at:)` for what to show.
     let title: String
-    let imageURL: URL?
-    let linkURL: URL?
+}
+
+extension EpisodeChapter {
+    /// Where the chapter ends: `endMs`, else the player's duration. `nil` while
+    /// both are unknown, which callers treat as open-ended. A duration at or
+    /// before the start is not a usable end, so it also gives `nil`.
+    func effectiveEndMs(playerDurationMs: Int?) -> Int? {
+        if let endMs { return endMs }
+        guard let playerDurationMs, playerDurationMs > startMs else { return nil }
+        return playerDurationMs
+    }
+
+    /// False when the server sent an empty (or blank) title.
+    var hasTitle: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// The title, or "Chapter N" in the user's language when it is empty.
+    /// `index` is the chapter's 0-based place in the episode, so N is `index + 1`.
+    func displayTitle(at index: Int) -> String {
+        hasTitle ? title : String(localized: "Chapter \(index + 1)")
+    }
 }
 
 /// One speaker label that appears in the transcript (`speakers`, contract §3).
@@ -55,7 +77,7 @@ struct EpisodeTranscriptInfo: Sendable, Equatable {
 /// The episode-only data the player shows beside the audio. Present on
 /// `Song.episodeTimeline` for episodes only; `nil` for music.
 struct EpisodeTimeline: Sendable, Equatable {
-    /// Empty unless the episode has at least two valid chapters (rule R2).
+    /// Empty when the episode has no chapters, or fewer than two usable ones.
     let chapters: [EpisodeChapter]
     let speakers: [EpisodeSpeaker]
     let transcript: EpisodeTranscriptInfo

@@ -69,7 +69,7 @@ struct TranscriptParagraphView: View, Equatable {
     let state: State
     let onWordTap: (Int) -> Void
 
-    static func == (lhs: TranscriptParagraphView, rhs: TranscriptParagraphView) -> Bool {
+    nonisolated static func == (lhs: TranscriptParagraphView, rhs: TranscriptParagraphView) -> Bool {
         lhs.words == rhs.words && lhs.firstWordIndex == rhs.firstWordIndex && lhs.state == rhs.state
     }
 

@@ -5,8 +5,8 @@ import Testing
 struct SongEpisodeTimelineTests {
     private let timeline = EpisodeTimeline(
         chapters: [
-            EpisodeChapter(id: "1", startMs: 0, endMs: 5000, title: "Intro", imageURL: nil, linkURL: nil),
-            EpisodeChapter(id: "2", startMs: 5000, endMs: 9000, title: "Main", imageURL: nil, linkURL: nil),
+            EpisodeChapter(startMs: 0, endMs: 5000, title: "Intro"),
+            EpisodeChapter(startMs: 5000, endMs: nil, title: "Main"),
         ],
         speakers: [],
         transcript: .absent

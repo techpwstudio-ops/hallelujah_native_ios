@@ -11,6 +11,8 @@ import SwiftUI
 /// With `chapters` (two or more, Phase 1) the track is drawn as one segment per
 /// chapter, and the current chapter's title sits between the time labels. With
 /// the default empty `chapters` every caller renders exactly as before.
+/// A chapter's end is its `endMs`, else this bar's `duration` (the last chapter
+/// can have no `endMs`), and its title is "Chapter N" when the server sent none.
 struct PlayerSeekBar: View {
     var position: TimeInterval
     var duration: TimeInterval
@@ -35,8 +37,20 @@ struct PlayerSeekBar: View {
 
     private var hasChapters: Bool { !chapters.isEmpty }
 
-    private var chapterSpans: [(start: Double, end: Double)] {
-        chapters.map { (start: Double($0.startMs) / 1000, end: Double($0.endMs) / 1000) }
+    /// The bar's duration in whole milliseconds, or `nil` while it is unknown.
+    private var durationMs: Int? {
+        PlayerSeekBar.milliseconds(of: duration)
+    }
+
+    /// Each chapter's span in seconds. A last chapter with no end and no known
+    /// duration stays open-ended (`end` is `nil`), and the layout sizes it.
+    private var chapterSpans: [(start: Double, end: Double?)] {
+        chapters.map { chapter in
+            (
+                start: Double(chapter.startMs) / 1000,
+                end: chapter.effectiveEndMs(playerDurationMs: durationMs).map { Double($0) / 1000 }
+            )
+        }
     }
 
     private var trackHeight: CGFloat {
@@ -92,7 +106,7 @@ struct PlayerSeekBar: View {
                 .animation(.easeOut(duration: 0.15), value: trackHeight)
                 .overlay(alignment: .topLeading) {
                     if let index = dragChapterIndex, chapters.indices.contains(index) {
-                        dragLabel(for: chapters[index], thumbX: progressX, trackWidth: trackWidth)
+                        dragLabel(for: chapters[index], at: index, thumbX: progressX, trackWidth: trackWidth)
                     }
                 }
                 .contentShape(Rectangle())
@@ -118,8 +132,9 @@ struct PlayerSeekBar: View {
                 Text(Self.format(displayPosition))
                     .fixedSize()
                 if let index = chapterIndex(at: displayPosition) {
-                    Text(chapters[index].title)
+                    Text(chapters[index].displayTitle(at: index))
                         .lineLimit(1)
+                        .truncationMode(.tail)
                         .frame(maxWidth: .infinity)
                 } else {
                     Spacer()
@@ -140,11 +155,17 @@ struct PlayerSeekBar: View {
         }
     }
 
-    /// One segment per drawn chapter group. Each fills with its own played fraction.
+    /// One segment per drawn chapter group. Each fills with its own played
+    /// fraction, over its own buffered fraction (the lighter shade), over the base.
     private func chapterSegments(trackWidth: CGFloat) -> some View {
         ForEach(ChapterSegmentLayout.segments(spans: chapterSpans, trackWidth: trackWidth)) { segment in
             Capsule()
                 .fill(PlayerStyle.fill.opacity(0.8))
+                .overlay(alignment: .leading) {
+                    Capsule()
+                        .fill(PlayerStyle.fill)
+                        .frame(width: segment.width * CGFloat(segment.playedFraction(at: buffered)))
+                }
                 .overlay(alignment: .leading) {
                     Capsule()
                         .fill(PlayerStyle.white)
@@ -156,11 +177,16 @@ struct PlayerSeekBar: View {
     }
 
     /// The chapter title and time above the thumb while scrubbing.
-    private func dragLabel(for chapter: EpisodeChapter, thumbX: CGFloat, trackWidth: CGFloat) -> some View {
+    private func dragLabel(
+        for chapter: EpisodeChapter,
+        at index: Int,
+        thumbX: CGFloat,
+        trackWidth: CGFloat
+    ) -> some View {
         let widest = trackWidth + thumbRadius * 2 - Self.dragLabelWidth
         let left = min(max(thumbX + thumbRadius - Self.dragLabelWidth / 2, 0), max(widest, 0))
         return VStack(spacing: 2) {
-            Text(chapter.title)
+            Text(chapter.displayTitle(at: index))
                 .lineLimit(1)
             Text(Self.format(displayPosition))
         }
@@ -197,6 +223,13 @@ struct PlayerSeekBar: View {
         return duration * Double(clamped / trackWidth)
     }
 
+    /// Whole milliseconds of `seconds`, or `nil` for a duration that is not known yet
+    /// (zero, negative, or not a finite number).
+    static func milliseconds(of seconds: TimeInterval) -> Int? {
+        guard seconds.isFinite, seconds > 0 else { return nil }
+        return Int((seconds * 1000).rounded())
+    }
+
     static func format(_ interval: TimeInterval) -> String {
         let total = max(Int(interval.rounded(.down)), 0)
         let hours = total / 3600
@@ -231,13 +264,18 @@ private struct ChapterSeekAccessibility: ViewModifier {
         chapters.lastIndex { Double($0.startMs) / 1000 <= position } ?? 0
     }
 
+    /// "Chapter 3 of 12, <title>". With no title the title would only repeat the
+    /// number, so the announcement stops at "Chapter 3 of 12".
     private var valueText: String {
         let current = currentIndex
-        let title = chapters[current].title
-        return String(localized: "Chapter \(current + 1) of \(chapters.count), \(title)")
+        let chapter = chapters[current]
+        guard chapter.hasTitle else {
+            return String(localized: "Chapter \(current + 1) of \(chapters.count)")
+        }
+        return String(localized: "Chapter \(current + 1) of \(chapters.count), \(chapter.title)")
     }
 
-    private func adjust(_ direction: AccessibilityAdjustmentKind) {
+    private func adjust(_ direction: AccessibilityAdjustmentDirection) {
         let current = currentIndex
         switch direction {
         case .increment:

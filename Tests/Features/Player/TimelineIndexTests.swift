@@ -15,8 +15,8 @@ struct TimelineIndexTests {
         ]
     )
 
-    private func chapter(_ id: String, _ start: Int, _ end: Int) -> EpisodeChapter {
-        EpisodeChapter(id: id, startMs: start, endMs: end, title: id, imageURL: nil, linkURL: nil)
+    private func chapter(_ title: String, _ start: Int, _ end: Int?) -> EpisodeChapter {
+        EpisodeChapter(startMs: start, endMs: end, title: title)
     }
 
     @Test func beforeTheFirstWordThereIsNoActiveWord() {
@@ -63,6 +63,20 @@ struct TimelineIndexTests {
         #expect(index.activeChapterIndex(positionMs: 73_999) == 0)
         #expect(index.activeChapterIndex(positionMs: 74_000) == 1)
         #expect(index.activeChapterIndex(positionMs: 999_999) == 1)
+    }
+
+    @Test func aLastChapterWithNoEndStaysActiveToTheEndOfTheEpisode() {
+        let index = TimelineIndex(chapters: [chapter("a", 0, 74_000), chapter("b", 74_000, nil)])
+        #expect(index.activeChapterIndex(positionMs: 0) == 0)
+        #expect(index.activeChapterIndex(positionMs: 73_999) == 0)
+        #expect(index.activeChapterIndex(positionMs: 74_000) == 1)
+        #expect(index.activeChapterIndex(positionMs: 7_200_000) == 1)
+    }
+
+    @Test func aSingleChapterWithNoEndIsActiveFromItsStart() {
+        let index = TimelineIndex(chapters: [chapter("only", 0, nil)])
+        #expect(index.activeChapterIndex(positionMs: 0) == 0)
+        #expect(index.activeChapterIndex(positionMs: 999_999) == 0)
     }
 
     @Test func noChaptersMeansNoActiveChapter() {

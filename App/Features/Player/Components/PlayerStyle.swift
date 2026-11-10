@@ -21,6 +21,8 @@ enum PlayerStyle {
     static let sleepAccent = Color(red: 155.0 / 255, green: 143.0 / 255, blue: 255.0 / 255)
     /// `Vx.yellow500` — the active row title in `BaseMediaListTile`.
     static let activeYellow = Color(red: 1.0, green: 235.0 / 255, blue: 59.0 / 255)
+    /// A tappable timestamp in the description (a chapter start). Readable on black.
+    static let timestampLink = Color(red: 62.0 / 255, green: 166.0 / 255, blue: 1.0)
     /// `Colors.redAccent` (0xFFFF5252).
     static let redAccent = Color(red: 1.0, green: 82.0 / 255, blue: 82.0 / 255)
     /// `Colors.grey` (0xFF9E9E9E) — inactive shuffle / loop glyph.
@@ -45,6 +47,8 @@ enum PlayerStyle {
     static let playButtonDiameter: CGFloat = 58
     static let playGlyphSize: CGFloat = 32
     static let seekGlyphSize: CGFloat = 22
+    /// An episode's back / forward 10 seconds glyph; larger than the previous / next one so the "10" reads.
+    static let skipGlyphSize: CGFloat = 30
     static let controlGlyphPadding: CGFloat = 12
     static let toggleGlyphSize: CGFloat = 24
     static let seekBarHeight: CGFloat = 6

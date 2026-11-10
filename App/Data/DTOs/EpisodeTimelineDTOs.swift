@@ -45,14 +45,25 @@ private struct SkippedElement: Decodable {
 
 // MARK: - Wire shapes
 
-/// One `chapters` item. Items missing `startMs`, `endMs` or `title` are dropped.
+/// One `chapters` item: `{ startMs, endMs, title }`. Only `startMs` is required,
+/// so an item without it is dropped. `endMs` is optional because the last chapter
+/// sends `null` when the server does not know the duration. `title` may be empty,
+/// and a missing or non-string one reads as empty too.
 struct ChapterDTO: Decodable, Sendable {
-    let id: String?
     let startMs: Int
-    let endMs: Int
+    let endMs: Int?
     let title: String
-    let imageUrl: String?
-    let linkUrl: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case startMs, endMs, title
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        startMs = try container.decode(Int.self, forKey: .startMs)
+        endMs = try? container.decodeIfPresent(Int.self, forKey: .endMs)
+        title = (try? container.decodeIfPresent(String.self, forKey: .title)) ?? ""
+    }
 }
 
 /// One `speakers` item. `label` is the key the transcript file uses.
@@ -110,20 +121,22 @@ private enum EpisodeTimelineMapper {
     }
 
     /// Sorted by start, bad items dropped, capped at 200, and empty unless at
-    /// least two remain (rule R2).
+    /// least two remain. An item with a negative start, or an end that is not
+    /// after its start, is bad. A missing end on any chapter but the last takes
+    /// the next chapter's start, which is what the server sends. The last one
+    /// keeps a missing end, and the player's duration closes it later.
     private static func chapterList(from items: [ChapterDTO]) -> [EpisodeChapter] {
         let valid = items
-            .filter { $0.startMs >= 0 && $0.endMs > $0.startMs && cleaned($0.title) != nil }
+            .filter { $0.startMs >= 0 && ($0.endMs ?? Int.max) > $0.startMs }
             .sorted { $0.startMs < $1.startMs }
             .prefix(maxChapters)
-        let chapters = valid.enumerated().map { offset, item in
-            EpisodeChapter(
-                id: cleaned(item.id) ?? "chapter-\(offset)",
+        let ordered = Array(valid)
+        let chapters = ordered.enumerated().map { offset, item in
+            let next = offset + 1 < ordered.count ? ordered[offset + 1].startMs : nil
+            return EpisodeChapter(
                 startMs: item.startMs,
-                endMs: item.endMs,
-                title: cleaned(item.title) ?? "",
-                imageURL: httpURL(cleaned(item.imageUrl)),
-                linkURL: httpURL(cleaned(item.linkUrl))
+                endMs: item.endMs ?? next,
+                title: item.title.trimmingCharacters(in: .whitespacesAndNewlines)
             )
         }
         return chapters.count >= 2 ? chapters : []
