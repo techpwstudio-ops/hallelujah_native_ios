@@ -122,7 +122,7 @@ private struct ReelVideo: View {
             let size = reelVideoSize(available: proxy.size, aspectRatio: pacing.adVideoAspectRatio)
             ZStack {
                 if let player = pacing.adPlayer, pacing.isAdReady, size != .zero {
-                    ReelVideoSurface(player: player)
+                    VideoSurface(player: player, gravity: .resizeAspect)
                         .frame(width: size.width, height: size.height)
                         // The reel counts once its picture has been seen, not once
                         // it plays: it plays on at the mini player too.
@@ -192,45 +192,6 @@ private struct ReelSeen: ViewModifier {
 private extension View {
     func reelSeen(perform onSeen: @escaping () -> Void) -> some View {
         modifier(ReelSeen(onSeen: onSeen))
-    }
-}
-
-/// A plain `AVPlayerLayer` at the size it is given. `.resizeAspect`, because the
-/// frame already has the video's own shape (`reelVideoSize`): nothing to crop.
-private struct ReelVideoSurface: UIViewRepresentable {
-    let player: AVPlayer
-
-    func makeUIView(context: Context) -> PlayerLayerView {
-        let view = PlayerLayerView()
-        view.playerLayer.player = player
-        return view
-    }
-
-    func updateUIView(_ view: PlayerLayerView, context: Context) {
-        if view.playerLayer.player !== player { view.playerLayer.player = player }
-    }
-}
-
-private final class PlayerLayerView: UIView {
-    let playerLayer = AVPlayerLayer()
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        backgroundColor = .black
-        playerLayer.videoGravity = .resizeAspect
-        layer.addSublayer(playerLayer)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("PlayerLayerView is not built from a nib or storyboard")
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        playerLayer.frame = bounds
-        CATransaction.commit()
     }
 }
 

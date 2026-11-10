@@ -106,6 +106,18 @@ struct AudioSourceResolver: Sendable {
         return ResolvedSource(url: url, quality: targetQuality, requiresAuthHeader: true)
     }
 
+    // MARK: - Silent video
+
+    /// The URL of an episode's silent video, through the same authenticated proxy as the audio
+    /// and encoded the same way. `key` is `Song.videoFile`, a storage key taken as it comes (the
+    /// audio path does not rewrite a bare key either); `nil` when it is blank or cannot be encoded.
+    /// Headers are the caller's: see `ProxyRequestHeaders`.
+    func videoURL(forKey key: String) -> URL? {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return Self.proxyURL(for: trimmed, base: proxyBaseURL)
+    }
+
     /// `selectBestVariant` (s3_service.dart:148-176): among tokens at or
     /// below `targetQuality`'s rank, the highest-quality one wins.
     private static func bestVariantToken(

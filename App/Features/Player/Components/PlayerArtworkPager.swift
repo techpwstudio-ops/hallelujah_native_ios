@@ -28,6 +28,9 @@ struct PlayerArtworkPager: View {
     /// the pager is framed to exactly `width` x `width / aspectRatio`, so it
     /// can't report a different size while it pages to the next song.
     var width: CGFloat = 0
+    /// What lays an episode's silent video over its cover. `nil` (the default) is the plain pager:
+    /// covers only, as music and every caller before the video had it.
+    var video: PlayerVideoContext?
 
     /// `_Artwork` passes `radius: 0` and fills the full screen width — a
     /// square for music, 16:9 for episodes, edge to edge with no inset.
@@ -40,12 +43,17 @@ struct PlayerArtworkPager: View {
         TabView(selection: selectionBinding) {
             ForEach(songs) { song in
                 GeometryReader { proxy in
-                    ArtworkView(
-                        url: resolvedArtwork(for: song),
-                        width: proxy.size.width,
-                        height: proxy.size.height,
-                        cornerRadius: Self.cornerRadius
-                    )
+                    ZStack {
+                        ArtworkView(
+                            url: resolvedArtwork(for: song),
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            cornerRadius: Self.cornerRadius
+                        )
+                        if let video {
+                            PlayerVideoSlot(song: song, context: video)
+                        }
+                    }
                 }
                 .tag(song.id)
             }

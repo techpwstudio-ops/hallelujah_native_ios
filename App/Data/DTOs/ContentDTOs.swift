@@ -276,6 +276,10 @@ struct SongDTO: Decodable, Sendable {
     let chapters: LenientValue<LossyArray<ChapterDTO>>?
     let speakers: LenientValue<LossyArray<SpeakerDTO>>?
     let episodeTranscript: LenientValue<EpisodeTranscriptDTO>?
+
+    /// The episode's silent video key (D25: additive and optional). Wrapped like the fields above,
+    /// so a value that is not a string drops only itself and the song still decodes.
+    let videoFile: LenientValue<String>?
 }
 
 extension SongDTO {
@@ -360,7 +364,8 @@ extension SongDTO {
                 }
             },
             isFavorited: !(favoritedBy ?? []).isEmpty,
-            episodeTimeline: resolvedEpisodeTimeline
+            episodeTimeline: resolvedEpisodeTimeline,
+            videoFile: sanitized(videoFile?.value)
         )
     }
 }

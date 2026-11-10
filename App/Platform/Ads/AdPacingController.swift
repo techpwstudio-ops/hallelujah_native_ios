@@ -94,7 +94,7 @@ final class AdPacingController {
     private(set) var showCompanionBanner = false
 
     /// Not `private` — `AdBreakView` reads this directly to give a `reel_video`
-    /// creative's picture (`ReelVideoSurface`) its player; everything else
+    /// creative's picture (`VideoSurface`) its player; everything else
     /// about ad playback stays internal to this controller.
     private(set) var adPlayer: AVPlayer?
     private var timeObserverToken: Any?

@@ -15,13 +15,15 @@ extension Song {
         duration: Int? = 180,
         primaryArtists: String? = "Artist",
         featuredArtists: String? = nil,
-        isFavorited: Bool = false
+        isFavorited: Bool = false,
+        videoFile: String? = nil,
+        audioFile: String? = nil
     ) -> Song {
         Song(
             id: id, title: title, description: nil, type: type,
             image: image, imageVariants: imageVariants,
             rectangleImage: rectangleImage, rectangleImageVariants: rectangleImageVariants,
-            audioFile: nil, audioVariants: nil,
+            audioFile: audioFile, audioVariants: nil,
             audioUrls: SongAudioURLs(original: nil, low: nil, standard: nil, high: nil),
             duration: duration, language: nil, releaseDate: nil,
             plays: nil, likes: nil, shares: nil, downloads: nil,
@@ -33,7 +35,8 @@ extension Song {
             createdAt: nil, updatedAt: nil,
             creator: nil, primaryGenre: nil, playlistTitles: [],
             songPrimaryArtists: [], transcripts: nil, songCredits: nil,
-            isFavorited: isFavorited
+            isFavorited: isFavorited,
+            videoFile: videoFile
         )
     }
 }

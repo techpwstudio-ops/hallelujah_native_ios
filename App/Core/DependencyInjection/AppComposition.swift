@@ -381,6 +381,16 @@ enum AppComposition {
             transcripts: transcriptRepository
         )
         container.register(EpisodeTimelineStore.self) { episodeTimelineStore }
+        // Silent video mode: the listener's cover-or-video choice for the full player. Shared by
+        // the artwork pager and the switch on it; not persisted, so every launch starts on the cover.
+        let playerVideoModeStore = PlayerVideoModeStore()
+        container.register(PlayerVideoModeStore.self) { playerVideoModeStore }
+        // The silent video comes through the same authenticated media proxy as the audio.
+        let playerVideoSource = PlayerVideoSource(
+            proxyBaseURL: configuration.proxyBaseURL,
+            tokenProvider: session
+        )
+        container.register(PlayerVideoSource.self) { playerVideoSource }
         // T47 — local-file-first playback source: consulted at the top of
         // `AudioEngine.makePlayerItem(for:forceProxy:)` before any remote
         // resolution, so a downloaded (T46) song plays from disk instead.

@@ -33,6 +33,9 @@ struct FullPlayerView: View {
     @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
     @State private var playerAd: PlayerAdController = DependencyContainer.current.resolve()
     @State private var sleepTimer: SleepTimerController = DependencyContainer.current.resolve()
+    /// Cover or silent video: the listener's choice, shared by the artwork and the pill that flips it.
+    @State private var videoMode: PlayerVideoModeStore = DependencyContainer.current.resolve()
+    @State private var videoSource: PlayerVideoSource = DependencyContainer.current.resolve()
     @State private var isSharePresented = false
     @State private var isQueuePresented = false
     @State private var isAddToPlaylistPresented = false
@@ -57,6 +60,28 @@ struct FullPlayerView: View {
         coordinator.playerPath.isEmpty
             && !isSharePresented && !isQueuePresented && !isAddToPlaylistPresented
             && !isSleepTimerSheetPresented && !isTipSheetPresented && menuSong == nil
+    }
+
+    /// The silent video is on screen and in front: the app is not in the background and no page is
+    /// pushed over the player. Sheets over the player do not count, so the video keeps playing
+    /// under one; that is why this is not `isPlayerUncovered`.
+    private var isVideoVisible: Bool {
+        scenePhase != .background && coordinator.playerPath.isEmpty
+    }
+
+    /// What the artwork pager needs to lay the video over the cover.
+    private var videoContext: PlayerVideoContext {
+        PlayerVideoContext(
+            mode: videoMode,
+            source: videoSource,
+            clock: EngineAudioClock(engine: engine),
+            playingSongId: engine.currentSong?.id,
+            isVisible: isVideoVisible,
+            onUnavailable: {
+                videoMode.showCover()
+                toastCenter.show(String(localized: "Video isn't available right now"))
+            }
+        )
     }
 
     /// The playing item's length: the engine's once it is known, else the song's own.
@@ -297,7 +322,15 @@ struct FullPlayerView: View {
             onOpen: { ad in adPacing.openAction(for: ad, coordinator: coordinator) },
             isUncovered: isPlayerUncovered
         ) {
-            PlayerArtworkPager(queueController: queueController, width: width)
+            // Inside the ad overlay's content, so an ad takeover covers the pill with the cover.
+            ZStack(alignment: .bottomTrailing) {
+                PlayerArtworkPager(queueController: queueController, width: width, video: videoContext)
+                MediaModeToggle(
+                    isAvailable: song?.hasVideo == true,
+                    isShowingVideo: videoMode.showsVideo,
+                    action: videoMode.toggle
+                )
+            }
         }
     }
 

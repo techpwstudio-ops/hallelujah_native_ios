@@ -32,6 +32,16 @@ enum PlayerStyle {
     static let greyMuted = Color(red: 117.0 / 255, green: 117.0 / 255, blue: 117.0 / 255)
     /// `shadowOpacity` (`lib/theme/values.dart`).
     static let shadowOpacity: Double = 0.06
+    /// Behind a control that floats over the artwork (the cover/video switch): black at 0x8C / 255,
+    /// about 55 percent, so it reads over any cover.
+    static let artworkControlBackground = Color.black.opacity(Double(0x8C) / 255)
+    /// The cover/video switch's label: `Typography.labelMedium`, semibold.
+    static let artworkControlLabel = TypographyToken(
+        size: Typography.labelMedium.size,
+        weight: .semibold,
+        lineHeightMultiple: Typography.labelMedium.lineHeightMultiple,
+        tracking: Typography.labelMedium.tracking
+    )
 
     // MARK: Typography (`AppTextStyles` + per-call-site overrides)
 

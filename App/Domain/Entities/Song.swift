@@ -123,6 +123,15 @@ struct Song: Sendable, Equatable, Identifiable {
     /// with the song (I3); its signed transcript URL expires like `audioUrls`.
     var episodeTimeline: EpisodeTimeline? = nil
 
+    /// The episode's silent video, a storage key served through the proxy like `audioFile`
+    /// (`SILENT_VIDEO_MODE_PLAN.md`). `var` with a default for the same reason as
+    /// `episodeTimeline`. It may carry sound when a creator uploaded audio and video separately,
+    /// so the player always mutes it.
+    var videoFile: String? = nil
+
+    /// Whether there is a video to switch to. Not gated on `type`, as in Flutter's `Song.hasVideo`.
+    var hasVideo: Bool { !(videoFile?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) }
+
     var isEpisode: Bool { type == "episode" }
 
     /// `SONG_RESPONSE_SHAPE.md`'s "Audio URL Rules": which square/rectangle
@@ -200,7 +209,8 @@ extension Song {
             transcripts: transcripts,
             songCredits: songCredits,
             isFavorited: isFavorited,
-            episodeTimeline: episodeTimeline
+            episodeTimeline: episodeTimeline,
+            videoFile: videoFile
         )
     }
 }

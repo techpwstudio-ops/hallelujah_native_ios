@@ -113,6 +113,13 @@ enum IconToken: CaseIterable, Sendable {
     case comment
     case history
 
+    /// Added for silent video mode: the switch on an episode's artwork. `video` is the glyph while a
+    /// tap goes to the picture (Flutter `Icons.videocam_rounded`), `headphones` while it goes back
+    /// to the audio (`Icons.headphones_rounded`). Both are Material icons there, so SF Symbols are
+    /// the right counterparts and neither has an asset.
+    case video
+    case headphones
+
     var systemName: String {
         switch self {
         case .tabHome: "house"
@@ -154,6 +161,8 @@ enum IconToken: CaseIterable, Sendable {
         case .trash: "trash"
         case .comment: "bubble.left"
         case .history: "clock.arrow.circlepath"
+        case .video: "video.fill"
+        case .headphones: "headphones"
         }
     }
 

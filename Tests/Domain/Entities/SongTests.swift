@@ -31,4 +31,25 @@ struct SongTests {
         #expect(toggled.title == "Keep me")
         #expect(toggled.withFavorited(false) == original)
     }
+
+    // MARK: - Silent video (`hasVideo`, `videoFile`)
+
+    @Test func hasVideoNeedsANonBlankKey() {
+        #expect(!Song.fixture(videoFile: nil).hasVideo)
+        #expect(!Song.fixture(videoFile: "").hasVideo)
+        #expect(!Song.fixture(videoFile: "   \n\t").hasVideo)
+        #expect(Song.fixture(videoFile: "ep/video-song/1-silent/original.mp4").hasVideo)
+    }
+
+    @Test func hasVideoIsNotGatedOnType() {
+        // Flutter's `Song.hasVideo` looks at the column only.
+        #expect(Song.fixture(type: "music", videoFile: "a.mp4").hasVideo)
+        #expect(Song.fixture(type: "episode", videoFile: "a.mp4").hasVideo)
+    }
+
+    @Test func withFavoritedKeepsTheVideo() {
+        let toggled = Song.fixture(videoFile: "a.mp4").withFavorited(true)
+        #expect(toggled.videoFile == "a.mp4")
+        #expect(toggled.hasVideo)
+    }
 }

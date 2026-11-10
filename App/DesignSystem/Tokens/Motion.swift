@@ -28,6 +28,11 @@ enum MotionDuration {
     /// into an existing one.
     static let offlineBanner: TimeInterval = 0.28
 
+    /// The silent video's picture fading in over the episode cover, and back out (an ease-out).
+    /// Flutter's `AnimatedOpacity` there runs 220 ms (`player_video_layer.dart`), which no value
+    /// above matches, so it is named on its own.
+    static let crossfade: TimeInterval = 0.22
+
     static let allCases: [(name: String, value: TimeInterval)] = [
         ("fast", fast),
         ("normal", normal),
@@ -35,6 +40,7 @@ enum MotionDuration {
         ("dockShow", dockShow),
         ("dockHide", dockHide),
         ("offlineBanner", offlineBanner),
+        ("crossfade", crossfade),
     ]
 }
 
