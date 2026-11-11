@@ -39,3 +39,34 @@ struct MediaModeToggleTests {
         #expect(IconToken.headphones.systemName == "headphones")
     }
 }
+
+@MainActor
+struct PlayerVideoLoadingTests {
+    @Test(arguments: [
+        // video mode on, picture not shown, not given up -> spinner
+        (true, false, false, true),
+        // the picture is on screen -> no spinner
+        (true, true, false, false),
+        // the listener is back on the audio -> no spinner
+        (false, false, false, false),
+        (false, true, false, false),
+        // the video gave up -> no spinner
+        (true, false, true, false),
+        (true, true, true, false),
+        (false, false, true, false),
+    ])
+    func theSpinnerIsUpWhileVideoIsAskedForAndNotYetShown(
+        mode: Bool,
+        shown: Bool,
+        gaveUp: Bool,
+        expected: Bool
+    ) {
+        #expect(
+            PlayerVideoLayer.showsSpinner(
+                modeShowsVideo: mode,
+                isPictureShown: shown,
+                hasGivenUp: gaveUp
+            ) == expected
+        )
+    }
+}

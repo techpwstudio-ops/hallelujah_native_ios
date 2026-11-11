@@ -46,6 +46,7 @@ struct PlayerVideoSlot: View {
                 songId: song.id,
                 url: url,
                 clock: context.clock,
+                modeShowsVideo: context.mode.showsVideo,
                 isVisible: context.isVisible,
                 makeHeaders: { await source.headers() },
                 onUnavailable: context.onUnavailable

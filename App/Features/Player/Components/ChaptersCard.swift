@@ -37,6 +37,11 @@ struct ChaptersCard: View {
         TimelineIndex(chapters: chapters).activeChapterIndex(positionMs: Int(position * 1000))
     }
 
+    /// Whether the player shows this card for `chapters`, and so the "Chapters" chip that scrolls to
+    /// it. One rule for both, so the chip never points at a card that is not there. The mapper keeps
+    /// no chapters for an episode with fewer than two, so an empty list is the only way to none.
+    static func isShown(chapters: [EpisodeChapter]) -> Bool { !chapters.isEmpty }
+
     private var canExpand: Bool { chapters.count > Self.collapsedRowCount }
 
     private var visibleRows: Range<Int> {

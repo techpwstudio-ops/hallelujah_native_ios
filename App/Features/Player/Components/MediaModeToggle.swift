@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// The pill at the artwork's bottom trailing corner that switches an episode between its cover and
-/// its silent video: "Switch to video" while the cover is up, "Switch to audio" while the video is.
-/// Draws nothing for a song that has no video.
+/// The chip under the artwork that switches an episode between its cover and its silent video:
+/// "Switch to video" while the cover is up, "Switch to audio" while the video is. It is a
+/// `PlayerChip`, so it looks like the Chapters chip beside it. The chip row decides whether it is
+/// there at all: only for an episode that has a video.
 struct MediaModeToggle: View {
-    let isAvailable: Bool
     let isShowingVideo: Bool
     let action: () -> Void
 
@@ -19,42 +19,24 @@ struct MediaModeToggle: View {
     }
 
     var body: some View {
-        if isAvailable {
-            Button(action: action) {
-                HStack(spacing: Dimens.spacing6) {
-                    IconView(token: Self.icon(isShowingVideo: isShowingVideo), size: Dimens.iconSizeSmall)
-                    Text(Self.title(isShowingVideo: isShowingVideo))
-                        .typography(PlayerStyle.artworkControlLabel)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                .foregroundStyle(PlayerStyle.white)
-                .padding(.horizontal, Dimens.spacing12)
-                .padding(.vertical, Dimens.spacing8)
-                .background(PlayerStyle.artworkControlBackground, in: Capsule())
-                // The pill is smaller than a finger; the button around it is not.
-                .frame(minWidth: Spacing.minTapTarget, minHeight: Spacing.minTapTarget)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Self.title(isShowingVideo: isShowingVideo))
-            .accessibilityAddTraits(.isButton)
-            // The frame is what sits in the corner, not the pill.
-            .padding(.trailing, Dimens.spacing4)
-            .padding(.bottom, Dimens.spacing2)
-        }
+        PlayerChip(
+            systemName: Self.icon(isShowingVideo: isShowingVideo).systemName,
+            title: Self.title(isShowingVideo: isShowingVideo),
+            action: action
+        )
     }
 }
 
 #Preview("Cover up: Switch to video") {
-    MediaModeToggle(isAvailable: true, isShowingVideo: false, action: {})
+    MediaModeToggle(isShowingVideo: false, action: {})
         .padding()
-        .background(Color.gray)
+        .background(PlayerStyle.black)
+        .preferredColorScheme(.dark)
 }
 
 #Preview("Video up: Switch to audio") {
-    MediaModeToggle(isAvailable: true, isShowingVideo: true, action: {})
+    MediaModeToggle(isShowingVideo: true, action: {})
         .padding()
-        .background(Color.gray)
+        .background(PlayerStyle.black)
         .preferredColorScheme(.dark)
 }
