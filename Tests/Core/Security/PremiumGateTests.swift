@@ -23,6 +23,14 @@ struct PremiumGateTests {
         #expect(await !gate.allows(.downloads))
     }
 
+    /// Video mode is premium, on the same rule as downloads.
+    @Test func videoModeIsLockedForAFreeListenerWhileSubscriptionsAreOn() async {
+        let gate = await makeGate(membership: nil)
+        #expect(await !gate.allows(.videoMode))
+        let off = await makeGate(membership: nil, subscriptionsEnabled: false)
+        #expect(await off.allows(.videoMode))
+    }
+
     @Test func noMembershipMeansNoPremiumAndAds() async {
         let gate = await makeGate(membership: nil)
         #expect(await !gate.hasPremium)

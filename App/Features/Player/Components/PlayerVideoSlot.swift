@@ -14,6 +14,9 @@ struct PlayerVideoContext {
     let isVisible: Bool
     /// The video cannot be played. Called once per attempt.
     let onUnavailable: @MainActor () -> Void
+    /// Video is locked behind a subscription for this listener (`PremiumFeature.videoMode`): no
+    /// layer, whatever the mode says.
+    var isLocked = false
 }
 
 /// One page's place for the silent video, over its cover: a layer when the listener has chosen
@@ -29,7 +32,7 @@ struct PlayerVideoSlot: View {
     }
 
     var body: some View {
-        if Self.showsLayer(
+        if !context.isLocked, Self.showsLayer(
             modeShowsVideo: context.mode.showsVideo,
             songHasSource: song.hasVideo,
             isPlayingThisSong: context.playingSongId == song.id

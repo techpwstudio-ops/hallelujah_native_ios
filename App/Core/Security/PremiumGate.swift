@@ -12,6 +12,11 @@ enum PremiumFeature: Sendable, CaseIterable {
     case audioQualitySettings
     /// The player's sleep timer.
     case sleepTimer
+    /// Switching an episode between its cover and its silent video
+    /// (`MediaModeToggle`). Same rule as the others: locked only while the
+    /// remote `showSubscription` switch is on and the listener has no live
+    /// subscription.
+    case videoMode
 }
 
 /// T65 — the single source of truth for "is this listener premium, and so

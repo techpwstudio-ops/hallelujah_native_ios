@@ -36,6 +36,11 @@ struct FullPlayerView: View {
     /// Cover or silent video: the listener's choice, shared by the artwork and the icon button that flips it.
     @State private var videoMode: PlayerVideoModeStore = DependencyContainer.current.resolve()
     @State private var videoSource: PlayerVideoSource = DependencyContainer.current.resolve()
+    @State private var premiumGate: PremiumGate = DependencyContainer.current.resolve()
+    /// Video is a premium feature: the same `PremiumGate` check as downloads, the sleep timer and
+    /// audio quality. Resolved on appear and on every track change; starts unlocked so a premium
+    /// listener never sees the badge flash.
+    @State private var isVideoLocked = false
     @State private var isSharePresented = false
     @State private var isQueuePresented = false
     @State private var isAddToPlaylistPresented = false
@@ -80,7 +85,8 @@ struct FullPlayerView: View {
             onUnavailable: {
                 videoMode.showCover()
                 toastCenter.show(String(localized: "Video isn't available right now"))
-            }
+            },
+            isLocked: isVideoLocked
         )
     }
 
@@ -164,6 +170,12 @@ struct FullPlayerView: View {
         }
         .task(id: song?.id) {
             await timelineStore.load(for: song)
+        }
+        .task(id: song?.id) {
+            let locked = await !premiumGate.allows(.videoMode)
+            isVideoLocked = locked
+            // A listener whose subscription has lapsed is not left on video.
+            if locked, videoMode.showsVideo { videoMode.showCover() }
         }
         .songMenu(song: $menuSong, leavesPlayer: true)
         .sleepTimerSheet(isPresented: $isSleepTimerSheetPresented)
@@ -462,7 +474,15 @@ struct FullPlayerView: View {
             // Both glyphs sit on their box's trailing edge, so the gap between them is
             // the 44 pt box less the glyph, about 24 pt, like the Flutter row.
             if song?.hasVideo == true {
-                MediaModeToggle(isShowingVideo: videoMode.showsVideo, action: videoMode.toggle)
+                MediaModeToggle(isShowingVideo: videoMode.showsVideo, isLocked: isVideoLocked) {
+                    if isVideoLocked {
+                        // As the song menu does for a locked download: leave the player, open the plans.
+                        coordinator.dismissFullScreen()
+                        coordinator.push(.subscriptionPlans)
+                    } else {
+                        videoMode.toggle()
+                    }
+                }
             }
 
             Button { isSharePresented = true } label: {
