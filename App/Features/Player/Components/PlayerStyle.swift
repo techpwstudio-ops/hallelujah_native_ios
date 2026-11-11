@@ -32,12 +32,6 @@ enum PlayerStyle {
     static let greyMuted = Color(red: 117.0 / 255, green: 117.0 / 255, blue: 117.0 / 255)
     /// `shadowOpacity` (`lib/theme/values.dart`).
     static let shadowOpacity: Double = 0.06
-    /// The chips under the artwork (Switch to video / audio, Chapters): white at 12 percent on the dark
-    /// player, a hairline of white at 8 percent round it.
-    static let chipFill = whiteAlpha(0.12)
-    static let chipBorder = whiteAlpha(0.08)
-    /// The chips' label: 13 pt semibold, one size for every chip.
-    static let chipLabel = TypographyToken(size: 13, weight: .semibold, lineHeightMultiple: 1)
     /// What a loading spinner sits on over the artwork, so it reads over light covers too.
     static let loadingBackdrop = Color.black.opacity(0.45)
 
@@ -62,14 +56,10 @@ enum PlayerStyle {
     static let seekBarHeight: CGFloat = 6
     static let thumbRadius: CGFloat = 6
     static let toolbarHeight: CGFloat = 56
-    /// The chip's capsule, and the taller box a finger can hit around it.
-    static let chipHeight: CGFloat = 34
-    static let chipHitHeight: CGFloat = 44
-    static let chipGlyphSize: CGFloat = 15
-    /// Space round the chip row, measured to the capsule: the row's boxes are 5 pt taller than the
-    /// capsules on each side, so the insets here are that much smaller than what the eye sees.
-    static let chipRowTopInset: CGFloat = 8
-    static let chipRowBottomInset: CGFloat = 4
+    /// The queue / share row's buttons (Queue, video / audio switch, Share): a 20 pt glyph in a
+    /// 44 pt box.
+    static let queueRowGlyphSize: CGFloat = 20
+    static let queueRowBox: CGFloat = 44
     /// The loading spinner's backing square, its corners, and the spinner's scale inside it.
     static let loadingBackdropSize: CGFloat = 56
     static let loadingBackdropRadius: CGFloat = 14

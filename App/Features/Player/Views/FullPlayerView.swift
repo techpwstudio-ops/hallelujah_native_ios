@@ -24,7 +24,6 @@ struct FullPlayerView: View {
     @Environment(AppNavigationCoordinator.self) private var coordinator
     @Environment(\.toastCenter) private var toastCenter
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var engine: AudioEngine = DependencyContainer.current.resolve()
     /// Chapters, speakers and transcript for the song playing (Phase 1/2). Shared
     /// with the transcript screen, so the two never fetch or clock separately.
@@ -34,7 +33,7 @@ struct FullPlayerView: View {
     @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
     @State private var playerAd: PlayerAdController = DependencyContainer.current.resolve()
     @State private var sleepTimer: SleepTimerController = DependencyContainer.current.resolve()
-    /// Cover or silent video: the listener's choice, shared by the artwork and the pill that flips it.
+    /// Cover or silent video: the listener's choice, shared by the artwork and the icon button that flips it.
     @State private var videoMode: PlayerVideoModeStore = DependencyContainer.current.resolve()
     @State private var videoSource: PlayerVideoSource = DependencyContainer.current.resolve()
     @State private var isSharePresented = false
@@ -233,73 +232,39 @@ struct FullPlayerView: View {
     /// held to `mediaColumnWidth`, centred, with the artwork also kept short
     /// enough for the transport controls to stay on screen.
     private var stackedContent: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
+        ScrollView {
+            VStack(spacing: 0) {
+                // On a phone the pager is framed to the player's exact width,
+                // so it can't report a different size while paging to the
+                // next song and shove the column below it.
+                artwork(width: stackedArtworkMaxWidth == nil ? playerSize.width : 0)
+                    .frame(maxWidth: stackedArtworkMaxWidth)
+
                 VStack(spacing: 0) {
-                    // On a phone the pager is framed to the player's exact width,
-                    // so it can't report a different size while paging to the
-                    // next song and shove the column below it.
-                    artwork(width: stackedArtworkMaxWidth == nil ? playerSize.width : 0)
-                        .frame(maxWidth: stackedArtworkMaxWidth)
-
-                    VStack(spacing: 0) {
-                        // Switch to video / Chapters: draws nothing, and takes no space, for
-                        // an episode with neither and for music.
-                        chipRow(scrolling: proxy)
-                        nowPlayingControls
-                        metaSection
-                            .padding(.top, 14)
-                    }
-                    // Breathing room between the edge-to-edge cover and the title. The chip row
-                    // brings its own when it is there.
-                    .padding(.top, isChipRowEmpty ? 24 : 0)
-                    .padding(.horizontal, PlayerStyle.pageSidePadding)
-                    .padding(.bottom, 8)
-                    // A song change swaps everything in here at once; laying it
-                    // out without animation keeps the controls from sliding.
-                    .transaction(value: song?.id) { $0.animation = nil }
+                    nowPlayingControls
+                    metaSection
+                        .padding(.top, 14)
                 }
-                .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
-                // Pin the content to the scroll view's width. Something inside
-                // (the paging artwork) proposed a wider ideal width, which pushed
-                // the whole column ~24pt past the screen and swallowed the 20pt
-                // side padding.
-                .containerRelativeFrame(.horizontal)
+                // Breathing room between the edge-to-edge cover and the title.
+                .padding(.top, 24)
+                .padding(.horizontal, PlayerStyle.pageSidePadding)
+                .padding(.bottom, 8)
+                // A song change swaps everything in here at once; laying it
+                // out without animation keeps the controls from sliding.
+                .transaction(value: song?.id) { $0.animation = nil }
             }
-            .scrollBounceBehavior(.always)
+            .readableContentWidth(AdaptiveLayout.mediaColumnWidth)
+            // Pin the content to the scroll view's width. Something inside
+            // (the paging artwork) proposed a wider ideal width, which pushed
+            // the whole column ~24pt past the screen and swallowed the 20pt
+            // side padding.
+            .containerRelativeFrame(.horizontal)
         }
+        .scrollBounceBehavior(.always)
     }
 
-    /// The episode has the inline chapters card, so it also has the Chapters chip.
+    /// The episode has the inline chapters card.
     private var hasChapterUI: Bool { ChaptersCard.isShown(chapters: timelineStore.chapters) }
-
-    private var isChipRowEmpty: Bool {
-        PlayerChipRow.isEmpty(hasVideo: song?.hasVideo == true, hasChapters: hasChapterUI)
-    }
-
-    /// The chips directly under the artwork. "Chapters" scrolls whichever scroll view holds the
-    /// chapters card to it, so `proxy` belongs to a `ScrollViewReader` above both layouts' scroll views.
-    private func chipRow(scrolling proxy: ScrollViewProxy) -> some View {
-        PlayerChipRow(
-            hasVideo: song?.hasVideo == true,
-            isShowingVideo: videoMode.showsVideo,
-            hasChapters: hasChapterUI,
-            onToggleMedia: videoMode.toggle,
-            onShowChapters: { scrollToChapters(proxy) }
-        )
-    }
-
-    /// Brings the chapters card to the top of the player's scroll view, animated. The column is a
-    /// plain `VStack`, not a lazy one, so the card is laid out even when it is far below the fold
-    /// and the id always resolves.
-    private func scrollToChapters(_ proxy: ScrollViewProxy) {
-        let scroll = { proxy.scrollTo(PlayerScrollTarget.chapters, anchor: .top) }
-        if reduceMotion {
-            scroll()
-        } else {
-            withAnimation(MotionCurve.slow, scroll)
-        }
-    }
 
     /// Native-only tablet/Mac layout (Flutter has none): a landscape window
     /// wide enough for two columns keeps the artwork and transport on the
@@ -311,34 +276,29 @@ struct FullPlayerView: View {
             Self.minimumSideBySideArtwork,
             min(leftWidth - PlayerStyle.pageSidePadding * 2, playerSize.height - Self.controlsReservedHeight)
         )
-        // The reader sits above both columns: the Chapters chip is in the left one and the
-        // chapters card in the right, and a proxy scrolls whichever scroll view holds the id.
-        return ScrollViewReader { proxy in
-            HStack(alignment: .top, spacing: 0) {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        artwork(width: 0)
-                            .frame(width: artworkSide)
-                            .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous))
-                        chipRow(scrolling: proxy)
-                        nowPlayingControls
-                            .padding(.top, isChipRowEmpty ? 20 : 0)
-                    }
+        return HStack(alignment: .top, spacing: 0) {
+            ScrollView {
+                VStack(spacing: 0) {
+                    artwork(width: 0)
+                        .frame(width: artworkSide)
+                        .clipShape(RoundedRectangle(cornerRadius: Dimens.cornerRadiusMedium, style: .continuous))
+                    nowPlayingControls
+                        .padding(.top, 20)
+                }
+                .padding(.horizontal, PlayerStyle.pageSidePadding)
+                .padding(.vertical, 20)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(width: leftWidth)
+
+            ScrollView {
+                metaSection
                     .padding(.horizontal, PlayerStyle.pageSidePadding)
                     .padding(.vertical, 20)
-                }
-                .scrollBounceBehavior(.basedOnSize)
-                .frame(width: leftWidth)
-
-                ScrollView {
-                    metaSection
-                        .padding(.horizontal, PlayerStyle.pageSidePadding)
-                        .padding(.vertical, 20)
-                        .readableContentWidth()
-                }
-                .scrollBounceBehavior(.always)
-                .frame(maxWidth: .infinity)
+                    .readableContentWidth()
             }
+            .scrollBounceBehavior(.always)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -489,7 +449,7 @@ struct FullPlayerView: View {
     /// and `square.and.arrow.up` is the system share icon. Both sit in the
     /// same 44pt box so the row's height never depends on which is shown.
     private var queueAndShareRow: some View {
-        HStack {
+        HStack(spacing: 0) {
             Button { isQueuePresented = true } label: {
                 queueRowGlyph("list.bullet", alignment: .leading)
             }
@@ -497,6 +457,13 @@ struct FullPlayerView: View {
             .accessibilityLabel("Queue")
 
             Spacer()
+
+            // Video / audio switch, just left of Share: only for an episode with a video.
+            // Both glyphs sit on their box's trailing edge, so the gap between them is
+            // the 44 pt box less the glyph, about 24 pt, like the Flutter row.
+            if song?.hasVideo == true {
+                MediaModeToggle(isShowingVideo: videoMode.showsVideo, action: videoMode.toggle)
+            }
 
             Button { isSharePresented = true } label: {
                 queueRowGlyph("square.and.arrow.up", alignment: .trailing)
@@ -510,9 +477,9 @@ struct FullPlayerView: View {
 
     private func queueRowGlyph(_ systemName: String, alignment: Alignment) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: 20, weight: .medium))
+            .font(.system(size: PlayerStyle.queueRowGlyphSize, weight: .medium))
             .foregroundStyle(PlayerStyle.white)
-            .frame(width: 44, height: 44, alignment: alignment)
+            .frame(width: PlayerStyle.queueRowBox, height: PlayerStyle.queueRowBox, alignment: alignment)
             .contentShape(Rectangle())
     }
 
@@ -535,8 +502,6 @@ struct FullPlayerView: View {
                         engine.seek(to: Double(chapter.startMs) / 1000)
                         engine.resume()
                     }
-                    // Where the Chapters chip scrolls to.
-                    .id(PlayerScrollTarget.chapters)
                 }
                 // Rule R1: the read-along shows only for a ready transcript; otherwise this column is as before.
                 if timelineStore.hasReadAlong {
@@ -577,11 +542,6 @@ struct FullPlayerView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
-}
-
-/// Places in the player's scrolling body that a control can scroll to.
-private enum PlayerScrollTarget: Hashable {
-    case chapters
 }
 
 /// `showAddToPlaylistSheet` hosted by the player's `add_circle_outline`

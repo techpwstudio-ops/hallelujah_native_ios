@@ -25,8 +25,8 @@ struct PlayerVideoSlotTests {
 @MainActor
 struct MediaModeToggleTests {
     @Test func theIconIsTheDestination() {
-        #expect(MediaModeToggle.icon(isShowingVideo: false) == .video)
-        #expect(MediaModeToggle.icon(isShowingVideo: true) == .headphones)
+        #expect(MediaModeToggle.systemName(isShowingVideo: false) == "video")
+        #expect(MediaModeToggle.systemName(isShowingVideo: true) == "headphones")
     }
 
     @Test func theTitleNamesTheDestination() {
