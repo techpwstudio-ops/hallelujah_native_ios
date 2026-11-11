@@ -92,9 +92,11 @@ struct PlayerVideoLayer: View {
         }
         controller.tick()  // a first look at once; a no-op until the item is ready
         while !Task.isCancelled {
-            try? await Task.sleep(for: .milliseconds(VideoSync.reconcileIntervalMs))
+            // Quick while the listener waits for the picture, so it comes up the moment it is ready.
+            let step = controller.isShown ? VideoSync.reconcileIntervalMs : VideoSync.fastReconcileIntervalMs
+            try? await Task.sleep(for: .milliseconds(step))
             guard !Task.isCancelled else { return }
-            controller.tick()
+            controller.tick(stepMs: step)
             if controller.hasFailed {
                 onUnavailable()
                 return
@@ -104,16 +106,19 @@ struct PlayerVideoLayer: View {
 }
 
 /// A spinner centred over the artwork while the silent video comes up, on a small dark square so it
-/// shows over a light cover. It fades in and out, takes no touches and no space.
+/// shows over a light cover. It appears only once the wait has lasted `VideoSync.spinnerDelayMs`,
+/// so a quick switch shows none. It fades in and out, takes no touches and no space.
 struct PlayerVideoLoadingIndicator: View {
     let isVisible: Bool
 
     /// False until the first frame, so a spinner that is up from the start fades in, not pops in.
     @State private var hasAppeared = false
+    /// The wait has lasted long enough to be worth a spinner.
+    @State private var delayPassed = false
 
     var body: some View {
         ZStack {
-            if isVisible {
+            if isVisible && delayPassed {
                 ProgressView()
                     .progressViewStyle(.circular)
                     .tint(PlayerStyle.white)
@@ -130,8 +135,16 @@ struct PlayerVideoLoadingIndicator: View {
         }
         .animation(.easeOut(duration: MotionDuration.crossfade), value: isVisible)
         .animation(.easeOut(duration: MotionDuration.crossfade), value: hasAppeared)
+        .animation(.easeOut(duration: MotionDuration.crossfade), value: delayPassed)
         .allowsHitTesting(false)
         .onAppear { hasAppeared = true }
+        .task(id: isVisible) {
+            delayPassed = false
+            guard isVisible else { return }
+            try? await Task.sleep(for: .milliseconds(VideoSync.spinnerDelayMs))
+            guard !Task.isCancelled else { return }
+            delayPassed = true
+        }
     }
 }
 

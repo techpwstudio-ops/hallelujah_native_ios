@@ -15,6 +15,8 @@ final class AVVideoPlayback: VideoPlayback {
     /// The key the audio engine already hands `AVURLAsset` for its own headers. It is in no SDK header
     /// (the symbol is exported all the same), so it is spelled here the way the engine spells it.
     private static let headerFieldsKey = "AVURLAssetHTTPHeaderFieldsKey"
+    /// Seconds of video kept buffered ahead of the playhead.
+    static let forwardBufferSeconds: TimeInterval = 10
 
     private let item: AVPlayerItem
     /// Jumps asked for that have not reported back. A count, because a newer jump cancels an older one
@@ -31,6 +33,13 @@ final class AVVideoPlayback: VideoPlayback {
         player.isMuted = true
         player.volume = 0
         player.actionAtItemEnd = .pause
+        // Start drawing as soon as there is a frame, rather than waiting to buffer enough to play
+        // through without a stall. The video only decorates the audio and the sync loop catches a
+        // stall up, so a fast first frame is worth more than a smooth first second.
+        player.automaticallyWaitsToMinimizeStalling = false
+        // Keep only a short run ahead of the playhead. The default lets AVPlayer read far ahead,
+        // which is data and battery spent on frames the listener may switch away from.
+        item.preferredForwardBufferDuration = Self.forwardBufferSeconds
         // A decoration for the audio, never a video to hand to an AirPlay screen.
         player.allowsExternalPlayback = false
         self.item = item

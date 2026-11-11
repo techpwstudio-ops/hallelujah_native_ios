@@ -42,8 +42,8 @@ final class PlayerVideoController {
     }
 
     /// One look at both players, and whatever it takes to bring the video back to the audio. Call it
-    /// every `VideoSync.reconcileIntervalMs`, and once right away.
-    func tick() {
+    /// every `stepMs` (the time since the last call), and once right away.
+    func tick(stepMs: Int = VideoSync.reconcileIntervalMs) {
         guard let playback else { return }
         if playback.hasFailed {
             fail()
@@ -52,7 +52,7 @@ final class PlayerVideoController {
         // Still opening: nothing to line up yet, and no time has been counted.
         guard playback.isReady else { return }
         reconcile(playback)
-        elapsedMs += VideoSync.reconcileIntervalMs
+        elapsedMs += stepMs
     }
 
     /// Lets go of the player, if there is one. Safe at any time and any number of times. Leaves

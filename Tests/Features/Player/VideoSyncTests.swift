@@ -45,6 +45,8 @@ struct VideoSyncTests {
         #expect(VideoSync.hideDriftMs == 1_500)
         #expect(VideoSync.hideGraceMs == 1_000)
         #expect(VideoSync.reconcileIntervalMs == 250)
+        #expect(VideoSync.fastReconcileIntervalMs < VideoSync.reconcileIntervalMs)
+        #expect(VideoSync.spinnerDelayMs == 1_000)
     }
 
     @Test func theLeadStaysBelowThePlayingTolerance() {

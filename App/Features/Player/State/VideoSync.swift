@@ -63,8 +63,15 @@ enum VideoSync {
     static let hideGraceMs = 1_000
     /// How close a video's aspect must be to the box's before the video fills the box.
     static let fillTolerance = 0.06
-    /// Period of the sync loop.
+    /// Period of the sync loop once the picture is up.
     static let reconcileIntervalMs = 250
+    /// Period of the sync loop while the listener waits for the picture: faster, so it comes up the
+    /// moment it is ready rather than up to a quarter second later. Runs only for that wait.
+    static let fastReconcileIntervalMs = 50
+    /// How long the picture may take before the loading spinner appears at all. On an ordinary
+    /// connection it is up well inside this, so the switch reads as instant: the cover crossfades
+    /// into the video with no spinner flashing up and away.
+    static let spinnerDelayMs = 1_000
 
     /// What the video has to do right now to stay with the audio. `sinceLastSeekMs` is how long ago
     /// the video was last jumped, `nil` if never.
