@@ -46,7 +46,7 @@ CLARITY_PROJECT_ID = xmuqz9leqv
 // treat it as a downgrade. CI overrides CURRENT_PROJECT_VERSION only; this
 // MARKETING_VERSION is the one place to edit before each App Store release
 // (it must increase past whatever is live in App Store Connect).
-MARKETING_VERSION = 4.0.4
+MARKETING_VERSION = 4.0.5
 CURRENT_PROJECT_VERSION = 335
 
 // ── Signing ─────────────────────────────────────────────────────────────────
