@@ -28,6 +28,9 @@ struct FullPlayerView: View {
     /// Chapters, speakers and transcript for the song playing (Phase 1/2). Shared
     /// with the transcript screen, so the two never fetch or clock separately.
     @State private var timelineStore: EpisodeTimelineStore = DependencyContainer.current.resolve()
+    @State private var songDetailCache: SongDetailCache = DependencyContainer.current.resolve()
+    /// The playing song's lyric / transcript lines, filled from its detail when the queue's copy has none.
+    @State private var lyricsLines: [LyricsTranscript] = []
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var favouriteRepository: any FavouriteRepository = DependencyContainer.current.resolve()
     @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
@@ -177,6 +180,13 @@ struct FullPlayerView: View {
         }
         .task(id: song?.id) {
             await timelineStore.load(for: song)
+        }
+        .task(id: song?.id) {
+            lyricsLines = song?.transcripts ?? []
+            guard let song else { return }
+            let lines = await songDetailCache.transcripts(for: song)
+            guard !Task.isCancelled, engine.currentSong?.id == song.id else { return }
+            lyricsLines = lines
         }
         // A fresh look at the connection and battery for each episode, which Auto picks its quality from.
         .task(id: song?.id) {
@@ -570,7 +580,7 @@ struct FullPlayerView: View {
                         coordinator.pushInPlayer(.episodeTranscript)
                     }
                 }
-                PlayerLyricsPreviewCard(song: song, currentPosition: engine.currentPosition) {
+                PlayerLyricsPreviewCard(transcripts: lyricsLines, currentPosition: engine.currentPosition) {
                     coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? String(localized: "Lyrics")))
                 }
                 // Creator card, credits, then the description, then the

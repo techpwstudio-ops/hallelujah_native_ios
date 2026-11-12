@@ -28,6 +28,9 @@ struct SongLyricsView: View {
     @State private var engine: AudioEngine = DependencyContainer.current.resolve()
     /// The shared episode timeline, for the chapter segments on the seek bar.
     @State private var timelineStore: EpisodeTimelineStore = DependencyContainer.current.resolve()
+    @State private var songDetailCache: SongDetailCache = DependencyContainer.current.resolve()
+    /// Filled from the song's detail when the queue's copy carries no lines.
+    @State private var lines: [LyricsTranscript] = []
     let songTitle: String
 
     /// The playing episode's chapters, as the full player shows them; none for a song, or while the
@@ -40,7 +43,6 @@ struct SongLyricsView: View {
     private static let topAnchorID = "top"
     private static let scrollAnimation = Animation.easeOut(duration: 0.35)
 
-    private var lines: [LyricsTranscript] { engine.currentSong?.transcripts ?? [] }
 
     /// `lines.lastIndexWhere((l) => l.start <= seconds)`; `nil` (Dart's -1)
     /// is before the first lyric.
@@ -114,6 +116,14 @@ struct SongLyricsView: View {
         .background(PlayerStyle.black.ignoresSafeArea())
         // Normally already loaded by the full player; a no-op then.
         .task(id: engine.currentSong?.id) { await timelineStore.load(for: engine.currentSong) }
+        .task(id: engine.currentSong?.id) {
+            let song = engine.currentSong
+            lines = song?.transcripts ?? []
+            guard let song else { return }
+            let loaded = await songDetailCache.transcripts(for: song)
+            guard !Task.isCancelled, engine.currentSong?.id == song.id else { return }
+            lines = loaded
+        }
         .toolbar {
             AppBackToolbarItem { dismiss() }
             ToolbarItem(placement: .principal) {
