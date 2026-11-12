@@ -17,7 +17,16 @@ struct PlayerVideoSource: Sendable {
     /// The song's video, `nil` when it has none (no key, or a blank one). A key that is there but
     /// cannot be turned into a URL is also `nil`; the caller tells the two apart with `Song.hasVideo`.
     func url(for song: Song) -> URL? {
+        url(for: song, choice: nil)
+    }
+
+    /// The song's video at the chosen quality. A choice with a file name plays that rendition, beside
+    /// `videoFile`; no choice, or one without a file name (the original), plays `videoFile` itself.
+    func url(for song: Song, choice: VideoQualityChoice?) -> URL? {
         guard let key = song.videoFile else { return nil }
+        if let fileName = choice?.variantFileName {
+            return resolver.videoURL(forKey: key, variantFileName: fileName)
+        }
         return resolver.videoURL(forKey: key)
     }
 

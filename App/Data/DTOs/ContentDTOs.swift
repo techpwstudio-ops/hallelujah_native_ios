@@ -280,6 +280,38 @@ struct SongDTO: Decodable, Sendable {
     /// The episode's silent video key (D25: additive and optional). Wrapped like the fields above,
     /// so a value that is not a string drops only itself and the song still decodes.
     let videoFile: LenientValue<String>?
+
+    /// The video's encoded renditions and what the original is (`videoVariants`,
+    /// `videoVariantsMeta.source`). Additive and optional like `videoFile`, and wrapped the same way:
+    /// whatever the backend sends here, the worst outcome is no variants, which plays `videoFile`.
+    let videoVariants: LenientValue<String>?
+    let videoVariantsMeta: LenientValue<VideoVariantsMetaDTO>?
+}
+
+/// `videoVariantsMeta`. Only `source` is read; the per-rung entries beside it are the backend's own
+/// bookkeeping.
+struct VideoVariantsMetaDTO: Decodable, Sendable {
+    let source: LenientValue<VideoSourceDTO>?
+}
+
+/// `videoVariantsMeta.source`. Each field is wrapped so one odd value (a string where a number
+/// belongs) costs only itself.
+struct VideoSourceDTO: Decodable, Sendable {
+    let codec: LenientValue<String>?
+    let width: LenientValue<Int>?
+    let height: LenientValue<Int>?
+    let fps: LenientValue<Double>?
+    let bitrate: LenientValue<Int>?
+
+    func toDomain() -> VideoSourceInfo {
+        VideoSourceInfo(
+            codec: sanitized(codec?.value),
+            width: width?.value,
+            height: height?.value,
+            fps: fps?.value,
+            bitrate: bitrate?.value
+        )
+    }
 }
 
 extension SongDTO {
@@ -365,7 +397,9 @@ extension SongDTO {
             },
             isFavorited: !(favoritedBy ?? []).isEmpty,
             episodeTimeline: resolvedEpisodeTimeline,
-            videoFile: sanitized(videoFile?.value)
+            videoFile: sanitized(videoFile?.value),
+            videoVariants: sanitized(videoVariants?.value),
+            videoSource: videoVariantsMeta?.value?.source?.value?.toDomain()
         )
     }
 }

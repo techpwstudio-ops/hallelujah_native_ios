@@ -17,7 +17,9 @@ extension Song {
         featuredArtists: String? = nil,
         isFavorited: Bool = false,
         videoFile: String? = nil,
-        audioFile: String? = nil
+        audioFile: String? = nil,
+        videoVariants: String? = nil,
+        videoSource: VideoSourceInfo? = nil
     ) -> Song {
         Song(
             id: id, title: title, description: nil, type: type,
@@ -36,7 +38,9 @@ extension Song {
             creator: nil, primaryGenre: nil, playlistTitles: [],
             songPrimaryArtists: [], transcripts: nil, songCredits: nil,
             isFavorited: isFavorited,
-            videoFile: videoFile
+            videoFile: videoFile,
+            videoVariants: videoVariants,
+            videoSource: videoSource
         )
     }
 }
