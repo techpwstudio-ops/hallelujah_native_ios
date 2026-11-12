@@ -54,6 +54,9 @@ extension TranscriptFileDTO {
                 wordRange: first..<words.count
             ))
         }
+        // Captions carry one time per line; give each word a share that follows
+        // how long it takes to say. Real word timing is left exactly as it is.
+        CaptionWordTiming.refine(startsMs: &startsMs, endsMs: &endsMs, words: words)
         return EpisodeTranscriptFile(
             version: version ?? 0,
             language: language,
