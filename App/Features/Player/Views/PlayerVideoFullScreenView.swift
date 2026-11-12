@@ -8,18 +8,28 @@ import SwiftUI
 /// only ever one video player open; the picture takes a moment to come up on entering and on
 /// leaving for that reason.
 ///
-/// A tap shows or hides the controls: collapse, and play / pause for the audio. They hide on their
-/// own after a few seconds of playing.
+/// A tap shows or hides the controls: the title, play / pause for the audio, and along the bottom
+/// the same seek bar as the portrait player (one segment per chapter when the episode has them)
+/// with the collapse button beside it. They hide on their own after a few seconds of playing, but
+/// never while the seek bar is being dragged.
+///
+/// Leaving turns the phone back to portrait first and then dismisses, so the player underneath is
+/// upright straight away instead of after the cover slides off.
 struct PlayerVideoFullScreenView: View {
     let song: Song
     let url: URL
     let engine: AudioEngine
     let source: PlayerVideoSource
+    /// The episode's chapters, for the segmented seek bar. Empty draws a plain bar.
+    let chapters: [EpisodeChapter]
+    /// The playing item's length, as the portrait player measures it.
+    let duration: TimeInterval
     let onUnavailable: @MainActor () -> Void
     let onClose: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var controlsVisible = true
+    @State private var isScrubbing = false
 
     /// How long the controls stay up while the audio plays.
     private static let controlsHideDelay: Duration = .seconds(3)
@@ -37,7 +47,10 @@ struct PlayerVideoFullScreenView: View {
                 modeShowsVideo: true,
                 isVisible: scenePhase != .background,
                 makeHeaders: { [source] in await source.headers() },
-                onUnavailable: onUnavailable
+                onUnavailable: {
+                    OrientationLock.portrait()
+                    onUnavailable()
+                }
             )
             .ignoresSafeArea()
 
@@ -58,16 +71,22 @@ struct PlayerVideoFullScreenView: View {
         .onAppear { OrientationLock.landscape() }
         .onDisappear { OrientationLock.portrait() }
         // Hide the controls a moment after they come up, while the audio plays.
-        .task(id: "\(controlsVisible)|\(isPlaying)") {
-            guard controlsVisible, isPlaying else { return }
+        .task(id: "\(controlsVisible)|\(isPlaying)|\(isScrubbing)") {
+            guard controlsVisible, isPlaying, !isScrubbing else { return }
             try? await Task.sleep(for: Self.controlsHideDelay)
             guard !Task.isCancelled else { return }
             controlsVisible = false
         }
         // Another track, or the audio stopped: nothing left to show here.
         .onChange(of: engine.currentSong?.id) { _, newValue in
-            if newValue != song.id { onClose() }
+            if newValue != song.id { close() }
         }
+    }
+
+    /// Upright first, then dismiss: the rotation starts now instead of after the cover's animation.
+    private func close() {
+        OrientationLock.portrait()
+        onClose()
     }
 
     private var controls: some View {
@@ -97,9 +116,16 @@ struct PlayerVideoFullScreenView: View {
                     Spacer(minLength: Dimens.spacing16)
                 }
                 Spacer()
-                HStack {
-                    Spacer()
-                    Button(action: onClose) {
+                HStack(alignment: .center, spacing: Dimens.spacing16) {
+                    PlayerSeekBar(
+                        position: engine.currentPosition,
+                        duration: duration,
+                        chapters: chapters,
+                        onScrubbingChanged: { isScrubbing = $0 }
+                    ) { target in
+                        engine.seek(to: target)
+                    }
+                    Button(action: close) {
                         Image(systemName: "arrow.down.right.and.arrow.up.left")
                             .font(.system(size: PlayerStyle.videoExpandGlyphSize, weight: .semibold))
                             .foregroundStyle(PlayerStyle.white)

@@ -20,6 +20,9 @@ struct PlayerSeekBar: View {
     var barHeight: CGFloat = PlayerStyle.seekBarHeight
     var isInteractive: Bool = true
     var chapters: [EpisodeChapter] = []
+    /// Told `true` when a drag starts and `false` when it ends, so a host that hides its controls on
+    /// a timer (the full-screen video) can hold them up while the thumb is held.
+    var onScrubbingChanged: (Bool) -> Void = { _ in }
     var onSeek: (TimeInterval) -> Void = { _ in }
 
     @State private var dragPosition: TimeInterval?
@@ -201,6 +204,7 @@ struct PlayerSeekBar: View {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
                 let newTarget = target(for: value.location.x, trackWidth: trackWidth)
+                if dragPosition == nil { onScrubbingChanged(true) }
                 dragPosition = newTarget
                 if hasChapters {
                     let newIndex = chapterIndex(at: newTarget)
@@ -214,6 +218,7 @@ struct PlayerSeekBar: View {
                 let seekTarget = target(for: value.location.x, trackWidth: trackWidth)
                 dragPosition = nil
                 dragChapterIndex = nil
+                onScrubbingChanged(false)
                 onSeek(seekTarget)
             }
     }

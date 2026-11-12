@@ -182,6 +182,8 @@ struct FullPlayerView: View {
                     url: url,
                     engine: engine,
                     source: videoSource,
+                    chapters: timelineStore.chapters,
+                    duration: playbackDuration,
                     onUnavailable: {
                         isVideoFullScreen = false
                         videoMode.showCover()
@@ -190,6 +192,11 @@ struct FullPlayerView: View {
                     onClose: { isVideoFullScreen = false }
                 )
             }
+        }
+        // However full screen closes, turn back upright at once rather than after the cover's
+        // dismissal animation.
+        .onChange(of: isVideoFullScreen) { _, isFullScreen in
+            if !isFullScreen { OrientationLock.portrait() }
         }
         // Back on the cover (or locked): full screen has nothing to show.
         .onChange(of: videoMode.showsVideo) { _, showsVideo in
