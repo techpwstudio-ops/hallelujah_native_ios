@@ -36,6 +36,8 @@ struct FullPlayerView: View {
     /// Cover or silent video: the listener's choice, shared by the artwork and the icon button that flips it.
     @State private var videoMode: PlayerVideoModeStore = DependencyContainer.current.resolve()
     @State private var videoSource: PlayerVideoSource = DependencyContainer.current.resolve()
+    /// Which rendition of the video plays; also changed from Settings and from the menu on the picture.
+    @State private var videoQuality: VideoQualityStore = DependencyContainer.current.resolve()
     @State private var premiumGate: PremiumGate = DependencyContainer.current.resolve()
     /// Video is a premium feature: the same `PremiumGate` check as downloads, the sleep timer and
     /// audio quality. Resolved on appear and on every track change; starts unlocked so a premium
@@ -82,6 +84,7 @@ struct FullPlayerView: View {
         PlayerVideoContext(
             mode: videoMode,
             source: videoSource,
+            quality: videoQuality,
             clock: EngineAudioClock(engine: engine),
             playingSongId: engine.currentSong?.id,
             isVisible: isVideoVisible,
@@ -175,13 +178,17 @@ struct FullPlayerView: View {
         .task(id: song?.id) {
             await timelineStore.load(for: song)
         }
+        // A fresh look at the connection and battery for each episode, which Auto picks its quality from.
+        .task(id: song?.id) {
+            await videoQuality.refreshConditions()
+        }
         .fullScreenCover(isPresented: $isVideoFullScreen) {
-            if let song, let url = videoSource.url(for: song) {
+            if let song, song.hasVideo {
                 PlayerVideoFullScreenView(
                     song: song,
-                    url: url,
                     engine: engine,
                     source: videoSource,
+                    quality: videoQuality,
                     onUnavailable: {
                         isVideoFullScreen = false
                         videoMode.showCover()

@@ -17,6 +17,8 @@ struct SettingsView: View {
     @State private var membershipStore: MembershipStore = DependencyContainer.current.resolve()
     @State private var premiumGate: PremiumGate = DependencyContainer.current.resolve()
     @State private var audioEngine: AudioEngine = DependencyContainer.current.resolve()
+    /// Shared with the player: a pick here reloads the playing video's picture, not its audio.
+    @State private var videoQuality: VideoQualityStore = DependencyContainer.current.resolve()
 
     @State private var user: User?
     @State private var membership: Membership?
@@ -24,6 +26,7 @@ struct SettingsView: View {
     @State private var selectedAudioQuality: AudioQuality = .standard
     @State private var isDownloadOverWifiOnly = false
     @State private var isAudioQualityPickerPresented = false
+    @State private var isVideoQualityPickerPresented = false
     @State private var isLogoutConfirmationPresented = false
     @State private var isVerseOfDayHidden = false
 
@@ -124,6 +127,15 @@ struct SettingsView: View {
                     ) {
                         isAudioQualityPickerPresented = true
                     }
+                    // Same gating as the video itself (`PremiumFeature.videoMode`, which like this row
+                    // is locked only while subscriptions are sold and the listener has none).
+                    tile(
+                        icon: "play.rectangle",
+                        title: "Video Quality",
+                        subtitle: Text(verbatim: String(localized: "Selected video quality is \(videoQuality.preference.displayName.localizedLowercase)"))
+                    ) {
+                        isVideoQualityPickerPresented = true
+                    }
                 }
                 ParityListTile(
                     title: "Download Over Wi-Fi Only",
@@ -213,6 +225,13 @@ struct SettingsView: View {
                 if changed {
                     Task { await audioEngine.reloadSourcesAtCurrentPosition() }
                 }
+            }
+        }
+        .parityFitSheet(isPresented: $isVideoQualityPickerPresented) {
+            VideoQualitySheet(selected: videoQuality.preference) { quality in
+                // Nothing else to do: the player reads the same store and reloads its picture.
+                videoQuality.setPreference(quality)
+                isVideoQualityPickerPresented = false
             }
         }
         .parityConfirmationDialog(

@@ -4,6 +4,8 @@ import SwiftUI
 struct PlayerVideoContext {
     let mode: PlayerVideoModeStore
     let source: PlayerVideoSource
+    /// Which rendition to play, and the menu that changes it.
+    let quality: VideoQualityStore
     let clock: any AudioClock
     /// The episode the audio engine has loaded. A page of the pager shows video only for this one:
     /// the video follows the audio, so a page the listener has swiped to but the audio has not
@@ -45,7 +47,16 @@ struct PlayerVideoSlot: View {
 
     @ViewBuilder
     private var layer: some View {
-        if let url = context.source.url(for: song) {
+        if let choice = context.quality.choice(for: song) {
+            layer(choice: choice)
+        }
+        // Auto is waiting for the first reading of the connection: nothing to draw yet, and not a
+        // failure, so no `onUnavailable`.
+    }
+
+    @ViewBuilder
+    private func layer(choice: VideoQualityChoice) -> some View {
+        if let url = context.source.url(for: song, choice: choice) {
             let source = context.source
             PlayerVideoLayer(
                 songId: song.id,
@@ -55,7 +66,8 @@ struct PlayerVideoSlot: View {
                 isVisible: context.isVisible,
                 makeHeaders: { await source.headers() },
                 onUnavailable: context.onUnavailable,
-                onExpand: context.onExpand
+                onExpand: context.onExpand,
+                qualityMenu: PlayerVideoQualityMenu.Model(store: context.quality, song: song)
             )
             // Another episode, or another file for the same one, is a new layer with a new controller.
             .id(PlayerVideoLayerKey(songId: song.id, url: url))

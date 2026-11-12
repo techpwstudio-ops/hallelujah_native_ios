@@ -21,6 +21,9 @@ struct PlayerVideoLayer: View {
     /// bottom trailing corner and a tap on the picture does the same, both only while the picture
     /// is up. `nil` (the full-screen view itself) draws neither.
     var onExpand: (@MainActor () -> Void)? = nil
+    /// The quality button, in the picture's top trailing corner while the picture is up. `nil` draws
+    /// none; it also draws none for an episode with fewer than two qualities to choose between.
+    var qualityMenu: PlayerVideoQualityMenu.Model? = nil
 
     @State private var controller: PlayerVideoController
     @State private var playback: AVVideoPlayback?
@@ -33,7 +36,8 @@ struct PlayerVideoLayer: View {
         isVisible: Bool,
         makeHeaders: @escaping @Sendable () async -> [String: String],
         onUnavailable: @escaping @MainActor () -> Void,
-        onExpand: (@MainActor () -> Void)? = nil
+        onExpand: (@MainActor () -> Void)? = nil,
+        qualityMenu: PlayerVideoQualityMenu.Model? = nil
     ) {
         self.url = url
         self.modeShowsVideo = modeShowsVideo
@@ -41,6 +45,7 @@ struct PlayerVideoLayer: View {
         self.makeHeaders = makeHeaders
         self.onUnavailable = onUnavailable
         self.onExpand = onExpand
+        self.qualityMenu = qualityMenu
         // SwiftUI keeps the first controller it is given and drops the rest.
         _controller = State(initialValue: PlayerVideoController(clock: clock, songId: songId))
     }
@@ -87,6 +92,12 @@ struct PlayerVideoLayer: View {
                 .transition(.opacity)
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if let qualityMenu, controller.isShown {
+                PlayerVideoQualityMenu(model: qualityMenu)
+                    .transition(.opacity)
+            }
+        }
         .animation(.easeOut(duration: MotionDuration.crossfade), value: controller.isShown)
     }
 
@@ -122,6 +133,61 @@ struct PlayerVideoLayer: View {
                 return
             }
         }
+    }
+}
+
+/// The quality button on the picture: a gear that opens a menu of this episode's qualities. Only
+/// what the episode has and this device can play is listed, and the current choice is ticked.
+/// Picking one writes the setting, which reloads just the picture (the audio never stops).
+struct PlayerVideoQualityMenu: View {
+    /// What the menu reads and writes. A value, so a layer can be handed one without owning the store.
+    struct Model {
+        let store: VideoQualityStore
+        let song: Song
+    }
+
+    let model: Model
+
+    /// The entries: Auto first, then each quality the episode offers. Empty when there is nothing to
+    /// choose between.
+    static func entries(options: [VideoQuality]) -> [VideoQuality] {
+        options.count >= 2 ? [.auto] + options : []
+    }
+
+    var body: some View {
+        let entries = Self.entries(options: model.store.options(for: model.song))
+        if !entries.isEmpty {
+            Menu {
+                Picker(
+                    String(localized: "Video Quality"),
+                    selection: Binding(
+                        get: { model.store.preference },
+                        set: { model.store.setPreference($0) }
+                    )
+                ) {
+                    ForEach(entries, id: \.self) { quality in
+                        Text(title(for: quality)).tag(quality)
+                    }
+                }
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: PlayerStyle.videoExpandGlyphSize, weight: .semibold))
+                    .foregroundStyle(PlayerStyle.white)
+                    .shadow(color: .black.opacity(0.5), radius: 4)
+                    .frame(width: PlayerStyle.queueRowBox, height: PlayerStyle.queueRowBox)
+                    .contentShape(Rectangle())
+            }
+            .padding(Dimens.spacing6)
+            .accessibilityLabel(String(localized: "Video Quality"))
+        }
+    }
+
+    /// "Auto" says what it is playing right now, so the listener can see what Auto picked.
+    private func title(for quality: VideoQuality) -> String {
+        guard quality == .auto, let current = model.store.choice(for: model.song)?.quality,
+              model.store.preference == .auto
+        else { return quality.displayName }
+        return String(localized: "Auto (\(current.displayName))")
     }
 }
 
