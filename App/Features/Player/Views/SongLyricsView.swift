@@ -26,7 +26,16 @@ import SwiftUI
 struct SongLyricsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var engine: AudioEngine = DependencyContainer.current.resolve()
+    /// The shared episode timeline, for the chapter segments on the seek bar.
+    @State private var timelineStore: EpisodeTimelineStore = DependencyContainer.current.resolve()
     let songTitle: String
+
+    /// The playing episode's chapters, as the full player shows them; none for a song, or while the
+    /// timeline on hand belongs to another track.
+    private var chapters: [EpisodeChapter] {
+        guard let id = engine.currentSong?.id, timelineStore.loadedSongId == id else { return [] }
+        return timelineStore.chapters
+    }
 
     private static let topAnchorID = "top"
     private static let scrollAnimation = Animation.easeOut(duration: 0.35)
@@ -77,7 +86,8 @@ struct SongLyricsView: View {
             PlayerSeekBar(
                 position: engine.currentPosition,
                 duration: engine.currentItemDuration ?? TimeInterval(engine.currentSong?.duration ?? 0),
-                barHeight: 4
+                barHeight: 4,
+                chapters: chapters
             ) { target in
                 engine.seek(to: target)
             }
@@ -102,6 +112,8 @@ struct SongLyricsView: View {
         .padding(.top, 16)
         .padding(.bottom, 32)
         .background(PlayerStyle.black.ignoresSafeArea())
+        // Normally already loaded by the full player; a no-op then.
+        .task(id: engine.currentSong?.id) { await timelineStore.load(for: engine.currentSong) }
         .toolbar {
             AppBackToolbarItem { dismiss() }
             ToolbarItem(placement: .principal) {
