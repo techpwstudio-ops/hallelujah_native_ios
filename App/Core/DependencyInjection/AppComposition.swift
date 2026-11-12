@@ -391,6 +391,11 @@ enum AppComposition {
             tokenProvider: session
         )
         container.register(PlayerVideoSource.self) { playerVideoSource }
+        // The video's quality choice, shared by Settings, the full player and the full-screen video so
+        // a change in one reloads the picture in the others. One instance: its selector owns a live
+        // network path monitor.
+        let videoQualityStore = VideoQualityStore(selector: .live(keyValueStore: userDefaultsStore))
+        container.register(VideoQualityStore.self) { videoQualityStore }
         // T47 — local-file-first playback source: consulted at the top of
         // `AudioEngine.makePlayerItem(for:forceProxy:)` before any remote
         // resolution, so a downloaded (T46) song plays from disk instead.

@@ -17,13 +17,15 @@ import SwiftUI
 /// upright straight away instead of after the cover slides off.
 struct PlayerVideoFullScreenView: View {
     let song: Song
-    let url: URL
     let engine: AudioEngine
     let source: PlayerVideoSource
     /// The episode's chapters, for the segmented seek bar. Empty draws a plain bar.
     let chapters: [EpisodeChapter]
     /// The playing item's length, as the portrait player measures it.
     let duration: TimeInterval
+    /// Read here, not handed down as a URL, so a quality picked from the menu below reloads this
+    /// picture too.
+    let quality: VideoQualityStore
     let onUnavailable: @MainActor () -> Void
     let onClose: () -> Void
 
@@ -36,23 +38,35 @@ struct PlayerVideoFullScreenView: View {
 
     private var isPlaying: Bool { engine.status == .playing }
 
+    /// The file for the current choice; `nil` while Auto waits for its first reading of the connection.
+    private var url: URL? {
+        quality.choice(for: song).flatMap { source.url(for: song, choice: $0) }
+    }
+
     var body: some View {
         ZStack {
             PlayerStyle.black.ignoresSafeArea()
 
-            PlayerVideoLayer(
-                songId: song.id,
-                url: url,
-                clock: EngineAudioClock(engine: engine),
-                modeShowsVideo: true,
-                isVisible: scenePhase != .background,
-                makeHeaders: { [source] in await source.headers() },
-                onUnavailable: {
-                    OrientationLock.portrait()
-                    onUnavailable()
-                }
-            )
-            .ignoresSafeArea()
+            if let url {
+                PlayerVideoLayer(
+                    songId: song.id,
+                    url: url,
+                    clock: EngineAudioClock(engine: engine),
+                    modeShowsVideo: true,
+                    isVisible: scenePhase != .background,
+                    makeHeaders: { [source] in await source.headers() },
+                    onUnavailable: {
+                        OrientationLock.portrait()
+                        onUnavailable()
+                    }
+                )
+                // Another file for the same episode (a new quality) is a new layer, as in the slot.
+                .id(PlayerVideoLayerKey(songId: song.id, url: url))
+                .ignoresSafeArea()
+            } else if quality.isReady {
+                // A key that is there but cannot become a URL.
+                Color.clear.task { onUnavailable() }
+            }
 
             // Everything below the controls catches the tap that toggles them.
             Color.clear
@@ -114,6 +128,7 @@ struct PlayerVideoFullScreenView: View {
                         .foregroundStyle(PlayerStyle.white)
                         .lineLimit(1)
                     Spacer(minLength: Dimens.spacing16)
+                    PlayerVideoQualityMenu(model: .init(store: quality, song: song))
                 }
                 Spacer()
                 HStack(alignment: .center, spacing: Dimens.spacing16) {

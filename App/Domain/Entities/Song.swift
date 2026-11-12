@@ -15,6 +15,25 @@ struct SongAudioURLs: Sendable, Equatable {
     var isEmpty: Bool { original == nil && low == nil && standard == nil && high == nil }
 }
 
+/// The original upload behind an episode's silent video (`videoVariantsMeta.source`). Every field is
+/// optional: the backend probes the file and a probe can miss a value.
+struct VideoSourceInfo: Sendable, Equatable {
+    /// ffprobe's `codec_name`: `h264`, `hevc`, `vp9`, `av1`, `prores`, ...
+    let codec: String?
+    /// Display dimensions, so a rotated phone video reports its upright size.
+    let width: Int?
+    let height: Int?
+    let fps: Double?
+    let bitrate: Int?
+
+    /// The shorter side, which names a rung (`1080p` is 1080 on the short side, vertical or not).
+    /// `nil` when either dimension is missing or not positive.
+    var shortSide: Int? {
+        guard let width, let height, width > 0, height > 0 else { return nil }
+        return min(width, height)
+    }
+}
+
 /// One transcript line (`GET /api/songs/:id`'s `transcripts`, detail only).
 struct LyricsTranscript: Sendable, Equatable, Identifiable {
     let id: String
@@ -129,6 +148,16 @@ struct Song: Sendable, Equatable, Identifiable {
     /// so the player always mutes it.
     var videoFile: String? = nil
 
+    /// The encoded renditions of `videoFile`, beside it in storage, as the wire sends them: a comma
+    /// list such as `"480p.mp4,720p.mp4,1080p.mp4"` holding only the rungs that exist. `nil` until the
+    /// backend has processed the episode, and then it plays `videoFile` as before. Read it through
+    /// `VideoQualitySelector`, never by hand.
+    var videoVariants: String? = nil
+
+    /// What the original `videoFile` is (`videoVariantsMeta.source`): its codec and size, which decide
+    /// whether this device can play it. `nil` when the backend did not say.
+    var videoSource: VideoSourceInfo? = nil
+
     /// Whether there is a video to switch to. Not gated on `type`, as in Flutter's `Song.hasVideo`.
     var hasVideo: Bool { !(videoFile?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) }
 
@@ -210,7 +239,9 @@ extension Song {
             songCredits: songCredits,
             isFavorited: isFavorited,
             episodeTimeline: episodeTimeline,
-            videoFile: videoFile
+            videoFile: videoFile,
+            videoVariants: videoVariants,
+            videoSource: videoSource
         )
     }
 }
