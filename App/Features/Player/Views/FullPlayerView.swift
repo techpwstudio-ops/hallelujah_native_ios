@@ -182,9 +182,10 @@ struct FullPlayerView: View {
             await timelineStore.load(for: song)
         }
         .task(id: song?.id) {
-            lyricsLines = song?.transcripts ?? []
+            let language = await SongDetailCache.preferredLyricsLanguage()
+            lyricsLines = (song?.transcripts ?? []).inPreferredLanguage(language)
             guard let song else { return }
-            let lines = await songDetailCache.transcripts(for: song)
+            let lines = await songDetailCache.transcripts(for: song, preferredLanguage: language)
             guard !Task.isCancelled, engine.currentSong?.id == song.id else { return }
             lyricsLines = lines
         }
@@ -580,7 +581,11 @@ struct FullPlayerView: View {
                         coordinator.pushInPlayer(.episodeTranscript)
                     }
                 }
-                PlayerLyricsPreviewCard(transcripts: lyricsLines, currentPosition: engine.currentPosition) {
+                PlayerLyricsPreviewCard(
+                    transcripts: lyricsLines,
+                    currentPosition: engine.currentPosition,
+                    readPositionMs: { engine.currentPlaybackMs() }
+                ) {
                     coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? String(localized: "Lyrics")))
                 }
                 // Creator card, credits, then the description, then the

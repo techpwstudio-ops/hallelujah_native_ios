@@ -66,6 +66,7 @@ struct SongLyricsView: View {
                                 text: line.text ?? "",
                                 isActive: index == activeIndex,
                                 isPast: activeIndex.map { index < $0 } ?? false,
+                                wordTiming: .of(lines, at: index) { engine.currentPlaybackMs() },
                                 onTap: { engine.seek(to: line.startTime) }
                             )
                             .id(line.id)
@@ -118,9 +119,10 @@ struct SongLyricsView: View {
         .task(id: engine.currentSong?.id) { await timelineStore.load(for: engine.currentSong) }
         .task(id: engine.currentSong?.id) {
             let song = engine.currentSong
-            lines = song?.transcripts ?? []
+            let language = await SongDetailCache.preferredLyricsLanguage()
+            lines = (song?.transcripts ?? []).inPreferredLanguage(language)
             guard let song else { return }
-            let loaded = await songDetailCache.transcripts(for: song)
+            let loaded = await songDetailCache.transcripts(for: song, preferredLanguage: language)
             guard !Task.isCancelled, engine.currentSong?.id == song.id else { return }
             lines = loaded
         }

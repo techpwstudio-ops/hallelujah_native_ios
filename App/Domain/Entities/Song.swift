@@ -40,6 +40,27 @@ struct LyricsTranscript: Sendable, Equatable, Identifiable {
     let startTime: Double
     let endTime: Double
     let text: String?
+    /// The language of the server row the line came from (`LyricsTranscript.language`, e.g.
+    /// "English"); `nil` for a line in the old flat form.
+    let language: String?
+
+    /// How two languages are compared: case and surrounding spaces ignored, `nil` as "".
+    static func languageKey(_ language: String?) -> String {
+        (language ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
+extension Array where Element == LyricsTranscript {
+    /// One language's lines out of `Song.transcripts`, which holds every language the song has: the
+    /// `preferred` one (the user's Bible language) when the song has it, otherwise the first, as
+    /// Flutter's `lyrics_ui.dart` picks. Lines with no language all count as one language.
+    func inPreferredLanguage(_ preferred: String?) -> [LyricsTranscript] {
+        guard let first else { return [] }
+        let preferredKey = LyricsTranscript.languageKey(preferred)
+        let hasPreferred = preferred != nil && contains { LyricsTranscript.languageKey($0.language) == preferredKey }
+        let chosen = hasPreferred ? preferredKey : LyricsTranscript.languageKey(first.language)
+        return filter { LyricsTranscript.languageKey($0.language) == chosen }
+    }
 }
 
 /// One production credit (`GET /api/songs/:id`'s `songCredits`, detail only).

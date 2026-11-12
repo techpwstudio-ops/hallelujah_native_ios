@@ -45,11 +45,11 @@ struct WordFlowLayout: Layout {
 }
 
 /// The colour of one transcript word. Spoken words are white, the word being
-/// spoken uses the brand accent, and upcoming words are white at 38%, the same
-/// as `LyricsLineItem` (I7).
+/// spoken is gold (`ColorTheme.darkGold`, as Flutter's `transcript_word_style.dart`),
+/// and upcoming words are white at 38%, the same as `LyricsLineItem` (I7).
 enum TranscriptWordColor {
     static func color(spoken: Bool, active: Bool) -> Color {
-        if active { return ColorToken.brandPrimary.color }
+        if active { return PlayerStyle.wordGold }
         return spoken ? PlayerStyle.white : PlayerStyle.whiteAlpha(0.38)
     }
 }

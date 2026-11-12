@@ -12,6 +12,8 @@ struct PlayerLyricsPreviewCard: View {
     /// without them still gets its card.
     let transcripts: [LyricsTranscript]
     let currentPosition: TimeInterval
+    /// The playhead in milliseconds, read finely for the word highlight on the active line.
+    let readPositionMs: @MainActor () -> Int
     let onViewFull: () -> Void
 
     private static let previewHeight: CGFloat = 220
@@ -81,7 +83,8 @@ struct PlayerLyricsPreviewCard: View {
                         LyricsLineItem(
                             text: line.text ?? "",
                             isActive: index == activeIndex,
-                            isPast: activeIndex.map { index < $0 } ?? false
+                            isPast: activeIndex.map { index < $0 } ?? false,
+                            wordTiming: .of(transcripts, at: index, readPositionMs: readPositionMs)
                         )
                         .id(line.id)
                     }
@@ -127,11 +130,20 @@ struct PlayerLyricsPreviewCard: View {
 }
 
 extension SongDetailCache {
-    /// A song's lyric / transcript lines. The queue's copy of a song comes from whatever list it was
-    /// played from, and list endpoints leave `transcripts` out, so an empty copy is filled from the
-    /// song's detail (`GET /song/:id`), as the Flutter player does. Empty when neither has any.
-    func transcripts(for song: Song) async -> [LyricsTranscript] {
-        if let own = song.transcripts, !own.isEmpty { return own }
-        return (try? await self.song(id: song.id).transcripts) ?? []
+    /// A song's lyric / transcript lines in one language (`inPreferredLanguage(_:)`). The queue's copy
+    /// of a song comes from whatever list it was played from, and list endpoints leave `transcripts`
+    /// out, so an empty copy is filled from the song's detail (`GET /song/:id`), as the Flutter player
+    /// does. Empty when neither has any.
+    func transcripts(for song: Song, preferredLanguage: String?) async -> [LyricsTranscript] {
+        if let own = song.transcripts, !own.isEmpty { return own.inPreferredLanguage(preferredLanguage) }
+        let loaded = (try? await self.song(id: song.id).transcripts) ?? []
+        return loaded.inPreferredLanguage(preferredLanguage)
+    }
+
+    /// The language lyrics are shown in when a song has several: the signed-in user's Bible language,
+    /// as Flutter's `lyrics_ui.dart` uses. `nil` when signed out, which picks the first language.
+    static func preferredLyricsLanguage() async -> String? {
+        guard let store = DependencyContainer.current.resolveIfRegistered(CurrentUserStore.self) else { return nil }
+        return await store.user?.bibleLanguage
     }
 }

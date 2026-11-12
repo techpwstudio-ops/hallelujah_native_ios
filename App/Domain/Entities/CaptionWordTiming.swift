@@ -112,6 +112,37 @@ enum CaptionWordTiming {
         }
     }
 
+    /// Start and end of each of `words`, spread over one line that runs from `startMs` to `endMs`,
+    /// by the same estimate the caption lines use. For a lyrics line, which carries only its own
+    /// start and end. Empty when the line has no words or no time. Mirrors `spreadLineOverWords`.
+    static func spreadLineOverWords(_ words: [String], startMs: Int, endMs: Int) -> [(start: Int, end: Int)] {
+        guard !words.isEmpty, endMs > startMs else { return [] }
+        var starts = Array(repeating: startMs, count: words.count)
+        var ends = Array(repeating: endMs, count: words.count)
+        respread(startsMs: &starts, endsMs: &ends, words: words, line: 0...(words.count - 1))
+        return zip(starts, ends).map { (start: $0, end: $1) }
+    }
+
+    /// When a lyrics line stops being said, in milliseconds. Its own end when that is after its
+    /// start, cut at the next line's start; otherwise the next line's start; otherwise a few seconds,
+    /// so a line with no end still moves. Mirrors `lyricsLineEndMs` in `lyrics_line_item.dart`.
+    static func lyricsLineEndMs(startTime: Double, endTime: Double, nextLineStart: Double?) -> Int {
+        let startMs = milliseconds(startTime)
+        let nextMs = nextLineStart.map(milliseconds)
+        var endMs = milliseconds(endTime)
+        if endMs <= startMs { endMs = nextMs ?? startMs + fallbackLineMs }
+        if let nextMs, nextMs > startMs, nextMs < endMs { endMs = nextMs }
+        if endMs <= startMs { endMs = startMs + fallbackLineMs }
+        return endMs
+    }
+
+    /// How long a lyrics line with no usable end is highlighted for.
+    static let fallbackLineMs = 4000
+
+    static func milliseconds(_ seconds: Double) -> Int {
+        Int((seconds * 1000).rounded())
+    }
+
     private static func codePoints(_ word: String) -> Int {
         max(word.unicodeScalars.count, 1)
     }

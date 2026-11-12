@@ -200,11 +200,13 @@ struct FavoritedByEntryDTO: Decodable, Sendable {
     let songId: String?
 }
 
-/// One row of `Song.transcripts`. The server sends one row per language, each holding its lines
-/// under `content.lines` (`{ text, start, end }`, whole seconds), the shape Flutter's
-/// `TranscriptRepositoryModel` reads. The flat `startTime` / `endTime` / `text` form is still read
-/// for a row that carries it. Every field is decoded leniently, so one odd row can never fail the
-/// whole song.
+/// One row of `Song.transcripts` (a `LyricsTranscript` table row). The server sends one row per
+/// language, each holding its lines in the row's own `transcripts` JSON as
+/// `{ meta, type, lines: [{ text, start, end }] }`, whole seconds as numbers. Flutter's
+/// `TranscriptRepositoryModel` reads that key into a property named `content`, as this DTO does.
+/// A row whose processing failed has `transcripts: null`. The flat `startTime` / `endTime` / `text`
+/// form is still read for a row that carries it. Every field is decoded leniently, so one odd row
+/// can never fail the whole song.
 struct LyricsTranscriptDTO: Decodable, Sendable {
     let id: String?
     let language: String?
@@ -262,7 +264,10 @@ struct LyricsTranscriptDTO: Decodable, Sendable {
         content = try? container.decode(ContentDTO.self, forKey: .content)
     }
 
-    private enum CodingKeys: String, CodingKey { case id, language, startTime, endTime, text, content }
+    private enum CodingKeys: String, CodingKey {
+        case id, language, startTime, endTime, text
+        case content = "transcripts"
+    }
 }
 
 struct SongCreditDTO: Decodable, Sendable {
@@ -385,19 +390,27 @@ extension SongDTO {
         return names.isEmpty ? nil : names.joined(separator: " \u{2022} ")
     }
 
-    /// The lines to show for `Song.transcripts`. Rows that hold `content.lines` are one language each:
-    /// the first with lines is used (Flutter prefers the user's Bible language and falls back to the
-    /// first). Rows in the flat form are lines themselves.
+    /// The lines for `Song.transcripts`. A row with lines is one language: every such row's lines are
+    /// kept, tagged with the row's `language` (the first row of a language wins), and the player shows
+    /// one language through `inPreferredLanguage(_:)`. A row without lines (failed or still pending)
+    /// adds nothing. Rows in the flat form are lines themselves.
     static func lyricsLines(from rows: [LyricsTranscriptDTO]) -> [LyricsTranscript] {
-        if let row = rows.first(where: { !($0.content?.lines.isEmpty ?? true) }), let lines = row.content?.lines {
-            let prefix = row.id ?? "transcript"
-            return lines.enumerated().map { index, line in
-                LyricsTranscript(
-                    id: "\(prefix)-\(index)",
-                    startTime: line.start,
-                    endTime: line.end,
-                    text: sanitized(line.text)
-                )
+        let rowsWithLines = rows.filter { !($0.content?.lines.isEmpty ?? true) }
+        if !rowsWithLines.isEmpty {
+            var seenLanguages = Set<String>()
+            return rowsWithLines.flatMap { row -> [LyricsTranscript] in
+                guard seenLanguages.insert(LyricsTranscript.languageKey(row.language)).inserted,
+                      let lines = row.content?.lines else { return [] }
+                let prefix = row.id ?? "transcript"
+                return lines.enumerated().map { index, line in
+                    LyricsTranscript(
+                        id: "\(prefix)-\(index)",
+                        startTime: line.start,
+                        endTime: line.end,
+                        text: sanitized(line.text),
+                        language: row.language
+                    )
+                }
             }
         }
         return rows.compactMap { row -> LyricsTranscript? in
@@ -406,7 +419,8 @@ extension SongDTO {
                 id: id,
                 startTime: row.startTime ?? 0,
                 endTime: row.endTime ?? 0,
-                text: sanitized(row.text)
+                text: sanitized(row.text),
+                language: nil
             )
         }
     }
