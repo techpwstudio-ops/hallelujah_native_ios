@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUser
         return true
     }
 
-    /// Portrait everywhere on a phone, except while the full-screen podcast video holds landscape
+    /// Portrait everywhere (iPhone and iPad), except while the full-screen podcast video holds landscape
     /// (`OrientationLock`).
     func application(
         _ application: UIApplication,

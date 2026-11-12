@@ -1,18 +1,17 @@
 import UIKit
 
-/// Which way the app may turn. The phone app is portrait everywhere except the full-screen podcast
-/// video, which holds it in landscape while it is up. `AppDelegate` answers
+/// Which way the app may turn. The app is portrait everywhere, on iPhone and iPad alike, except the
+/// full-screen podcast video, which holds it in landscape while it is up. `AppDelegate` answers
 /// `supportedInterfaceOrientationsFor` from here, so this is the one switch.
 ///
-/// An iPad keeps every orientation (its Info.plist allows them all) and is never locked.
+/// The iPad honours it because Info.plist sets `UIRequiresFullScreen` (an iPad app in Split View
+/// has its orientation lock ignored).
 @MainActor
 enum OrientationLock {
-    private static var phoneMask: UIInterfaceOrientationMask = .portrait
-
-    private static var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private static var mask: UIInterfaceOrientationMask = .portrait
 
     /// What the app delegate reports.
-    static var supported: UIInterfaceOrientationMask { isPad ? .all : phoneMask }
+    static var supported: UIInterfaceOrientationMask { mask }
 
     /// Turns the phone to landscape and holds it there.
     static func landscape() { apply(.landscape, rotateTo: .landscapeRight) }
@@ -21,8 +20,8 @@ enum OrientationLock {
     static func portrait() { apply(.portrait, rotateTo: .portrait) }
 
     private static func apply(_ mask: UIInterfaceOrientationMask, rotateTo target: UIInterfaceOrientationMask) {
-        guard !isPad, phoneMask != mask else { return }
-        phoneMask = mask
+        guard self.mask != mask else { return }
+        self.mask = mask
         for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
             // Every controller in the presented chain is asked again, so the full-screen cover on top
             // of the player turns too.
