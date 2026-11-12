@@ -48,10 +48,13 @@
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Portrait only, iPad included (OrientationLock). An iPad app that allows Split View must
+	     support every orientation and has its orientation lock ignored, so it opts out. -->
+	<key>UIRequiresFullScreen</key>
+	<true/>
 
 	<!-- T48 — CarPlay scene setup. Registers only the CarPlay scene role
 	     (`CPTemplateApplicationSceneSessionRoleApplication`); the phone
