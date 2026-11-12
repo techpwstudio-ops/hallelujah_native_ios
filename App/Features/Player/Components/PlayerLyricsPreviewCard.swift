@@ -8,7 +8,9 @@ import SwiftUI
 /// transcripts. The active line is `lastIndexWhere(start <= position)`; the
 /// preview scrolls it to 40% of the viewport over 350 ms easeOutCubic.
 struct PlayerLyricsPreviewCard: View {
-    let song: Song
+    /// The lines to show: `SongDetailCache.transcripts(for:)`, so a song that reached the queue
+    /// without them still gets its card.
+    let transcripts: [LyricsTranscript]
     let currentPosition: TimeInterval
     let onViewFull: () -> Void
 
@@ -19,8 +21,6 @@ struct PlayerLyricsPreviewCard: View {
     private static let headerToken = TypographyToken(size: 14, weight: .medium, lineHeightMultiple: 1, tracking: 0.5)
     private static let buttonToken = TypographyToken(size: 12, weight: .semibold, lineHeightMultiple: 1, tracking: 0.3)
     private static let topAnchorID = "lyrics-preview-top"
-
-    private var transcripts: [LyricsTranscript] { song.transcripts ?? [] }
 
     private var activeIndex: Int? {
         var result: Int?
@@ -123,5 +123,15 @@ struct PlayerLyricsPreviewCard: View {
                 }
         }
         .buttonStyle(.plain)
+    }
+}
+
+extension SongDetailCache {
+    /// A song's lyric / transcript lines. The queue's copy of a song comes from whatever list it was
+    /// played from, and list endpoints leave `transcripts` out, so an empty copy is filled from the
+    /// song's detail (`GET /song/:id`), as the Flutter player does. Empty when neither has any.
+    func transcripts(for song: Song) async -> [LyricsTranscript] {
+        if let own = song.transcripts, !own.isEmpty { return own }
+        return (try? await self.song(id: song.id).transcripts) ?? []
     }
 }
