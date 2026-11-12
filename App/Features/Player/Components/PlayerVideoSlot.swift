@@ -17,6 +17,8 @@ struct PlayerVideoContext {
     /// Video is locked behind a subscription for this listener (`PremiumFeature.videoMode`): no
     /// layer, whatever the mode says.
     var isLocked = false
+    /// Opens the video full screen in landscape; `nil` draws no expand control.
+    var onExpand: (@MainActor () -> Void)? = nil
 }
 
 /// One page's place for the silent video, over its cover: a layer when the listener has chosen
@@ -52,7 +54,8 @@ struct PlayerVideoSlot: View {
                 modeShowsVideo: context.mode.showsVideo,
                 isVisible: context.isVisible,
                 makeHeaders: { await source.headers() },
-                onUnavailable: context.onUnavailable
+                onUnavailable: context.onUnavailable,
+                onExpand: context.onExpand
             )
             // Another episode, or another file for the same one, is a new layer with a new controller.
             .id(PlayerVideoLayerKey(songId: song.id, url: url))

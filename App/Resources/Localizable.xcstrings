@@ -11358,6 +11358,47 @@
         }
       }
     },
+    "Exit full screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exit full screen"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "फ़ुल स्क्रीन से बाहर निकलें"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಪೂರ್ಣ ಪರದೆಯಿಂದ ನಿರ್ಗಮಿಸಿ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഫുൾ സ്ക്രീനിൽ നിന്ന് പുറത്തുകടക്കുക"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "முழுத் திரையிலிருந்து வெளியேறு"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "పూర్తి స్క్రీన్ నుండి నిష్క్రమించండి"
+          }
+        }
+      }
+    },
     "Expired": {
       "extractionState": "manual",
       "localizations": {
@@ -12543,6 +12584,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "10 సెకన్లు ముందుకు"
+          }
+        }
+      }
+    },
+    "Full screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full screen"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "फ़ुल स्क्रीन"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಪೂರ್ಣ ಪರದೆ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഫുൾ സ്ക്രീൻ"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "முழுத் திரை"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "పూర్తి స్క్రీన్"
           }
         }
       }

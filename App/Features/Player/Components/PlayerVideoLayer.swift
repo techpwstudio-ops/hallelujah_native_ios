@@ -17,6 +17,10 @@ struct PlayerVideoLayer: View {
     let isVisible: Bool
     let makeHeaders: @Sendable () async -> [String: String]
     let onUnavailable: @MainActor () -> Void
+    /// Opens the video full screen in landscape. When set, the expand button sits in the picture's
+    /// bottom trailing corner and a tap on the picture does the same, both only while the picture
+    /// is up. `nil` (the full-screen view itself) draws neither.
+    var onExpand: (@MainActor () -> Void)? = nil
 
     @State private var controller: PlayerVideoController
     @State private var playback: AVVideoPlayback?
@@ -28,13 +32,15 @@ struct PlayerVideoLayer: View {
         modeShowsVideo: Bool,
         isVisible: Bool,
         makeHeaders: @escaping @Sendable () async -> [String: String],
-        onUnavailable: @escaping @MainActor () -> Void
+        onUnavailable: @escaping @MainActor () -> Void,
+        onExpand: (@MainActor () -> Void)? = nil
     ) {
         self.url = url
         self.modeShowsVideo = modeShowsVideo
         self.isVisible = isVisible
         self.makeHeaders = makeHeaders
         self.onUnavailable = onUnavailable
+        self.onExpand = onExpand
         // SwiftUI keeps the first controller it is given and drops the rest.
         _controller = State(initialValue: PlayerVideoController(clock: clock, songId: songId))
     }
@@ -68,6 +74,20 @@ struct PlayerVideoLayer: View {
                 )
             )
         }
+        .overlay(alignment: .bottomTrailing) {
+            if let onExpand, controller.isShown {
+                ZStack(alignment: .bottomTrailing) {
+                    // A tap anywhere on the picture opens it full screen too.
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { onExpand() }
+                        .accessibilityHidden(true)
+                    PlayerVideoExpandButton(action: onExpand)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: MotionDuration.crossfade), value: controller.isShown)
     }
 
     private func gravity(in box: CGSize) -> AVLayerVideoGravity {
@@ -102,6 +122,26 @@ struct PlayerVideoLayer: View {
                 return
             }
         }
+    }
+}
+
+/// The expand control in the picture's corner: Spotify's two outward diagonal arrows, white with a
+/// soft shadow so it reads over any frame, in a 44 pt box.
+struct PlayerVideoExpandButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: PlayerStyle.videoExpandGlyphSize, weight: .semibold))
+                .foregroundStyle(PlayerStyle.white)
+                .shadow(color: .black.opacity(0.5), radius: 4)
+                .frame(width: PlayerStyle.queueRowBox, height: PlayerStyle.queueRowBox)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(Dimens.spacing6)
+        .accessibilityLabel(String(localized: "Full screen"))
     }
 }
 

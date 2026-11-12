@@ -60,6 +60,8 @@ enum PlayerStyle {
     /// 44 pt box.
     static let queueRowGlyphSize: CGFloat = 20
     static let queueRowBox: CGFloat = 44
+    /// The full-screen arrows in the video's corner.
+    static let videoExpandGlyphSize: CGFloat = 18
     /// The loading spinner's backing square, its corners, and the spinner's scale inside it.
     static let loadingBackdropSize: CGFloat = 56
     static let loadingBackdropRadius: CGFloat = 14

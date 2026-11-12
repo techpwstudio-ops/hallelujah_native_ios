@@ -41,6 +41,8 @@ struct FullPlayerView: View {
     /// audio quality. Resolved on appear and on every track change; starts unlocked so a premium
     /// listener never sees the badge flash.
     @State private var isVideoLocked = false
+    /// The video is open full screen in landscape (`PlayerVideoFullScreenView`).
+    @State private var isVideoFullScreen = false
     @State private var isSharePresented = false
     @State private var isQueuePresented = false
     @State private var isAddToPlaylistPresented = false
@@ -71,7 +73,8 @@ struct FullPlayerView: View {
     /// pushed over the player. Sheets over the player do not count, so the video keeps playing
     /// under one; that is why this is not `isPlayerUncovered`.
     private var isVideoVisible: Bool {
-        scenePhase != .background && coordinator.playerPath.isEmpty
+        // Full screen runs its own player; this one lets go so only one is ever open.
+        scenePhase != .background && coordinator.playerPath.isEmpty && !isVideoFullScreen
     }
 
     /// What the artwork pager needs to lay the video over the cover.
@@ -86,7 +89,8 @@ struct FullPlayerView: View {
                 videoMode.showCover()
                 toastCenter.show(String(localized: "Video isn't available right now"))
             },
-            isLocked: isVideoLocked
+            isLocked: isVideoLocked,
+            onExpand: { isVideoFullScreen = true }
         )
     }
 
@@ -170,6 +174,26 @@ struct FullPlayerView: View {
         }
         .task(id: song?.id) {
             await timelineStore.load(for: song)
+        }
+        .fullScreenCover(isPresented: $isVideoFullScreen) {
+            if let song, let url = videoSource.url(for: song) {
+                PlayerVideoFullScreenView(
+                    song: song,
+                    url: url,
+                    engine: engine,
+                    source: videoSource,
+                    onUnavailable: {
+                        isVideoFullScreen = false
+                        videoMode.showCover()
+                        toastCenter.show(String(localized: "Video isn't available right now"))
+                    },
+                    onClose: { isVideoFullScreen = false }
+                )
+            }
+        }
+        // Back on the cover (or locked): full screen has nothing to show.
+        .onChange(of: videoMode.showsVideo) { _, showsVideo in
+            if !showsVideo { isVideoFullScreen = false }
         }
         .task(id: song?.id) {
             let locked = await !premiumGate.allows(.videoMode)
