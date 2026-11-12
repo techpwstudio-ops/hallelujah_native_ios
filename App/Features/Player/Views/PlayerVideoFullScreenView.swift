@@ -135,10 +135,11 @@ struct PlayerVideoFullScreenView: View {
                     PlayerSeekBar(
                         position: engine.currentPosition,
                         duration: duration,
-                        chapters: chapters,
-                        onScrubbingChanged: { isScrubbing = $0 }
+                        chapters: chapters
                     ) { target in
                         engine.seek(to: target)
+                    } onScrubbingChanged: {
+                        isScrubbing = $0
                     }
                     Button(action: close) {
                         Image(systemName: "arrow.down.right.and.arrow.up.left")

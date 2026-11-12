@@ -20,10 +20,12 @@ struct PlayerSeekBar: View {
     var barHeight: CGFloat = PlayerStyle.seekBarHeight
     var isInteractive: Bool = true
     var chapters: [EpisodeChapter] = []
+    /// Declared before `onScrubbingChanged` on purpose: a trailing closure binds to the first closure
+    /// property, so `PlayerSeekBar(...) { target in ... }` must land here, not on the `Bool` callback.
+    var onSeek: (TimeInterval) -> Void = { _ in }
     /// Told `true` when a drag starts and `false` when it ends, so a host that hides its controls on
     /// a timer (the full-screen video) can hold them up while the thumb is held.
     var onScrubbingChanged: (Bool) -> Void = { _ in }
-    var onSeek: (TimeInterval) -> Void = { _ in }
 
     @State private var dragPosition: TimeInterval?
     @State private var dragChapterIndex: Int?
