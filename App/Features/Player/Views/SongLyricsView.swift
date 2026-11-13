@@ -26,12 +26,25 @@ import SwiftUI
 struct SongLyricsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var engine: AudioEngine = DependencyContainer.current.resolve()
+    /// The shared episode timeline, for the chapter segments on the seek bar.
+    @State private var timelineStore: EpisodeTimelineStore = DependencyContainer.current.resolve()
+    @State private var songDetailCache: SongDetailCache = DependencyContainer.current.resolve()
+    /// Filled from the song's detail when the queue's copy carries no lines.
+    @State private var lines: [LyricsTranscript] = []
     let songTitle: String
+
+    /// The playing episode's chapters, as the full player shows them; none for a song, or while the
+    /// timeline on hand belongs to another track.
+    private var chapters: [EpisodeChapter] {
+        guard let id = engine.currentSong?.id, timelineStore.loadedSongId == id else { return [] }
+        return timelineStore.chapters
+    }
+
+    private var isEpisode: Bool { engine.currentSong?.isEpisode ?? false }
 
     private static let topAnchorID = "top"
     private static let scrollAnimation = Animation.easeOut(duration: 0.35)
 
-    private var lines: [LyricsTranscript] { engine.currentSong?.transcripts ?? [] }
 
     /// `lines.lastIndexWhere((l) => l.start <= seconds)`; `nil` (Dart's -1)
     /// is before the first lyric.
@@ -55,6 +68,7 @@ struct SongLyricsView: View {
                                 text: line.text ?? "",
                                 isActive: index == activeIndex,
                                 isPast: activeIndex.map { index < $0 } ?? false,
+                                wordTiming: .of(lines, at: index) { engine.currentPlaybackMs() },
                                 onTap: { engine.seek(to: line.startTime) }
                             )
                             .id(line.id)
@@ -77,24 +91,35 @@ struct SongLyricsView: View {
             PlayerSeekBar(
                 position: engine.currentPosition,
                 duration: engine.currentItemDuration ?? TimeInterval(engine.currentSong?.duration ?? 0),
-                barHeight: 4
+                barHeight: 4,
+                chapters: chapters
             ) { target in
                 engine.seek(to: target)
             }
             .readableContentWidth()
             .padding(.top, 16)
 
-            Button {
-                if engine.status == .playing { engine.pause() } else { engine.resume() }
-            } label: {
-                PlayerPlayPauseDisc(
-                    isPlaying: engine.status == .playing,
-                    isLoading: engine.status == .loading,
-                    diameter: 48,
-                    glyphSize: 32
-                )
+            // An episode gets back / forward 10 seconds on either side of
+            // play / pause, as on the full player; music has only play / pause.
+            HStack(spacing: Spacing.xl) {
+                if isEpisode {
+                    EpisodeSkipButton(engine: engine, direction: .back)
+                }
+                Button {
+                    if engine.status == .playing { engine.pause() } else { engine.resume() }
+                } label: {
+                    PlayerPlayPauseDisc(
+                        isPlaying: engine.status == .playing,
+                        isLoading: engine.status == .loading,
+                        diameter: 48,
+                        glyphSize: 32
+                    )
+                }
+                .buttonStyle(.plain)
+                if isEpisode {
+                    EpisodeSkipButton(engine: engine, direction: .forward)
+                }
             }
-            .buttonStyle(.plain)
             .padding(.top, 20)
         }
         .padding(.leading, PlayerStyle.pageSidePadding)
@@ -102,6 +127,17 @@ struct SongLyricsView: View {
         .padding(.top, 16)
         .padding(.bottom, 32)
         .background(PlayerStyle.black.ignoresSafeArea())
+        // Normally already loaded by the full player; a no-op then.
+        .task(id: engine.currentSong?.id) { await timelineStore.load(for: engine.currentSong) }
+        .task(id: engine.currentSong?.id) {
+            let song = engine.currentSong
+            let language = await SongDetailCache.preferredLyricsLanguage()
+            lines = (song?.transcripts ?? []).inPreferredLanguage(language)
+            guard let song else { return }
+            let loaded = await songDetailCache.transcripts(for: song, preferredLanguage: language)
+            guard !Task.isCancelled, engine.currentSong?.id == song.id else { return }
+            lines = loaded
+        }
         .toolbar {
             AppBackToolbarItem { dismiss() }
             ToolbarItem(placement: .principal) {

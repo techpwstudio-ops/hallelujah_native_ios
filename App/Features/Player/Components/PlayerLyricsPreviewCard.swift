@@ -8,8 +8,14 @@ import SwiftUI
 /// transcripts. The active line is `lastIndexWhere(start <= position)`; the
 /// preview scrolls it to 40% of the viewport over 350 ms easeOutCubic.
 struct PlayerLyricsPreviewCard: View {
-    let song: Song
+    /// The lines to show: `SongDetailCache.transcripts(for:)`, so a song that reached the queue
+    /// without them still gets its card.
+    let transcripts: [LyricsTranscript]
     let currentPosition: TimeInterval
+    /// The playhead in milliseconds, read finely for the word highlight on the active line.
+    let readPositionMs: @MainActor () -> Int
+    /// An episode's card reads "Transcript" and "View Full Transcript"; a song's reads "Lyrics".
+    var isEpisode: Bool = false
     let onViewFull: () -> Void
 
     private static let previewHeight: CGFloat = 220
@@ -20,7 +26,8 @@ struct PlayerLyricsPreviewCard: View {
     private static let buttonToken = TypographyToken(size: 12, weight: .semibold, lineHeightMultiple: 1, tracking: 0.3)
     private static let topAnchorID = "lyrics-preview-top"
 
-    private var transcripts: [LyricsTranscript] { song.transcripts ?? [] }
+    private var headerTitle: LocalizedStringKey { isEpisode ? "Transcript" : "Lyrics" }
+    private var viewFullTitle: LocalizedStringKey { isEpisode ? "View Full Transcript" : "View Full Lyrics" }
 
     private var activeIndex: Int? {
         var result: Int?
@@ -66,7 +73,7 @@ struct PlayerLyricsPreviewCard: View {
             Image(systemName: "quote.bubble")
                 .font(.system(size: 16))
                 .foregroundStyle(PlayerStyle.whiteAlpha(0.6))
-            Text("Lyrics")
+            Text(headerTitle)
                 .typography(Self.headerToken)
                 .foregroundStyle(PlayerStyle.whiteAlpha(0.6))
         }
@@ -81,7 +88,8 @@ struct PlayerLyricsPreviewCard: View {
                         LyricsLineItem(
                             text: line.text ?? "",
                             isActive: index == activeIndex,
-                            isPast: activeIndex.map { index < $0 } ?? false
+                            isPast: activeIndex.map { index < $0 } ?? false,
+                            wordTiming: .of(transcripts, at: index, readPositionMs: readPositionMs)
                         )
                         .id(line.id)
                     }
@@ -111,7 +119,7 @@ struct PlayerLyricsPreviewCard: View {
 
     private var viewFullButton: some View {
         Button(action: onViewFull) {
-            Text("View Full Lyrics")
+            Text(viewFullTitle)
                 .typography(Self.buttonToken)
                 .foregroundStyle(PlayerStyle.white)
                 .padding(.horizontal, 20)
@@ -123,5 +131,24 @@ struct PlayerLyricsPreviewCard: View {
                 }
         }
         .buttonStyle(.plain)
+    }
+}
+
+extension SongDetailCache {
+    /// A song's lyric / transcript lines in one language (`inPreferredLanguage(_:)`). The queue's copy
+    /// of a song comes from whatever list it was played from, and list endpoints leave `transcripts`
+    /// out, so an empty copy is filled from the song's detail (`GET /song/:id`), as the Flutter player
+    /// does. Empty when neither has any.
+    func transcripts(for song: Song, preferredLanguage: String?) async -> [LyricsTranscript] {
+        if let own = song.transcripts, !own.isEmpty { return own.inPreferredLanguage(preferredLanguage) }
+        let loaded = (try? await self.song(id: song.id).transcripts) ?? []
+        return loaded.inPreferredLanguage(preferredLanguage)
+    }
+
+    /// The language lyrics are shown in when a song has several: the signed-in user's Bible language,
+    /// as Flutter's `lyrics_ui.dart` uses. `nil` when signed out, which picks the first language.
+    static func preferredLyricsLanguage() async -> String? {
+        guard let store = DependencyContainer.current.resolveIfRegistered(CurrentUserStore.self) else { return nil }
+        return await store.user?.bibleLanguage
     }
 }

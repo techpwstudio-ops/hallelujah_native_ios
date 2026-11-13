@@ -8,3 +8,7 @@ struct FakeBatteryMonitor: BatteryLevelMonitoring {
 struct FakeConnectivity: ConnectivityTypeProviding {
     var currentConnectionType: ConnectionType?
 }
+
+struct FakeLowPowerMode: LowPowerModeProviding {
+    var isLowPowerModeEnabled: Bool
+}

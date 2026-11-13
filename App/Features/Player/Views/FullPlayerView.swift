@@ -28,6 +28,9 @@ struct FullPlayerView: View {
     /// Chapters, speakers and transcript for the song playing (Phase 1/2). Shared
     /// with the transcript screen, so the two never fetch or clock separately.
     @State private var timelineStore: EpisodeTimelineStore = DependencyContainer.current.resolve()
+    @State private var songDetailCache: SongDetailCache = DependencyContainer.current.resolve()
+    /// The playing song's lyric / transcript lines, filled from its detail when the queue's copy has none.
+    @State private var lyricsLines: [LyricsTranscript] = []
     @State private var queueController: QueueController = DependencyContainer.current.resolve()
     @State private var favouriteRepository: any FavouriteRepository = DependencyContainer.current.resolve()
     @State private var adPacing: AdPacingController = DependencyContainer.current.resolve()
@@ -36,11 +39,17 @@ struct FullPlayerView: View {
     /// Cover or silent video: the listener's choice, shared by the artwork and the icon button that flips it.
     @State private var videoMode: PlayerVideoModeStore = DependencyContainer.current.resolve()
     @State private var videoSource: PlayerVideoSource = DependencyContainer.current.resolve()
+    /// Which rendition of the video plays; also changed from Settings and from the menu on the picture.
+    @State private var videoQuality: VideoQualityStore = DependencyContainer.current.resolve()
     @State private var premiumGate: PremiumGate = DependencyContainer.current.resolve()
     /// Video is a premium feature: the same `PremiumGate` check as downloads, the sleep timer and
     /// audio quality. Resolved on appear and on every track change; starts unlocked so a premium
     /// listener never sees the badge flash.
     @State private var isVideoLocked = false
+    /// The video is open full screen in landscape (`PlayerVideoFullScreenView`).
+    @State private var isVideoFullScreen = false
+    /// Carries the open video from one artwork page to the next when shuffle moves the episode.
+    @State private var videoHandoff = PlayerVideoLayerHandoff()
     @State private var isSharePresented = false
     @State private var isQueuePresented = false
     @State private var isAddToPlaylistPresented = false
@@ -71,7 +80,8 @@ struct FullPlayerView: View {
     /// pushed over the player. Sheets over the player do not count, so the video keeps playing
     /// under one; that is why this is not `isPlayerUncovered`.
     private var isVideoVisible: Bool {
-        scenePhase != .background && coordinator.playerPath.isEmpty
+        // Full screen runs its own player; this one lets go so only one is ever open.
+        scenePhase != .background && coordinator.playerPath.isEmpty && !isVideoFullScreen
     }
 
     /// What the artwork pager needs to lay the video over the cover.
@@ -79,6 +89,7 @@ struct FullPlayerView: View {
         PlayerVideoContext(
             mode: videoMode,
             source: videoSource,
+            quality: videoQuality,
             clock: EngineAudioClock(engine: engine),
             playingSongId: engine.currentSong?.id,
             isVisible: isVideoVisible,
@@ -86,7 +97,9 @@ struct FullPlayerView: View {
                 videoMode.showCover()
                 toastCenter.show(String(localized: "Video isn't available right now"))
             },
-            isLocked: isVideoLocked
+            isLocked: isVideoLocked,
+            onExpand: { isVideoFullScreen = true },
+            handoff: videoHandoff
         )
     }
 
@@ -170,6 +183,45 @@ struct FullPlayerView: View {
         }
         .task(id: song?.id) {
             await timelineStore.load(for: song)
+        }
+        .task(id: song?.id) {
+            let language = await SongDetailCache.preferredLyricsLanguage()
+            lyricsLines = (song?.transcripts ?? []).inPreferredLanguage(language)
+            guard let song else { return }
+            let lines = await songDetailCache.transcripts(for: song, preferredLanguage: language)
+            guard !Task.isCancelled, engine.currentSong?.id == song.id else { return }
+            lyricsLines = lines
+        }
+        // A fresh look at the connection and battery for each episode, which Auto picks its quality from.
+        .task(id: song?.id) {
+            await videoQuality.refreshConditions()
+        }
+        .fullScreenCover(isPresented: $isVideoFullScreen) {
+            if let song, song.hasVideo {
+                PlayerVideoFullScreenView(
+                    song: song,
+                    engine: engine,
+                    source: videoSource,
+                    chapters: timelineStore.chapters,
+                    duration: playbackDuration,
+                    quality: videoQuality,
+                    onUnavailable: {
+                        isVideoFullScreen = false
+                        videoMode.showCover()
+                        toastCenter.show(String(localized: "Video isn't available right now"))
+                    },
+                    onClose: { isVideoFullScreen = false }
+                )
+            }
+        }
+        // However full screen closes, turn back upright at once rather than after the cover's
+        // dismissal animation.
+        .onChange(of: isVideoFullScreen) { _, isFullScreen in
+            if !isFullScreen { OrientationLock.portrait() }
+        }
+        // Back on the cover (or locked): full screen has nothing to show.
+        .onChange(of: videoMode.showsVideo) { _, showsVideo in
+            if !showsVideo { isVideoFullScreen = false }
         }
         .task(id: song?.id) {
             let locked = await !premiumGate.allows(.videoMode)
@@ -392,17 +444,6 @@ struct FullPlayerView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             favouriteButton
-            if song != nil, AppConfiguration.current.featureFlags.tipButtonEnabled, !offerings.isEmpty {
-                Button { isTipSheetPresented = true } label: {
-                    Image(systemName: "heart.circle")
-                        .font(.system(size: 24))
-                        .foregroundStyle(PlayerStyle.white)
-                        .padding(8)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Support the Artist")
-            }
             if song != nil {
                 Button { isAddToPlaylistPresented = true } label: {
                     Image(systemName: "plus.circle")
@@ -485,6 +526,18 @@ struct FullPlayerView: View {
                 }
             }
 
+            // Support the artist, just left of Share. Hidden in every environment
+            // (`FEATURE_TIP_BUTTON_ENABLED = NO` in all three xcconfigs) until the
+            // feature is cleared to launch; also absent while there is nothing to
+            // offer. Same 44 pt trailing-aligned box as the other glyphs in the row.
+            if song != nil, AppConfiguration.current.featureFlags.tipButtonEnabled, !offerings.isEmpty {
+                Button { isTipSheetPresented = true } label: {
+                    queueRowGlyph("heart.circle", alignment: .trailing)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Support the Artist")
+            }
+
             Button { isSharePresented = true } label: {
                 queueRowGlyph("square.and.arrow.up", alignment: .trailing)
             }
@@ -532,7 +585,12 @@ struct FullPlayerView: View {
                         coordinator.pushInPlayer(.episodeTranscript)
                     }
                 }
-                PlayerLyricsPreviewCard(song: song, currentPosition: engine.currentPosition) {
+                PlayerLyricsPreviewCard(
+                    transcripts: lyricsLines,
+                    currentPosition: engine.currentPosition,
+                    readPositionMs: { engine.currentPlaybackMs() },
+                    isEpisode: song.isEpisode
+                ) {
                     coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? String(localized: "Lyrics")))
                 }
                 // Creator card, credits, then the description, then the

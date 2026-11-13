@@ -23,6 +23,8 @@ enum PlayerStyle {
     static let activeYellow = Color(red: 1.0, green: 235.0 / 255, blue: 59.0 / 255)
     /// A tappable timestamp in the description (a chapter start). Readable on black.
     static let timestampLink = Color(red: 62.0 / 255, green: 166.0 / 255, blue: 1.0)
+    /// `ColorTheme.darkGold` (0xFFB8861B): the word being said, in the lyrics and the transcript.
+    static let wordGold = Color(red: 184.0 / 255, green: 134.0 / 255, blue: 27.0 / 255)
     /// `Colors.redAccent` (0xFFFF5252).
     static let redAccent = Color(red: 1.0, green: 82.0 / 255, blue: 82.0 / 255)
     /// `Colors.grey` (0xFF9E9E9E) — inactive shuffle / loop glyph.
@@ -60,6 +62,8 @@ enum PlayerStyle {
     /// 44 pt box.
     static let queueRowGlyphSize: CGFloat = 20
     static let queueRowBox: CGFloat = 44
+    /// The full-screen arrows in the video's corner.
+    static let videoExpandGlyphSize: CGFloat = 18
     /// The loading spinner's backing square, its corners, and the spinner's scale inside it.
     static let loadingBackdropSize: CGFloat = 56
     static let loadingBackdropRadius: CGFloat = 14

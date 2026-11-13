@@ -200,11 +200,74 @@ struct FavoritedByEntryDTO: Decodable, Sendable {
     let songId: String?
 }
 
+/// One row of `Song.transcripts` (a `LyricsTranscript` table row). The server sends one row per
+/// language, each holding its lines in the row's own `transcripts` JSON as
+/// `{ meta, type, lines: [{ text, start, end }] }`, whole seconds as numbers. Flutter's
+/// `TranscriptRepositoryModel` reads that key into a property named `content`, as this DTO does.
+/// A row whose processing failed has `transcripts: null`. The flat `startTime` / `endTime` / `text`
+/// form is still read for a row that carries it. Every field is decoded leniently, so one odd row
+/// can never fail the whole song.
 struct LyricsTranscriptDTO: Decodable, Sendable {
     let id: String?
+    let language: String?
     let startTime: Double?
     let endTime: Double?
     let text: String?
+    let content: ContentDTO?
+
+    struct ContentDTO: Decodable, Sendable {
+        let lines: [LineDTO]
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            lines = ((try? container.decode([LossyLine].self, forKey: .lines)) ?? []).compactMap(\.line)
+        }
+
+        private enum CodingKeys: String, CodingKey { case lines }
+
+        /// Drops a line that cannot be read instead of the whole list.
+        private struct LossyLine: Decodable {
+            let line: LineDTO?
+            init(from decoder: Decoder) throws { line = try? LineDTO(from: decoder) }
+        }
+    }
+
+    struct LineDTO: Decodable, Sendable {
+        let text: String?
+        let start: Double
+        let end: Double
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            text = try? container.decode(String.self, forKey: .text)
+            start = Self.seconds(container, .start) ?? 0
+            end = Self.seconds(container, .end) ?? start
+        }
+
+        private enum CodingKeys: String, CodingKey { case text, start, end }
+
+        /// A number, or a numeric string (Flutter's `parseInt` accepts both).
+        private static func seconds(_ container: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) -> Double? {
+            if let value = try? container.decode(Double.self, forKey: key) { return value }
+            if let string = try? container.decode(String.self, forKey: key) { return Double(string) }
+            return nil
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try? container.decode(String.self, forKey: .id)
+        language = try? container.decode(String.self, forKey: .language)
+        startTime = try? container.decode(Double.self, forKey: .startTime)
+        endTime = try? container.decode(Double.self, forKey: .endTime)
+        text = try? container.decode(String.self, forKey: .text)
+        content = try? container.decode(ContentDTO.self, forKey: .content)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, language, startTime, endTime, text
+        case content = "transcripts"
+    }
 }
 
 struct SongCreditDTO: Decodable, Sendable {
@@ -280,6 +343,38 @@ struct SongDTO: Decodable, Sendable {
     /// The episode's silent video key (D25: additive and optional). Wrapped like the fields above,
     /// so a value that is not a string drops only itself and the song still decodes.
     let videoFile: LenientValue<String>?
+
+    /// The video's encoded renditions and what the original is (`videoVariants`,
+    /// `videoVariantsMeta.source`). Additive and optional like `videoFile`, and wrapped the same way:
+    /// whatever the backend sends here, the worst outcome is no variants, which plays `videoFile`.
+    let videoVariants: LenientValue<String>?
+    let videoVariantsMeta: LenientValue<VideoVariantsMetaDTO>?
+}
+
+/// `videoVariantsMeta`. Only `source` is read; the per-rung entries beside it are the backend's own
+/// bookkeeping.
+struct VideoVariantsMetaDTO: Decodable, Sendable {
+    let source: LenientValue<VideoSourceDTO>?
+}
+
+/// `videoVariantsMeta.source`. Each field is wrapped so one odd value (a string where a number
+/// belongs) costs only itself.
+struct VideoSourceDTO: Decodable, Sendable {
+    let codec: LenientValue<String>?
+    let width: LenientValue<Int>?
+    let height: LenientValue<Int>?
+    let fps: LenientValue<Double>?
+    let bitrate: LenientValue<Int>?
+
+    func toDomain() -> VideoSourceInfo {
+        VideoSourceInfo(
+            codec: sanitized(codec?.value),
+            width: width?.value,
+            height: height?.value,
+            fps: fps?.value,
+            bitrate: bitrate?.value
+        )
+    }
 }
 
 extension SongDTO {
@@ -293,6 +388,41 @@ extension SongDTO {
         if let legacy = sanitized(primaryArtists) { return legacy }
         let names = (songPrimaryArtists ?? []).compactMap { sanitized($0.name) }
         return names.isEmpty ? nil : names.joined(separator: " \u{2022} ")
+    }
+
+    /// The lines for `Song.transcripts`. A row with lines is one language: every such row's lines are
+    /// kept, tagged with the row's `language` (the first row of a language wins), and the player shows
+    /// one language through `inPreferredLanguage(_:)`. A row without lines (failed or still pending)
+    /// adds nothing. Rows in the flat form are lines themselves.
+    static func lyricsLines(from rows: [LyricsTranscriptDTO]) -> [LyricsTranscript] {
+        let rowsWithLines = rows.filter { !($0.content?.lines.isEmpty ?? true) }
+        if !rowsWithLines.isEmpty {
+            var seenLanguages = Set<String>()
+            return rowsWithLines.flatMap { row -> [LyricsTranscript] in
+                guard seenLanguages.insert(LyricsTranscript.languageKey(row.language)).inserted,
+                      let lines = row.content?.lines else { return [] }
+                let prefix = row.id ?? "transcript"
+                return lines.enumerated().map { index, line in
+                    LyricsTranscript(
+                        id: "\(prefix)-\(index)",
+                        startTime: line.start,
+                        endTime: line.end,
+                        text: sanitized(line.text),
+                        language: row.language
+                    )
+                }
+            }
+        }
+        return rows.compactMap { row -> LyricsTranscript? in
+            guard let id = row.id, row.text != nil || row.startTime != nil else { return nil }
+            return LyricsTranscript(
+                id: id,
+                startTime: row.startTime ?? 0,
+                endTime: row.endTime ?? 0,
+                text: sanitized(row.text),
+                language: nil
+            )
+        }
     }
 
     func toDomain() -> Song {
@@ -347,17 +477,7 @@ extension SongDTO {
             songPrimaryArtists: (songPrimaryArtists ?? []).map {
                 SongArtistRef(creatorId: $0.creatorId, name: sanitized($0.name), creator: $0.creator?.toDomain())
             },
-            transcripts: transcripts.map { rows in
-                rows.compactMap { row -> LyricsTranscript? in
-                    guard let id = row.id else { return nil }
-                    return LyricsTranscript(
-                        id: id,
-                        startTime: row.startTime ?? 0,
-                        endTime: row.endTime ?? 0,
-                        text: sanitized(row.text)
-                    )
-                }
-            },
+            transcripts: transcripts.map(Self.lyricsLines(from:)),
             songCredits: songCredits.map { rows in
                 rows.map {
                     SongCredit(role: sanitized($0.role), name: sanitized($0.name), category: sanitized($0.category))
@@ -365,7 +485,9 @@ extension SongDTO {
             },
             isFavorited: !(favoritedBy ?? []).isEmpty,
             episodeTimeline: resolvedEpisodeTimeline,
-            videoFile: sanitized(videoFile?.value)
+            videoFile: sanitized(videoFile?.value),
+            videoVariants: sanitized(videoVariants?.value),
+            videoSource: videoVariantsMeta?.value?.source?.value?.toDomain()
         )
     }
 }

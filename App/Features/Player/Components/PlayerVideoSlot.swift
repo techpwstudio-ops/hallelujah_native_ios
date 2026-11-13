@@ -4,6 +4,8 @@ import SwiftUI
 struct PlayerVideoContext {
     let mode: PlayerVideoModeStore
     let source: PlayerVideoSource
+    /// Which rendition to play, and the menu that changes it.
+    let quality: VideoQualityStore
     let clock: any AudioClock
     /// The episode the audio engine has loaded. A page of the pager shows video only for this one:
     /// the video follows the audio, so a page the listener has swiped to but the audio has not
@@ -17,6 +19,12 @@ struct PlayerVideoContext {
     /// Video is locked behind a subscription for this listener (`PremiumFeature.videoMode`): no
     /// layer, whatever the mode says.
     var isLocked = false
+    /// Opens the video full screen in landscape; `nil` draws no expand control.
+    var onExpand: (@MainActor () -> Void)? = nil
+    /// Hands the open player from a page's layer to the next layer for the same episode.
+    /// Shuffle moves the playing episode to another page, which the pager builds afresh; without
+    /// this the cover flashes while the new page opens the file again.
+    var handoff: PlayerVideoLayerHandoff? = nil
 }
 
 /// One page's place for the silent video, over its cover: a layer when the listener has chosen
@@ -43,7 +51,16 @@ struct PlayerVideoSlot: View {
 
     @ViewBuilder
     private var layer: some View {
-        if let url = context.source.url(for: song) {
+        if let choice = context.quality.choice(for: song) {
+            layer(choice: choice)
+        }
+        // Auto is waiting for the first reading of the connection: nothing to draw yet, and not a
+        // failure, so no `onUnavailable`.
+    }
+
+    @ViewBuilder
+    private func layer(choice: VideoQualityChoice) -> some View {
+        if let url = context.source.url(for: song, choice: choice) {
             let source = context.source
             PlayerVideoLayer(
                 songId: song.id,
@@ -52,10 +69,14 @@ struct PlayerVideoSlot: View {
                 modeShowsVideo: context.mode.showsVideo,
                 isVisible: context.isVisible,
                 makeHeaders: { await source.headers() },
-                onUnavailable: context.onUnavailable
+                onUnavailable: context.onUnavailable,
+                onExpand: context.onExpand,
+                qualityMenu: PlayerVideoQualityMenu.Model(store: context.quality, song: song),
+                handoff: context.handoff
             )
-            // Another episode, or another file for the same one, is a new layer with a new controller.
-            .id(PlayerVideoLayerKey(songId: song.id, url: url))
+            // Another episode is a new layer. Another quality is not: the layer swaps the file
+            // itself, keeping the old picture up until the new one is in step.
+            .id(song.id)
         } else {
             // A key that is there but cannot become a URL is a video that is not available.
             let onUnavailable = context.onUnavailable

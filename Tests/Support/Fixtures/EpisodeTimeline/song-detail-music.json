@@ -22,7 +22,16 @@
       {
         "id": "l1",
         "language": "en",
-        "filePath": "hallelujah/assets/creators/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/lyrics/amazing-grace.txt"
+        "filePath": "hallelujah/assets/creators/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/lyrics/amazing-grace.txt",
+        "syncStatus": "synced",
+        "transcripts": {
+          "meta": { "format": "lrc", "source": "local-parser" },
+          "type": "lyrics",
+          "lines": [
+            { "start": 0, "end": 6, "text": "Amazing grace, how sweet the sound" },
+            { "start": 6, "end": 12, "text": "That saved a wretch like me" }
+          ]
+        }
       }
     ]
   }

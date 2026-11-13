@@ -118,6 +118,17 @@ struct AudioSourceResolver: Sendable {
         return Self.proxyURL(for: trimmed, base: proxyBaseURL)
     }
 
+    /// The URL of one encoded rendition of the video. A rendition lives in the same folder as
+    /// `videoFile` (`<directory of videoFile>/720p.mp4`), exactly as the audio variants sit beside
+    /// `audioFile`, so it is the key with its last component swapped, then proxied and encoded like
+    /// any other. `nil` for a blank key or file name.
+    func videoURL(forKey key: String, variantFileName: String) -> URL? {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fileName = variantFileName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !fileName.isEmpty else { return nil }
+        return Self.proxyURL(for: Self.replacingFileName(in: trimmed, with: fileName), base: proxyBaseURL)
+    }
+
     /// `selectBestVariant` (s3_service.dart:148-176): among tokens at or
     /// below `targetQuality`'s rank, the highest-quality one wins.
     private static func bestVariantToken(

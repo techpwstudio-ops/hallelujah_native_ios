@@ -56,7 +56,8 @@ struct EpisodeTimelineDTOTests {
         let song = try decodeSong("song-detail-music")
 
         #expect(song.episodeTimeline == nil)
-        #expect(song.transcripts?.first?.id == "l1")
+        #expect(song.transcripts?.first?.id == "l1-0")
+        #expect(song.transcripts?.first?.text == "Amazing grace, how sweet the sound")
     }
 
     @Test func creatorFixtureDecodesTheListenerFields() throws {

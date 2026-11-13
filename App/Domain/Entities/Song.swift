@@ -15,12 +15,52 @@ struct SongAudioURLs: Sendable, Equatable {
     var isEmpty: Bool { original == nil && low == nil && standard == nil && high == nil }
 }
 
+/// The original upload behind an episode's silent video (`videoVariantsMeta.source`). Every field is
+/// optional: the backend probes the file and a probe can miss a value.
+struct VideoSourceInfo: Sendable, Equatable {
+    /// ffprobe's `codec_name`: `h264`, `hevc`, `vp9`, `av1`, `prores`, ...
+    let codec: String?
+    /// Display dimensions, so a rotated phone video reports its upright size.
+    let width: Int?
+    let height: Int?
+    let fps: Double?
+    let bitrate: Int?
+
+    /// The shorter side, which names a rung (`1080p` is 1080 on the short side, vertical or not).
+    /// `nil` when either dimension is missing or not positive.
+    var shortSide: Int? {
+        guard let width, let height, width > 0, height > 0 else { return nil }
+        return min(width, height)
+    }
+}
+
 /// One transcript line (`GET /api/songs/:id`'s `transcripts`, detail only).
 struct LyricsTranscript: Sendable, Equatable, Identifiable {
     let id: String
     let startTime: Double
     let endTime: Double
     let text: String?
+    /// The language of the server row the line came from (`LyricsTranscript.language`, e.g.
+    /// "English"); `nil` for a line in the old flat form.
+    let language: String?
+
+    /// How two languages are compared: case and surrounding spaces ignored, `nil` as "".
+    static func languageKey(_ language: String?) -> String {
+        (language ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
+extension Array where Element == LyricsTranscript {
+    /// One language's lines out of `Song.transcripts`, which holds every language the song has: the
+    /// `preferred` one (the user's Bible language) when the song has it, otherwise the first, as
+    /// Flutter's `lyrics_ui.dart` picks. Lines with no language all count as one language.
+    func inPreferredLanguage(_ preferred: String?) -> [LyricsTranscript] {
+        guard let first else { return [] }
+        let preferredKey = LyricsTranscript.languageKey(preferred)
+        let hasPreferred = preferred != nil && contains { LyricsTranscript.languageKey($0.language) == preferredKey }
+        let chosen = hasPreferred ? preferredKey : LyricsTranscript.languageKey(first.language)
+        return filter { LyricsTranscript.languageKey($0.language) == chosen }
+    }
 }
 
 /// One production credit (`GET /api/songs/:id`'s `songCredits`, detail only).
@@ -129,6 +169,16 @@ struct Song: Sendable, Equatable, Identifiable {
     /// so the player always mutes it.
     var videoFile: String? = nil
 
+    /// The encoded renditions of `videoFile`, beside it in storage, as the wire sends them: a comma
+    /// list such as `"480p.mp4,720p.mp4,1080p.mp4"` holding only the rungs that exist. `nil` until the
+    /// backend has processed the episode, and then it plays `videoFile` as before. Read it through
+    /// `VideoQualitySelector`, never by hand.
+    var videoVariants: String? = nil
+
+    /// What the original `videoFile` is (`videoVariantsMeta.source`): its codec and size, which decide
+    /// whether this device can play it. `nil` when the backend did not say.
+    var videoSource: VideoSourceInfo? = nil
+
     /// Whether there is a video to switch to. Not gated on `type`, as in Flutter's `Song.hasVideo`.
     var hasVideo: Bool { !(videoFile?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) }
 
@@ -210,7 +260,9 @@ extension Song {
             songCredits: songCredits,
             isFavorited: isFavorited,
             episodeTimeline: episodeTimeline,
-            videoFile: videoFile
+            videoFile: videoFile,
+            videoVariants: videoVariants,
+            videoSource: videoSource
         )
     }
 }

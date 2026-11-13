@@ -30,6 +30,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUser
         return true
     }
 
+    /// Portrait everywhere (iPhone and iPad), except while the full-screen podcast video holds landscape
+    /// (`OrientationLock`).
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        OrientationLock.supported
+    }
+
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         PushNotificationService.shared.didReceiveAPNsToken(deviceToken)
     }

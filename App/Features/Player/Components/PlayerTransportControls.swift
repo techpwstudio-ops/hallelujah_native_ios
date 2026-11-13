@@ -43,7 +43,7 @@ struct PlayerTransportControls: View {
             shuffleButton
             Spacer(minLength: 0)
             if isEpisode {
-                skipButton(systemName: "gobackward.10", label: "Rewind 10 seconds", delta: -Self.skipInterval)
+                EpisodeSkipButton(engine: engine, direction: .back)
             } else {
                 seekButton(systemName: "backward.end.fill") {
                     Task { await queueController.skipToPrevious() }
@@ -53,7 +53,7 @@ struct PlayerTransportControls: View {
             playPauseButton
             Spacer(minLength: 0)
             if isEpisode {
-                skipButton(systemName: "goforward.10", label: "Forward 10 seconds", delta: Self.skipInterval)
+                EpisodeSkipButton(engine: engine, direction: .forward)
             } else {
                 seekButton(systemName: "forward.end.fill") {
                     Task { await queueController.skipToNext() }
@@ -130,25 +130,6 @@ struct PlayerTransportControls: View {
         .buttonStyle(PlayerPressScaleStyle())
     }
 
-    /// An episode's "10 seconds" button. `engine.seek` publishes the new
-    /// position at once, so quick repeated taps add up instead of each starting
-    /// from the old position.
-    private func skipButton(systemName: String, label: LocalizedStringKey, delta: TimeInterval) -> some View {
-        Button {
-            let duration = engine.currentItemDuration ?? engine.currentSong.map { TimeInterval($0.duration ?? 0) }
-            engine.seek(to: Self.skipTarget(from: engine.currentPosition, by: delta, duration: duration))
-            HapticFeedback.impact(.light).trigger()
-        } label: {
-            Image(systemName: systemName)
-                .font(.system(size: PlayerStyle.skipGlyphSize))
-                .foregroundStyle(PlayerStyle.white)
-                .padding(PlayerStyle.controlGlyphPadding)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PlayerPressScaleStyle())
-        .accessibilityLabel(label)
-    }
-
     private var playPauseButton: some View {
         Button {
             if isPlaying { engine.pause() } else { engine.resume() }
@@ -157,5 +138,41 @@ struct PlayerTransportControls: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isPlaying ? "Pause" : "Play")
+    }
+}
+
+/// An episode's "back 10 seconds" or "forward 10 seconds" button, on the full
+/// player's transport row and on the full-screen lyrics page
+/// (`EpisodeSkipButton` in `lib/widgets/player/player_controls.dart`).
+/// `engine.seek` publishes the new position at once, so quick repeated taps add
+/// up instead of each starting from the old position.
+struct EpisodeSkipButton: View {
+    enum Direction { case back, forward }
+
+    let engine: AudioEngine
+    let direction: Direction
+
+    private var delta: TimeInterval {
+        direction == .forward ? PlayerTransportControls.skipInterval : -PlayerTransportControls.skipInterval
+    }
+
+    private var label: LocalizedStringKey {
+        direction == .forward ? "Forward 10 seconds" : "Rewind 10 seconds"
+    }
+
+    var body: some View {
+        Button {
+            let duration = engine.currentItemDuration ?? engine.currentSong.map { TimeInterval($0.duration ?? 0) }
+            engine.seek(to: PlayerTransportControls.skipTarget(from: engine.currentPosition, by: delta, duration: duration))
+            HapticFeedback.impact(.light).trigger()
+        } label: {
+            Image(systemName: direction == .forward ? "goforward.10" : "gobackward.10")
+                .font(.system(size: PlayerStyle.skipGlyphSize))
+                .foregroundStyle(PlayerStyle.white)
+                .padding(PlayerStyle.controlGlyphPadding)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PlayerPressScaleStyle())
+        .accessibilityLabel(label)
     }
 }
