@@ -48,6 +48,8 @@ struct FullPlayerView: View {
     @State private var isVideoLocked = false
     /// The video is open full screen in landscape (`PlayerVideoFullScreenView`).
     @State private var isVideoFullScreen = false
+    /// Carries the open video from one artwork page to the next when shuffle moves the episode.
+    @State private var videoHandoff = PlayerVideoLayerHandoff()
     @State private var isSharePresented = false
     @State private var isQueuePresented = false
     @State private var isAddToPlaylistPresented = false
@@ -96,7 +98,8 @@ struct FullPlayerView: View {
                 toastCenter.show(String(localized: "Video isn't available right now"))
             },
             isLocked: isVideoLocked,
-            onExpand: { isVideoFullScreen = true }
+            onExpand: { isVideoFullScreen = true },
+            handoff: videoHandoff
         )
     }
 
@@ -441,17 +444,6 @@ struct FullPlayerView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             favouriteButton
-            if song != nil, AppConfiguration.current.featureFlags.tipButtonEnabled, !offerings.isEmpty {
-                Button { isTipSheetPresented = true } label: {
-                    Image(systemName: "heart.circle")
-                        .font(.system(size: 24))
-                        .foregroundStyle(PlayerStyle.white)
-                        .padding(8)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Support the Artist")
-            }
             if song != nil {
                 Button { isAddToPlaylistPresented = true } label: {
                     Image(systemName: "plus.circle")
@@ -532,6 +524,18 @@ struct FullPlayerView: View {
                         videoMode.toggle()
                     }
                 }
+            }
+
+            // Support the artist, just left of Share. Hidden in every environment
+            // (`FEATURE_TIP_BUTTON_ENABLED = NO` in all three xcconfigs) until the
+            // feature is cleared to launch; also absent while there is nothing to
+            // offer. Same 44 pt trailing-aligned box as the other glyphs in the row.
+            if song != nil, AppConfiguration.current.featureFlags.tipButtonEnabled, !offerings.isEmpty {
+                Button { isTipSheetPresented = true } label: {
+                    queueRowGlyph("heart.circle", alignment: .trailing)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Support the Artist")
             }
 
             Button { isSharePresented = true } label: {

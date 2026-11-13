@@ -40,6 +40,8 @@ struct SongLyricsView: View {
         return timelineStore.chapters
     }
 
+    private var isEpisode: Bool { engine.currentSong?.isEpisode ?? false }
+
     private static let topAnchorID = "top"
     private static let scrollAnimation = Animation.easeOut(duration: 0.35)
 
@@ -97,17 +99,27 @@ struct SongLyricsView: View {
             .readableContentWidth()
             .padding(.top, 16)
 
-            Button {
-                if engine.status == .playing { engine.pause() } else { engine.resume() }
-            } label: {
-                PlayerPlayPauseDisc(
-                    isPlaying: engine.status == .playing,
-                    isLoading: engine.status == .loading,
-                    diameter: 48,
-                    glyphSize: 32
-                )
+            // An episode gets back / forward 10 seconds on either side of
+            // play / pause, as on the full player; music has only play / pause.
+            HStack(spacing: Spacing.xl) {
+                if isEpisode {
+                    EpisodeSkipButton(engine: engine, direction: .back)
+                }
+                Button {
+                    if engine.status == .playing { engine.pause() } else { engine.resume() }
+                } label: {
+                    PlayerPlayPauseDisc(
+                        isPlaying: engine.status == .playing,
+                        isLoading: engine.status == .loading,
+                        diameter: 48,
+                        glyphSize: 32
+                    )
+                }
+                .buttonStyle(.plain)
+                if isEpisode {
+                    EpisodeSkipButton(engine: engine, direction: .forward)
+                }
             }
-            .buttonStyle(.plain)
             .padding(.top, 20)
         }
         .padding(.leading, PlayerStyle.pageSidePadding)

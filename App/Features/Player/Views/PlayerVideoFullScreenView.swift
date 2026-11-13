@@ -60,8 +60,8 @@ struct PlayerVideoFullScreenView: View {
                         onUnavailable()
                     }
                 )
-                // Another file for the same episode (a new quality) is a new layer, as in the slot.
-                .id(PlayerVideoLayerKey(songId: song.id, url: url))
+                // A new quality is the same layer, as in the slot: it swaps the file itself.
+                .id(song.id)
                 .ignoresSafeArea()
             } else if quality.isReady {
                 // A key that is there but cannot become a URL.

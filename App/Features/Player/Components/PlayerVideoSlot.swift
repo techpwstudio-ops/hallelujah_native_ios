@@ -21,6 +21,10 @@ struct PlayerVideoContext {
     var isLocked = false
     /// Opens the video full screen in landscape; `nil` draws no expand control.
     var onExpand: (@MainActor () -> Void)? = nil
+    /// Hands the open player from a page's layer to the next layer for the same episode.
+    /// Shuffle moves the playing episode to another page, which the pager builds afresh; without
+    /// this the cover flashes while the new page opens the file again.
+    var handoff: PlayerVideoLayerHandoff? = nil
 }
 
 /// One page's place for the silent video, over its cover: a layer when the listener has chosen
@@ -67,10 +71,12 @@ struct PlayerVideoSlot: View {
                 makeHeaders: { await source.headers() },
                 onUnavailable: context.onUnavailable,
                 onExpand: context.onExpand,
-                qualityMenu: PlayerVideoQualityMenu.Model(store: context.quality, song: song)
+                qualityMenu: PlayerVideoQualityMenu.Model(store: context.quality, song: song),
+                handoff: context.handoff
             )
-            // Another episode, or another file for the same one, is a new layer with a new controller.
-            .id(PlayerVideoLayerKey(songId: song.id, url: url))
+            // Another episode is a new layer. Another quality is not: the layer swaps the file
+            // itself, keeping the old picture up until the new one is in step.
+            .id(song.id)
         } else {
             // A key that is there but cannot become a URL is a video that is not available.
             let onUnavailable = context.onUnavailable
