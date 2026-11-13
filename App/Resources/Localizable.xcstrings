@@ -29685,6 +29685,47 @@
         }
       }
     },
+    "View Full Transcript": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View Full Transcript"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "पूरा प्रतिलेख देखें"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಪೂರ್ಣ ಪ್ರತಿಲೇಖನ ನೋಡಿ"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "മുഴുവൻ ട്രാൻസ്ക്രിപ്റ്റ് കാണുക"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "முழு எழுத்துப்பெயர்ப்பை காண்க"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "పూర్తి ట్రాన్స్‌క్రిప్ట్ చూడండి"
+          }
+        }
+      }
+    },
     "View credits": {
       "extractionState": "manual",
       "localizations": {

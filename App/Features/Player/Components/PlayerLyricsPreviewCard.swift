@@ -14,6 +14,8 @@ struct PlayerLyricsPreviewCard: View {
     let currentPosition: TimeInterval
     /// The playhead in milliseconds, read finely for the word highlight on the active line.
     let readPositionMs: @MainActor () -> Int
+    /// An episode's card reads "Transcript" and "View Full Transcript"; a song's reads "Lyrics".
+    var isEpisode: Bool = false
     let onViewFull: () -> Void
 
     private static let previewHeight: CGFloat = 220
@@ -23,6 +25,9 @@ struct PlayerLyricsPreviewCard: View {
     private static let headerToken = TypographyToken(size: 14, weight: .medium, lineHeightMultiple: 1, tracking: 0.5)
     private static let buttonToken = TypographyToken(size: 12, weight: .semibold, lineHeightMultiple: 1, tracking: 0.3)
     private static let topAnchorID = "lyrics-preview-top"
+
+    private var headerTitle: LocalizedStringKey { isEpisode ? "Transcript" : "Lyrics" }
+    private var viewFullTitle: LocalizedStringKey { isEpisode ? "View Full Transcript" : "View Full Lyrics" }
 
     private var activeIndex: Int? {
         var result: Int?
@@ -68,7 +73,7 @@ struct PlayerLyricsPreviewCard: View {
             Image(systemName: "quote.bubble")
                 .font(.system(size: 16))
                 .foregroundStyle(PlayerStyle.whiteAlpha(0.6))
-            Text("Lyrics")
+            Text(headerTitle)
                 .typography(Self.headerToken)
                 .foregroundStyle(PlayerStyle.whiteAlpha(0.6))
         }
@@ -114,7 +119,7 @@ struct PlayerLyricsPreviewCard: View {
 
     private var viewFullButton: some View {
         Button(action: onViewFull) {
-            Text("View Full Lyrics")
+            Text(viewFullTitle)
                 .typography(Self.buttonToken)
                 .foregroundStyle(PlayerStyle.white)
                 .padding(.horizontal, 20)

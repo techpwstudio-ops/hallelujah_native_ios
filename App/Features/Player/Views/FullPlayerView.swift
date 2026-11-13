@@ -588,7 +588,8 @@ struct FullPlayerView: View {
                 PlayerLyricsPreviewCard(
                     transcripts: lyricsLines,
                     currentPosition: engine.currentPosition,
-                    readPositionMs: { engine.currentPlaybackMs() }
+                    readPositionMs: { engine.currentPlaybackMs() },
+                    isEpisode: song.isEpisode
                 ) {
                     coordinator.pushInPlayer(.lyrics(songTitle: song.title ?? String(localized: "Lyrics")))
                 }
