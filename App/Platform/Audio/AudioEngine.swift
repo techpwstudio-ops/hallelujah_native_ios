@@ -48,7 +48,19 @@ final class AudioEngine {
     @ObservationIgnored private var pendingSeek: (target: TimeInterval, until: Date)?
     private(set) var currentItemDuration: TimeInterval?
 
-    private let player = AVQueuePlayer()
+    /// Replaced, never repaired, once it can no longer play: after a media
+    /// services reset or when its own `status` turns `.failed` (see `recoverPlayer`).
+    @ObservationIgnored private var player = AVQueuePlayer()
+    /// Bumped each time `player` is replaced. Lets tests and logs tell a rebuilt
+    /// player from the one before it.
+    @ObservationIgnored private(set) var playerGeneration = 0
+    @ObservationIgnored private var recoveryTask: Task<Void, Never>?
+    @ObservationIgnored private var recoveryQueued = false
+    /// Songs the player was rebuilt for, and when: a song that keeps killing the
+    /// player is resumed at most `maxAutomaticRecoveries` times a minute.
+    @ObservationIgnored private var recoveryHistory: [(songID: String, at: Date)] = []
+    nonisolated static let maxAutomaticRecoveries = 3
+    nonisolated static let recoveryWindow: TimeInterval = 60
     private let sourceResolver: AudioSourceResolver
     private let qualitySelector: AudioQualitySelector
     private let tokenProvider: any AuthTokenProviding
@@ -141,11 +153,14 @@ final class AudioEngine {
     nonisolated(unsafe) private var mediaResetObserver: NSObjectProtocol?
     private var currentItemObservation: NSKeyValueObservation?
     private var timeControlStatusObservation: NSKeyValueObservation?
+    private var playerStatusObservation: NSKeyValueObservation?
     /// `status` of whichever item is current. A stream refused before it
     /// starts (a 401 on the first request) only ever flips this to
     /// `.failed` — `FailedToPlayToEndTime` never fires for it.
     private var currentItemStatusObservation: NSKeyValueObservation?
-    nonisolated(unsafe) private var timeObserverToken: Any?
+    /// Kept with the player that added it: a time observer may only be removed
+    /// from that player, and `player` is replaced on recovery.
+    nonisolated(unsafe) private var timeObserver: (player: AVQueuePlayer, token: Any)?
 
     init(
         proxyBaseURL: URL,
@@ -168,8 +183,7 @@ final class AudioEngine {
         observeRouteChanges()
         observeMediaServicesReset()
         observeItemFailures()
-        observePlayerAdvance()
-        addTimeObserver()
+        attachPlayerObservers()
     }
 
     deinit {
@@ -177,7 +191,7 @@ final class AudioEngine {
         if let routeChangeObserver { NotificationCenter.default.removeObserver(routeChangeObserver) }
         if let itemFailureObserver { NotificationCenter.default.removeObserver(itemFailureObserver) }
         if let mediaResetObserver { NotificationCenter.default.removeObserver(mediaResetObserver) }
-        if let timeObserverToken { player.removeTimeObserver(timeObserverToken) }
+        if let timeObserver { timeObserver.player.removeTimeObserver(timeObserver.token) }
         keepAliveTask?.cancel()
     }
 
@@ -291,6 +305,7 @@ final class AudioEngine {
     private var needsRebuildToPlay: Bool {
         guard currentSong != nil, !isPlaybackHeld else { return false }
         if case .failed = status { return true }
+        if player.status == .failed { return true }
         guard let item = player.currentItem else { return true }
         return item.status == .failed
     }
@@ -298,16 +313,24 @@ final class AudioEngine {
     /// Builds the current song again from a fresh source (token refreshed
     /// if needed, presigned URL re-checked) and swaps it in at the current
     /// position. Its retry allowance starts over: this is a new attempt the
-    /// listener asked for.
-    private func rebuildCurrentItem(resume: Bool) async {
+    /// listener asked for. `position` resumes there instead (player recovery).
+    private func rebuildCurrentItem(resume: Bool, at position: TimeInterval? = nil) async {
         guard let song = currentSong,
               logicalQueue.indices.contains(logicalIndex),
               logicalQueue[logicalIndex].id == song.id
         else { return }
         retriedViaProxy.remove(song.id)
-        // Nothing left in the player (the queue ran out on this song):
-        // play it again from the top rather than seek to its very end.
-        if player.currentItem == nil { currentPosition = 0 }
+        if player.status == .failed { replacePlayer() }
+        if let position {
+            currentPosition = position
+            // The new player reports 0 until the seek lands; readers (seek bar,
+            // video sync, the analytics loop check) keep this position meanwhile.
+            pendingSeek = (position, Date().addingTimeInterval(1.5))
+        } else if player.currentItem == nil {
+            // Nothing left in the player (the queue ran out on this song):
+            // play it again from the top rather than seek to its very end.
+            currentPosition = 0
+        }
         status = .loading
         guard let item = await makePlayerItem(for: song), currentSong?.id == song.id else {
             status = .failed(String(localized: "Couldn't play this song"))
@@ -523,6 +546,10 @@ final class AudioEngine {
     /// inactive while the player clock keeps running — the progress bar
     /// moved and nothing was heard. Cheap and harmless when it's fine.
     func handleDidBecomeActive() {
+        if player.status == .failed {
+            requestPlayerRecovery(reason: "player found failed on foreground")
+            return
+        }
         guard status == .playing || player.rate != 0 else { return }
         do {
             try AVAudioSession.sharedInstance().setActive(true)
@@ -535,26 +562,110 @@ final class AudioEngine {
         }
     }
 
-    /// iOS restarted its media server (it can, during a long sleep): every
-    /// player item from before is dead, so audio stops while our state still
-    /// says playing. Apple's guidance is to set the session up again and
-    /// rebuild — the current song resumes where it was.
+    /// iOS restarted its media server (it can, during a long sleep, or when a
+    /// stream crashes it): every AVFoundation object from before is dead — the
+    /// player itself, not only its items (Apple QA1749). Reusing that player
+    /// made every later song come up empty at once, which read as "queue
+    /// finished" and handed playback from creator to creator in a loop.
     private func observeMediaServicesReset() {
         mediaResetObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.mediaServicesWereResetNotification,
             object: nil,
             queue: nil
         ) { @Sendable [weak self] _ in
-            Task { @MainActor in await self?.handleMediaServicesReset() }
+            Task { @MainActor in self?.requestPlayerRecovery(reason: "media services were reset") }
         }
     }
 
-    private func handleMediaServicesReset() async {
-        logger.warning("media services were reset; rebuilding the player items")
+    /// Recoveries run one after another. One already waiting covers a second
+    /// request (a reset also fails the player, so both signals arrive).
+    private func requestPlayerRecovery(reason: String) {
+        guard !recoveryQueued else { return }
+        recoveryQueued = true
+        let previous = recoveryTask
+        recoveryTask = Task { [weak self] in
+            await previous?.value
+            guard let self else { return }
+            self.recoveryQueued = false
+            await self.recoverPlayer(reason: reason)
+        }
+    }
+
+    /// A fresh player, and the current song back where it was, in the same
+    /// play/pause state. Same song, so no `onSongChanged`: analytics keeps its
+    /// session, ad pacing doesn't count a track, Now Playing just republishes.
+    private func recoverPlayer(reason: String) async {
         configureAudioSession()
-        guard currentSong != nil else { return }
+        let position = currentPosition
         let wasPlaying = status == .playing || status == .loading
-        await rebuildCurrentItem(resume: wasPlaying)
+        replacePlayer()
+        guard let song = currentSong else {
+            logger.warning("rebuilt the player (\(reason)); nothing was loaded")
+            return
+        }
+        let now = Date()
+        recoveryHistory.removeAll { now.timeIntervalSince($0.at) >= Self.recoveryWindow }
+        let resume = wasPlaying && Self.allowsAutomaticResume(
+            songID: song.id,
+            recentRecoveries: recoveryHistory.map(\.songID)
+        )
+        recoveryHistory.append((song.id, now))
+        logger.warning("rebuilt the player (\(reason)) for song \(song.id) at \(Int(position))s; \(resume ? "resuming" : "left paused")")
+        await rebuildCurrentItem(resume: resume, at: position)
+    }
+
+    /// A song the player was already rebuilt for `maxAutomaticRecoveries` times
+    /// within the window is left paused: its stream may be what kills the
+    /// player, and the listener's Play is the next attempt.
+    nonisolated static func allowsAutomaticResume(songID: String, recentRecoveries: [String]) -> Bool {
+        recentRecoveries.filter { $0 == songID }.count < maxAutomaticRecoveries
+    }
+
+    private func replacePlayer() {
+        let old = player
+        detachPlayerObservers(from: old)
+        old.pause()
+        old.removeAllItems()
+        itemSongIDs.removeAll()
+        reloadedItem = nil
+        player = AVQueuePlayer()
+        playerGeneration += 1
+        attachPlayerObservers()
+    }
+
+    private func attachPlayerObservers() {
+        observePlayerAdvance()
+        observePlayerStatus()
+        addTimeObserver()
+    }
+
+    private func detachPlayerObservers(from old: AVQueuePlayer) {
+        currentItemObservation?.invalidate()
+        currentItemObservation = nil
+        timeControlStatusObservation?.invalidate()
+        timeControlStatusObservation = nil
+        playerStatusObservation?.invalidate()
+        playerStatusObservation = nil
+        currentItemStatusObservation?.invalidate()
+        currentItemStatusObservation = nil
+        if let timeObserver {
+            timeObserver.player.removeTimeObserver(timeObserver.token)
+            self.timeObserver = nil
+        }
+    }
+
+    /// AVPlayer docs: once `status` is `.failed` the player can't be used for
+    /// playback again and has to be replaced.
+    private func observePlayerStatus() {
+        playerStatusObservation = player.observe(\.status, options: [.new]) { @Sendable [weak self] observed, _ in
+            guard observed.status == .failed else { return }
+            let source = ObjectIdentifier(observed)
+            let error = (observed.error as NSError?).map { "\($0.domain) \($0.code)" } ?? "no error"
+            Task { @MainActor in
+                guard let self, ObjectIdentifier(self.player) == source else { return }
+                self.requestPlayerRecovery(reason: "player failed: \(error)")
+            }
+        }
     }
 
     // MARK: - Route changes
@@ -692,7 +803,9 @@ final class AudioEngine {
     /// item finishes with nothing queued after it (default `.advance`
     /// behavior — unchanged from T31, still relied on here) — the natural
     /// "queue genuinely ran out" signal, as distinct from an ordinary
-    /// advance into the next resident item. `QueueController` sets
+    /// advance into the next resident item. It also becomes `nil` when the
+    /// remaining items all FAIL, which is not an end; `handlePlayerRanOut`
+    /// tells the two apart. `QueueController` sets
     /// `onQueueExhausted` to resolve this (repeat-all wraps back to index 0;
     /// repeat-off leaves playback stopped on the last song, matching this
     /// engine's existing no-op-when-nil behavior from before T33).
@@ -702,24 +815,49 @@ final class AudioEngine {
         // (an auto-advance or an interruption while the phone sleeps), and
         // under Swift 6 a main-actor closure called off the main thread
         // traps — a crash on waking the phone. Each one only hops to the
-        // main actor.
-        currentItemObservation = player.observe(\.currentItem, options: [.new]) { @Sendable [weak self] _, _ in
+        // main actor, and ignores an event from a player since replaced.
+        currentItemObservation = player.observe(\.currentItem, options: [.old, .new]) { @Sendable [weak self] observed, change in
+            let source = ObjectIdentifier(observed)
+            // Read now: by the main-actor hop the departed item is gone.
+            let departedReachedEnd = (change.oldValue ?? nil).map(Self.reachedEnd) ?? false
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, ObjectIdentifier(self.player) == source else { return }
                 self.observeCurrentItemStatus()
                 if self.player.currentItem == nil {
-                    await self.onQueueExhausted?()
+                    await self.handlePlayerRanOut(lastItemReachedEnd: departedReachedEnd)
                 } else {
                     await self.topUpWindow()
                 }
             }
         }
-        timeControlStatusObservation = player.observe(\.timeControlStatus, options: [.new]) { @Sendable [weak self] _, _ in
+        timeControlStatusObservation = player.observe(\.timeControlStatus, options: [.new]) { @Sendable [weak self] observed, _ in
+            let source = ObjectIdentifier(observed)
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, ObjectIdentifier(self.player) == source else { return }
                 self.applyTimeControlStatus(self.player.timeControlStatus)
             }
         }
+    }
+
+    private nonisolated static func reachedEnd(_ item: AVPlayerItem) -> Bool {
+        let duration = item.duration
+        return item.status == .readyToPlay && duration.isNumeric
+            && item.currentTime().seconds >= duration.seconds - 1
+    }
+
+    /// Only a last song that played to its end finishes the queue. When its
+    /// items all failed, `AVQueuePlayer` skips them and empties too; calling
+    /// that "finished" started the related-content hand-off, whose songs then
+    /// failed the same way and handed back, several times a second.
+    private func handlePlayerRanOut(lastItemReachedEnd: Bool) async {
+        guard lastItemReachedEnd else {
+            guard currentSong != nil else { return }
+            if case .failed = status { return }
+            logger.warning("player ran out on song \(currentSong?.id ?? "") without finishing it; not continuing into related content")
+            status = .failed(String(localized: "Couldn't play this song"))
+            return
+        }
+        await onQueueExhausted?()
     }
 
     /// `.initial` as well: a lookahead item that already failed while it
@@ -757,9 +895,11 @@ final class AudioEngine {
 
     private func addTimeObserver() {
         let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-        timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+        let observed = player
+        let source = ObjectIdentifier(observed)
+        let token = observed.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, ObjectIdentifier(self.player) == source else { return }
                 if let pending = self.pendingSeek {
                     if Date() < pending.until, abs(time.seconds - pending.target) > 1 { return }
                     self.pendingSeek = nil
@@ -770,6 +910,7 @@ final class AudioEngine {
                 }
             }
         }
+        timeObserver = (observed, token)
     }
 
     // MARK: - Source resolution

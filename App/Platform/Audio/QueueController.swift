@@ -74,12 +74,23 @@ final class QueueController {
     private var handoffInFlight = false
     private static let maxPrewarmAttempts = 2
 
+    /// A queue that plays to its end takes minutes, so more automatic hand-offs
+    /// than this within the window means queues are ending without playing;
+    /// carrying on would only flip between recommendations. Next is never limited.
+    nonisolated static let maxAutomaticHandoffs = 3
+    nonisolated static let automaticHandoffWindow: TimeInterval = 60
+    @ObservationIgnored private var automaticHandoffTimes: [Date] = []
+
     private let engine: AudioEngine
     private let keyValueStore: any KeyValueStoring
+    /// `nil` resolves the app's shared `RelatedContentService` at hand-off time.
+    private let relatedContent: RelatedContentService?
+    private let logger = AppLogger(category: .playback)
 
-    init(engine: AudioEngine, keyValueStore: any KeyValueStoring) {
+    init(engine: AudioEngine, keyValueStore: any KeyValueStoring, relatedContent: RelatedContentService? = nil) {
         self.engine = engine
         self.keyValueStore = keyValueStore
+        self.relatedContent = relatedContent
 
         if let stored = keyValueStore.string(forKey: Self.repeatModeKey), let restored = RepeatMode(rawValue: stored) {
             repeatMode = restored
@@ -373,7 +384,7 @@ final class QueueController {
             // Repeat off: the queue is over, so run on into a recommendation
             // (`_onQueueCompleted` -> `_handOffToRelatedContent`). Silent when
             // there is nothing to play. Repeat-one never exhausts.
-            if repeatMode == .off { handOffToRelatedContent(announceEmpty: false) }
+            if repeatMode == .off { handOffToRelatedContent(announceEmpty: false, automatic: true) }
             return
         }
         // Only a single-song queue wrapping to index 0 is "the same song
@@ -390,8 +401,19 @@ final class QueueController {
     /// `nil` when no `RelatedContentService` is registered (tests/previews):
     /// the hand-off then simply does nothing.
     private var handoffResolver: QueueHandoffResolver? {
-        DependencyContainer.current.resolveIfRegistered(RelatedContentService.self)
+        (relatedContent ?? DependencyContainer.current.resolveIfRegistered(RelatedContentService.self))
             .map { QueueHandoffResolver(service: $0) }
+    }
+
+    /// Records the automatic hand-off it allows; refuses past the limit.
+    private func allowsAutomaticHandoff(now: Date) -> Bool {
+        automaticHandoffTimes.removeAll { now.timeIntervalSince($0) >= Self.automaticHandoffWindow }
+        guard automaticHandoffTimes.count < Self.maxAutomaticHandoffs else {
+            logger.warning("\(automaticHandoffTimes.count) automatic hand-offs within \(Int(Self.automaticHandoffWindow))s; stopping instead of continuing into related content")
+            return false
+        }
+        automaticHandoffTimes.append(now)
+        return true
     }
 
     /// The container playback is attributed to, which a hand-off must not
@@ -426,8 +448,10 @@ final class QueueController {
 
     /// Starts the hand-off without holding up the caller (`_handOffToRelatedContent`);
     /// re-entrancy is guarded so repeated Next taps at the end start one.
-    private func handOffToRelatedContent(announceEmpty: Bool) {
+    /// `automatic`: the queue ended by itself, which is rate-limited; Next is not.
+    private func handOffToRelatedContent(announceEmpty: Bool, automatic: Bool = false) {
         guard !handoffInFlight else { return }
+        if automatic, !allowsAutomaticHandoff(now: Date()) { return }
         handoffInFlight = true
         Task {
             await continueWithRelatedContent(announceEmpty: announceEmpty)
